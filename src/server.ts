@@ -1,28 +1,18 @@
-import express, { Application, Request, Response } from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
+// src/server.ts
+import express from 'express';
 import dotenv from 'dotenv';
+import { loadMiddlewares } from './presentation/middlewares';
+import routes from './presentation/routes';
 
-// Create the Express application
-const app: Application = express();
-const PORT = process.env.PORT || 3000;
-
-// Load environment variables
 dotenv.config();
 
-// Middleware
-app.use(cors());
-app.use(morgan('dev'));
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(express.json());
+loadMiddlewares(app);
 
-// Routes (Presentation Layer)
-app.use('/api', (req: Request, res: Response) => {
-  res.send('API is working');
-});
+app.use(routes);
 
-// Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
