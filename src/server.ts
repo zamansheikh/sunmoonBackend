@@ -4,15 +4,19 @@ import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import session from 'express-session';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+// import mongoClient from "mongodb";
+import mongoose from 'mongoose';
+
+import router from "./router/auth_routes";
+
+// import bcrypt from 'bcrypt';
+// import jwt from 'jsonwebtoken';
 
 // Initialize dotenv for environment variables
 dotenv.config();
 
 // Create the Express application
 const app: Application = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors()); // Enable CORS
@@ -28,9 +32,20 @@ app.use(
   })
 );
 
+// Routes
+app.use("/api/auth", router);
+
+const PORT = process.env.PORT || 8000;
+const MONGOURL = process.env.MONGO_URL || 'mongodb://localhost:27017/livestreaming';
+
+mongoose.connect(MONGOURL).then(
+  () => {
+    console.log("DB Connected");
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  }
+)
 
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
