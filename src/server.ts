@@ -45,6 +45,7 @@ app.use(
   cors({
     origin: [
       "http://localhost",
+      "http://localhost:3004",
       "http://dlstarlive.com:8000",
       "http://localhost:8000",
       "http://127.0.0.1:8080",
