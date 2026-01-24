@@ -47,6 +47,8 @@ app.use(
     origin: [
       "http://localhost",
       "http://localhost:3004",
+      "http://88.222.213.235:3004",
+      "https://admin.zigoliveapp.xyz",
       "http://dlstarlive.com:8000",
       "http://localhost:8000",
       "http://127.0.0.1:8080",
