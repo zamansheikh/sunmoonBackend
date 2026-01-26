@@ -242,6 +242,7 @@ export const registerAudioRoomHandler = async (
         isHostPresent: createdRoom.isHostPresent,
         isLocked: createdRoom.isLocked,
         roomLevel: createdRoom.roomLevel,
+        password: createdRoom.password,
         roomPartners: createdRoom.roomPartners,
       };
 
@@ -280,6 +281,7 @@ export const registerAudioRoomHandler = async (
           isHostPresent: roomData.isHostPresent,
           isLocked: roomData.isLocked,
           roomLevel: roomData.roomLevel,
+          password: roomData.password,
           roomPartners: roomData.roomPartners,
         };
         allRoomSerialized.push(obj);
@@ -334,6 +336,7 @@ export const registerAudioRoomHandler = async (
         ),
         isHostPresent: roomData.isHostPresent,
         isLocked: roomData.isLocked,
+        password: roomData.password,
         roomLevel: roomData.roomLevel,
         roomPartners: roomData.roomPartners,
       };
@@ -384,6 +387,7 @@ export const registerAudioRoomHandler = async (
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
       roomLevel: room.roomLevel,
+      password: room.password,
       roomPartners: room.roomPartners,
     };
     socketResponse(io, SocketAudioChannels.RoomDetails, socket.id, {
@@ -835,6 +839,7 @@ export const registerAudioRoomHandler = async (
       ),
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
+      password: room.password,
       roomLevel: room.roomLevel,
       roomPartners: room.roomPartners,
     };
@@ -1125,6 +1130,7 @@ export const registerAudioRoomHandler = async (
         isHostPresent: room.isHostPresent,
         isLocked: room.isLocked,
         roomLevel: room.roomLevel,
+        password: room.password,
         roomPartners: room.roomPartners,
       };
       socketResponse(io, SocketAudioChannels.RoomDetails, roomId, {
@@ -1306,6 +1312,7 @@ export const registerAudioRoomHandler = async (
           ),
           isHostPresent: roomData.isHostPresent,
           isLocked: roomData.isLocked,
+          password: roomData.password,
           roomLevel: roomData.roomLevel,
           roomPartners: roomData.roomPartners,
         };
@@ -1355,6 +1362,7 @@ export const registerAudioRoomHandler = async (
           ),
           isHostPresent: roomData.isHostPresent,
           isLocked: roomData.isLocked,
+          password: roomData.password,
           roomLevel: roomData.roomLevel,
           roomPartners: roomData.roomPartners,
         };
@@ -1430,6 +1438,7 @@ export const registerAudioRoomHandler = async (
         ),
         isHostPresent: room.isHostPresent,
         isLocked: room.isLocked,
+        password: room.password,
         roomLevel: room.roomLevel,
         roomPartners: room.roomPartners,
       };
@@ -1479,6 +1488,7 @@ export const registerAudioRoomHandler = async (
       ),
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
+      password: room.password,
       roomLevel: room.roomLevel,
       roomPartners: room.roomPartners,
     };
@@ -1528,6 +1538,7 @@ export const registerAudioRoomHandler = async (
       ),
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
+      password: room.password,
       roomLevel: room.roomLevel,
       roomPartners: room.roomPartners,
     };
@@ -1576,6 +1587,7 @@ export const registerAudioRoomHandler = async (
       ),
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
+      password: room.password,
       roomLevel: room.roomLevel,
       roomPartners: room.roomPartners,
     };

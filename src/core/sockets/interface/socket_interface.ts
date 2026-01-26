@@ -136,6 +136,7 @@ export interface ISearializedAudioRoom {
   isHostPresent: boolean;
   duration: number;
   isLocked: boolean;
+  password: string | undefined;
   roomLevel: number;
   roomPartners: IMemberDetails[];
 }
