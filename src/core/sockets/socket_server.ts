@@ -347,7 +347,7 @@ export default class SocketServer {
     );
 
     // notifying the app about the rocket launch
-    this.io.emit(SocketAudioChannels.LaunchRocket, {
+    socketResponse(this.io, SocketAudioChannels.LaunchRocket, roomId,  {
       success: true,
       message: "Rocket is about to be launched",
       data: {
@@ -679,7 +679,7 @@ export default class SocketServer {
       const allRoomSerialized: ISearializedAudioRoom[] = [];
 
       for (const [room, roomData] of Object.entries(this.hostedAudioRooms)) {
-        const obj = {
+        const obj: ISearializedAudioRoom = {
           title: roomData.title,
           numberOfSeats: roomData.numberOfSeats,
           announcement: roomData.announcement,
@@ -710,6 +710,7 @@ export default class SocketServer {
           ),
           isHostPresent: roomData.isHostPresent,
           isLocked: roomData.isLocked,
+          password: roomData.password,
           roomLevel: roomData.roomLevel,
           roomPartners: roomData.roomPartners,
         };
