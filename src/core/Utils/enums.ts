@@ -168,6 +168,7 @@ export enum SocketAudioChannels {
   RemoveRoomPartners = "remove-audio-room-partners",
   RoomSupportReward = "room-support-reward",
   GetRoomSupportHistory = "get-room-support-history",
+  UpdateRoomPhoto = "update-room-photo",
 }
 
 export enum RoomTypes {

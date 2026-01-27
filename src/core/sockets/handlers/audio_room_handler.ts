@@ -34,6 +34,7 @@ import {
   ROOM_LEVEL_CRITERIA,
 } from "../../Utils/constants";
 import { ServerApiVersion } from "mongodb";
+import { deleteLocalFile } from "../../Utils/save_file_to_local_sys";
 
 export const registerAudioRoomHandler = async (
   io: Server,
@@ -111,7 +112,7 @@ export const registerAudioRoomHandler = async (
   // channel to create audio room
   socket.on(
     SocketAudioChannels.CreateAudioRoom,
-    ({ roomId, title, numberOfSeats, announcement }) => {
+    ({ roomId, title, numberOfSeats, announcement, roomPhoto }) => {
       // validating input data
       const ensureUserIsNotBlocked =
         audioRoomPolicy.ensureUserIsNotBlocked(userDetails);
@@ -152,6 +153,7 @@ export const registerAudioRoomHandler = async (
         numberOfSeats: numberOfSeats,
         announcement: announcement ?? "",
         roomId: roomId,
+        roomPhoto: roomPhoto ?? "",
         currentRocketFuel: 0,
         currentRocketLevel: 1,
         currentRocketMilestone: ROCKET_MILESTONES[0],
@@ -216,6 +218,7 @@ export const registerAudioRoomHandler = async (
         numberOfSeats: createdRoom.numberOfSeats,
         announcement: createdRoom.announcement,
         roomId: createdRoom.roomId,
+        roomPhoto: createdRoom.roomPhoto,
         currentRocketFuel: createdRoom.currentRocketFuel,
         currentRocketLevel: createdRoom.currentRocketLevel,
         currentRocketMilestone: createdRoom.currentRocketMilestone,
@@ -255,6 +258,7 @@ export const registerAudioRoomHandler = async (
           numberOfSeats: roomData.numberOfSeats,
           announcement: roomData.announcement,
           roomId: roomData.roomId,
+          roomPhoto: roomData.roomPhoto,
           currentRocketFuel: roomData.currentRocketFuel,
           currentRocketLevel: roomData.currentRocketLevel,
           currentRocketMilestone: roomData.currentRocketMilestone,
@@ -311,6 +315,7 @@ export const registerAudioRoomHandler = async (
         numberOfSeats: roomData.numberOfSeats,
         announcement: roomData.announcement,
         roomId: roomData.roomId,
+        roomPhoto: roomData.roomPhoto,
         currentRocketFuel: roomData.currentRocketFuel,
         currentRocketLevel: roomData.currentRocketLevel,
         currentRocketMilestone: roomData.currentRocketMilestone,
@@ -361,6 +366,7 @@ export const registerAudioRoomHandler = async (
       numberOfSeats: room.numberOfSeats,
       announcement: room.announcement,
       roomId: room.roomId,
+      roomPhoto: room.roomPhoto,
       currentRocketFuel: room.currentRocketFuel,
       currentRocketLevel: room.currentRocketLevel,
       currentRocketMilestone: room.currentRocketMilestone,
@@ -763,6 +769,7 @@ export const registerAudioRoomHandler = async (
       numberOfSeats: room.numberOfSeats,
       announcement: room.announcement,
       roomId: room.roomId,
+      roomPhoto: room.roomPhoto,
       currentRocketFuel: room.currentRocketFuel,
       currentRocketLevel: room.currentRocketLevel,
       currentRocketMilestone: room.currentRocketMilestone,
@@ -1053,6 +1060,7 @@ export const registerAudioRoomHandler = async (
         numberOfSeats: room.numberOfSeats,
         announcement: room.announcement,
         roomId: room.roomId,
+        roomPhoto: room.roomPhoto,
         currentRocketFuel: room.currentRocketFuel,
         currentRocketLevel: room.currentRocketLevel,
         currentRocketMilestone: room.currentRocketMilestone,
@@ -1236,6 +1244,7 @@ export const registerAudioRoomHandler = async (
           numberOfSeats: roomData.numberOfSeats,
           announcement: roomData.announcement,
           roomId: roomData.roomId,
+          roomPhoto: roomData.roomPhoto,
           currentRocketFuel: roomData.currentRocketFuel,
           currentRocketLevel: roomData.currentRocketLevel,
           currentRocketMilestone: roomData.currentRocketMilestone,
@@ -1286,6 +1295,7 @@ export const registerAudioRoomHandler = async (
           numberOfSeats: roomData.numberOfSeats,
           announcement: roomData.announcement,
           roomId: roomData.roomId,
+          roomPhoto: roomData.roomPhoto,
           currentRocketFuel: roomData.currentRocketFuel,
           currentRocketLevel: roomData.currentRocketLevel,
           currentRocketMilestone: roomData.currentRocketMilestone,
@@ -1362,6 +1372,7 @@ export const registerAudioRoomHandler = async (
         numberOfSeats: room.numberOfSeats,
         announcement: room.announcement,
         roomId: room.roomId,
+        roomPhoto: room.roomPhoto,
         currentRocketFuel: room.currentRocketFuel,
         currentRocketLevel: room.currentRocketLevel,
         currentRocketMilestone: room.currentRocketMilestone,
@@ -1412,6 +1423,7 @@ export const registerAudioRoomHandler = async (
       numberOfSeats: room.numberOfSeats,
       announcement: room.announcement,
       roomId: room.roomId,
+      roomPhoto: room.roomPhoto,
       currentRocketFuel: room.currentRocketFuel,
       currentRocketLevel: room.currentRocketLevel,
       currentRocketMilestone: room.currentRocketMilestone,
@@ -1462,6 +1474,7 @@ export const registerAudioRoomHandler = async (
       numberOfSeats: room.numberOfSeats,
       announcement: room.announcement,
       roomId: room.roomId,
+      roomPhoto: room.roomPhoto,
       currentRocketFuel: room.currentRocketFuel,
       currentRocketLevel: room.currentRocketLevel,
       currentRocketMilestone: room.currentRocketMilestone,
@@ -1511,6 +1524,7 @@ export const registerAudioRoomHandler = async (
       numberOfSeats: room.numberOfSeats,
       announcement: room.announcement,
       roomId: room.roomId,
+      roomPhoto: room.roomPhoto,
       currentRocketFuel: room.currentRocketFuel,
       currentRocketLevel: room.currentRocketLevel,
       currentRocketMilestone: room.currentRocketMilestone,
@@ -1648,4 +1662,39 @@ export const registerAudioRoomHandler = async (
       data: supportHistory,
     });
   });
+
+
+  // update room photo
+  socket.on(
+    SocketAudioChannels.UpdateRoomPhoto,
+    async ({ roomId, roomPhoto }) => {
+      const isHost = audioRoomPolicy.ensureIsHost(roomId, userId);
+      if (isHost == false) return;
+      if (
+        roomPhoto == "" ||
+        roomPhoto == undefined ||
+        roomPhoto == null ||
+        !roomPhoto
+      )
+        return;
+      // Define the regex
+      const roomPhotoRegex: RegExp =
+        /^\/uploads\/room_photo\/[a-f0-9-]{36}\.png$/;
+      // Test the string
+      const room = audioRoom[roomId];
+      const isValid: boolean = roomPhotoRegex.test(room.roomPhoto);
+      if (room.roomPhoto != "" && isValid && room.roomPhoto != roomPhoto) {
+        await deleteLocalFile(room.roomPhoto);
+        room.roomPhoto = "";
+      }
+      room.roomPhoto = roomPhoto;
+      socketResponse(io, SocketAudioChannels.UpdateRoomPhoto, roomId, {
+        success: true,
+        message: "Successfully updated room photo",
+        data: {
+          roomPhoto: room.roomPhoto,
+        },
+      });
+    },
+  );
 };

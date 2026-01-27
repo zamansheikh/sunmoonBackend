@@ -81,6 +81,7 @@ export interface IAudioRoomData {
   numberOfSeats: number;
   announcement: string; 
   roomId: string;
+  roomPhoto: string;
   currentRocketLevel: number; // eg: level 1 to level 5
   currentRocketFuel: number; // eg : 5,00,000 - fromt gift coins
   currentRocketMilestone: number; // eg: 10,00,000 - constant set according to business logic
@@ -114,6 +115,7 @@ export interface ISearializedAudioRoom {
   numberOfSeats: number;
   announcement: string;
   roomId: string;
+  roomPhoto: string;
   currentRocketLevel: number; // eg: level 1 to level 5
   currentRocketFuel: number; // eg : 5,00,000 - fromt gift coins
   currentRocketMilestone: number; // eg: 10,00,000 - constant set according to business logic

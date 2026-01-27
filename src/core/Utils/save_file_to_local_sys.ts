@@ -1,9 +1,11 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { Express } from "express";
+import { Express, Request, Response } from "express";
 import AppError from "../errors/app_errors";
 import { StatusCodes } from "http-status-codes";
+import catchAsync from "./catch_async";
+import sendResponse from "./send_response";
 
 interface SaveFileOptions {
   folder: string; // e.g. "store_items"
@@ -56,3 +58,18 @@ export const deleteLocalFile = async (fileUrl: string): Promise<boolean> => {
     throw error;
   }
 };
+
+
+export const saveToLocalFileApiFunction = catchAsync(async (req: Request, res:Response)=> {
+  const file = req.file;
+  if(!file) throw new AppError(StatusCodes.BAD_REQUEST, "File is required");
+  const uploadUrl = await saveFileToLocal(file!, {
+    folder: "room_photo"
+  });
+  sendResponse(res, {
+    success: true,
+    message: "Successfully uploaded file",
+    result: uploadUrl,
+    statusCode: StatusCodes.OK,
+  });
+});

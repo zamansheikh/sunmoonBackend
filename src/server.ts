@@ -32,6 +32,8 @@ import globalErrorHandler from "./core/errors/global_error_handlar";
 import CronManager from "./core/corn/corn_manager";
 import { resetRoomXPTrackingSystem } from "./core/corn/jobs/reset_room_xp_tracking_sys";
 import { roomSupportRewardSystem } from "./core/corn/jobs/room_support_jobs";
+import { saveToLocalFileApiFunction } from "./core/Utils/save_file_to_local_sys";
+import { upload } from "./core/middlewares/multer";
 
 // Initialize dotenv for environment variables
 dotenv.config();
@@ -106,6 +108,8 @@ app.use("/release", AppVersionRoutes);
 app.use("/api/gifts-audio-rocket", GiftAudioRoketRouter);
 app.use("/api/blocked-emails", BlockedEmail);
 app.use("/api/diamond-exchange", DiamondExchangeRouter);
+
+app.post("/api/upload-file-local", upload.single("file"), saveToLocalFileApiFunction);
 
 // app.get("/release/latest", async (req: Request, res: Response) => {
 //   res.send({
