@@ -570,9 +570,6 @@ export const registerAudioRoomHandler = async (
 
     const room = audioRoom[roomId];
     const member = userObj;
-
-
-
     if (
       !isEmptyObject(room.premiumSeat.member) &&
       (room.premiumSeat.member as IMemberDetails)._id == userId
