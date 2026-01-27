@@ -571,31 +571,13 @@ export const registerAudioRoomHandler = async (
     const room = audioRoom[roomId];
     const member = userObj;
 
-    let message: IRoomMessage = {
-      name: userDetails.name as string,
-      avatar: userDetails.avatar as string,
-      uid: userDetails.uid as string,
-      userId: userDetails.userId as number,
-      country: userDetails.country as string,
-      _id: userDetails._id as string,
-      text: `joined ${seatKey}`,
-      currentBackground: userDetails.currentLevelBackground as string,
-      currentTag: userDetails.currentLevelTag as string,
-      currentLevel: userDetails.level as number,
-      equipedStoreItems: userObj.equipedStoreItems,
-    };
+
 
     if (
       !isEmptyObject(room.premiumSeat.member) &&
       (room.premiumSeat.member as IMemberDetails)._id == userId
     ) {
-      message.text = "left premiumSeat";
       room.premiumSeat.member = {};
-      socketResponse(io, SocketAudioChannels.SendMessage, roomId, {
-        success: true,
-        message: "Successfully left the seat",
-        data: message,
-      });
       socketResponse(io, SocketAudioChannels.leaveSeat, roomId, {
         success: true,
         message: "Successfully left the seat",
@@ -610,13 +592,7 @@ export const registerAudioRoomHandler = async (
         !isEmptyObject(seat.member) &&
         (seat.member as IMemberDetails)._id == userId
       ) {
-        message.text = `left ${seatKey}`;
         room.seats[seatKey].member = {};
-        socketResponse(io, SocketAudioChannels.SendMessage, roomId, {
-          success: true,
-          message: "Successfully left the seat",
-          data: message,
-        });
         socketResponse(io, SocketAudioChannels.leaveSeat, roomId, {
           success: true,
           message: "Successfully left the seat",
@@ -633,12 +609,7 @@ export const registerAudioRoomHandler = async (
     else room.seats[seatKey].member = member! as IMemberDetails;
 
     if (room.messages.length >= 100) room.messages.shift();
-    room.messages.push(message);
-    socketResponse(io, SocketAudioChannels.SendMessage, roomId, {
-      success: true,
-      message: "Successfully joined the seat",
-      data: message,
-    });
+
     socketResponse(io, SocketAudioChannels.joinSeat, roomId, {
       success: true,
       message: "Successfully joined the seat",
@@ -665,27 +636,8 @@ export const registerAudioRoomHandler = async (
     if (seatKey == "premiumSeat") audioRoom[roomId].premiumSeat.member = {};
     else audioRoom[roomId].seats[seatKey].member = {};
 
-    const message: IRoomMessage = {
-      name: userDetails.name as string,
-      avatar: userDetails.avatar as string,
-      uid: userDetails.uid as string,
-      userId: userDetails.userId as number,
-      country: userDetails.country as string,
-      _id: userDetails._id as string,
-      text: `left ${seatKey}`,
-      currentBackground: userDetails.currentLevelBackground as string,
-      currentTag: userDetails.currentLevelTag as string,
-      currentLevel: userDetails.level as number,
-      equipedStoreItems: userObj.equipedStoreItems,
-    };
     if (audioRoom[roomId].messages.length >= 100)
       audioRoom[roomId].messages.shift();
-    audioRoom[roomId].messages.push(message);
-    socketResponse(io, SocketAudioChannels.SendMessage, roomId, {
-      success: true,
-      message: "Successfully left the seat",
-      data: message,
-    });
     socketResponse(io, SocketAudioChannels.leaveSeat, roomId, {
       success: true,
       message: "Successfully left the seat",
