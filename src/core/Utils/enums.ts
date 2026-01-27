@@ -169,6 +169,7 @@ export enum SocketAudioChannels {
   RoomSupportReward = "room-support-reward",
   GetRoomSupportHistory = "get-room-support-history",
   UpdateRoomPhoto = "update-room-photo",
+  getFollowingRooms = 'get-following-rooms'
 }
 
 export enum RoomTypes {

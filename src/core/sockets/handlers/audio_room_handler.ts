@@ -1663,7 +1663,6 @@ export const registerAudioRoomHandler = async (
     });
   });
 
-
   // update room photo
   socket.on(
     SocketAudioChannels.UpdateRoomPhoto,
@@ -1697,4 +1696,69 @@ export const registerAudioRoomHandler = async (
       });
     },
   );
+
+  // get following rooms -> rooms of people I follow
+  socket.on(SocketAudioChannels.getFollowingRooms, async () => {
+    const socketInstance = SocketServer.getInstance();
+    const followerIds =
+      await socketInstance.followerRepository.getFollowingList(userId);
+    const followerIdSet = new Set(followerIds);
+    if (followerIds.length === 0) {
+      socketResponse(io, SocketAudioChannels.getFollowingRooms, socket.id, {
+        success: true,
+        message: "Successfully fetched following rooms",
+        data: [],
+      });
+      return;
+    }
+
+    const followingRooms: ISearializedAudioRoom[] = [];
+
+    for (const [roomId, room] of Object.entries(audioRoom)) {
+      if (followerIdSet.has(room.hostId)) {
+        const serializedRoom: ISearializedAudioRoom = {
+          title: room.title,
+          numberOfSeats: room.numberOfSeats,
+          announcement: room.announcement,
+          roomId: room.roomId,
+          roomPhoto: room.roomPhoto,
+          currentRocketFuel: room.currentRocketFuel,
+          currentRocketLevel: room.currentRocketLevel,
+          currentRocketMilestone: room.currentRocketMilestone,
+          roomTotalTransaction: room.roomTotalTransaction,
+          rocketFuelPercentage:
+            room.currentRocketFuel / room.currentRocketMilestone,
+          hostGifts: room.hostGifts,
+          hostBonus: room.hostBonus,
+          hostDetails: room.hostDetails,
+          adminDetails: room.adminDetails,
+          premiumSeat: room.premiumSeat,
+          seats: room.seats,
+          messages: room.messages,
+          createdAt: room.createdAt,
+          bannedUsers: Array.from(room.bannedUsers),
+          members: Array.from(room.members),
+          membersDetails: room.membersDetails,
+          mutedUsers: Array.from(room.mutedUsers),
+          ranking: room.ranking,
+          chatPrivacy: room.chatPrivacy,
+          duration: Math.floor(
+            (new Date().getTime() - room.createdAt.getTime()) / 1000,
+          ),
+          isHostPresent: room.isHostPresent,
+          isLocked: room.isLocked,
+          password: room.password,
+          roomLevel: room.roomLevel,
+          roomPartners: room.roomPartners,
+        };
+        followingRooms.push(serializedRoom);
+      }
+    }
+    
+    socketResponse(io, SocketAudioChannels.getFollowingRooms, socket.id, {
+      success: true,
+      message: "Successfully fetched following rooms",
+      data: followingRooms,
+    });
+  });
 };

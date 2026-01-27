@@ -10,21 +10,22 @@ import { DatabaseNames } from "../../core/Utils/enums";
 export interface IFollowerRepository {
   createFollower(
     follow: IFollower,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<IFollowerDocument | null>;
   findFollower(
     follow: IFollower,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<IFollowerDocument | null>;
   deleteFollowerById(
     id: string,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<IFollowerDocument | null>;
   getFollowerLists(
     myId: string,
     condition: Record<string, string>,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IFollowerDocument[] } | null>;
+  getFollowingList(userId: string): Promise<string[]>;
   getFollowerCount(userId: string): Promise<number>;
   getFollowingCount(userId: string): Promise<number>;
 }
@@ -37,7 +38,7 @@ export default class FollowerRepository implements IFollowerRepository {
 
   async createFollower(
     follow: IFollower,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<IFollowerDocument | null> {
     const newFollower = new this.Model(follow);
     return await newFollower.save({ session });
@@ -45,14 +46,14 @@ export default class FollowerRepository implements IFollowerRepository {
 
   async findFollower(
     follow: IFollower,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<IFollowerDocument | null> {
     return await this.Model.findOne(follow).session(session || null);
   }
 
   async deleteFollowerById(
     id: string,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<IFollowerDocument | null> {
     return await this.Model.findByIdAndDelete(id).session(session || null);
   }
@@ -60,7 +61,7 @@ export default class FollowerRepository implements IFollowerRepository {
   async getFollowerLists(
     myId: string,
     condition: Record<string, string>,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IFollowerDocument[] } | null> {
     const myObjectId = new Types.ObjectId(myId);
     const matchLine: Record<string, any> = {};
@@ -184,6 +185,12 @@ export default class FollowerRepository implements IFollowerRepository {
     const data = await res.exec();
     const pagination = await res.countTotal();
     return { pagination, data };
+  }
+
+  async getFollowingList(userId: string): Promise<string[]> {
+    const result = await this.Model.find({ followerId: userId });
+    const followingIds = result.map((item) => item.myId.toString());
+    return followingIds;
   }
 
   async getFollowerCount(userId: string): Promise<number> {

@@ -63,6 +63,8 @@ import StoreItemModel, {
 import { log } from "console";
 import UserStats from "../../models/userstats/userstats_model";
 import UserStatsRepository from "../../repository/users/userstats_repository";
+import FollowerRepository from "../../repository/follower/follower_repository";
+import Follower from "../../models/followers/followers_model";
 
 export default class SocketServer {
   private static instance: SocketServer;
@@ -90,6 +92,7 @@ export default class SocketServer {
   private bucketRepo = new MyBucketRepository(MyBucketModel);
   private categoryRepo = new StoreCategoryRepository(StoreCategoryModel);
   private storeItemRepository = new StoreItemRepository(StoreItemModel);
+  public followerRepository = new FollowerRepository(Follower);
 
   // Private constructor: enforce singleton usage
   private constructor(server: HttpServer) {
@@ -684,6 +687,7 @@ export default class SocketServer {
           numberOfSeats: roomData.numberOfSeats,
           announcement: roomData.announcement,
           roomId: roomData.roomId,
+          roomPhoto: roomData.roomPhoto,
           currentRocketFuel: roomData.currentRocketFuel,
           currentRocketLevel: roomData.currentRocketLevel,
           currentRocketMilestone: roomData.currentRocketMilestone,
