@@ -51,7 +51,7 @@ export default class AdminUserController {
     if (!username || !password)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "username and password are required"
+        "username and password are required",
       );
     const { user, token } = await this.AdminUserService.loginAdmin({
       username,
@@ -72,14 +72,14 @@ export default class AdminUserController {
     if (coins)
       throw new AppError(
         StatusCodes.FORBIDDEN,
-        "Coins cannot be updated directly"
+        "Coins cannot be updated directly",
       );
     if (role)
       throw new AppError(StatusCodes.FORBIDDEN, "Role cannot be updated");
     if (!username && !password && !email && !coins)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "At least one field (username, password, coins, or email) is required for update"
+        "At least one field (username, password, coins, or email) is required for update",
       );
     const updatedAdmin = await this.AdminUserService.updateAdmin(id, {
       username,
@@ -123,18 +123,18 @@ export default class AdminUserController {
     if (!coins)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "User ID and coins are required"
+        "User ID and coins are required",
       );
     if (isNaN(Number(coins)))
       throw new AppError(StatusCodes.BAD_REQUEST, "Coins must be a number");
     if (coins <= 0)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Coins must be greater than 0"
+        "Coins must be greater than 0",
       );
     const updatedUser = await this.AdminUserService.assignCoinToSelf(
       id,
-      Number(coins)
+      Number(coins),
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -146,7 +146,7 @@ export default class AdminUserController {
 
   getAllModerators = catchAsync(async (req: Request, res: Response) => {
     const moderators = await this.AdminUserService.getAllModerators(
-      req.query as Record<string, unknown>
+      req.query as Record<string, unknown>,
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -190,7 +190,7 @@ export default class AdminUserController {
     if (!stars && !diamonds)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "You must include either stars or diamonds in the request body"
+        "You must include either stars or diamonds in the request body",
       );
     const result = await this.AdminUserService.updateUserStat({
       diamonds,
@@ -208,7 +208,7 @@ export default class AdminUserController {
     if (!files.previewImage || !files.svgaImage)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Either previewImage or svgaImage fields cannot be missing"
+        "Either previewImage or svgaImage fields cannot be missing",
       );
     if (
       files.previewImage[0].mimetype !== "image/png" &&
@@ -216,22 +216,22 @@ export default class AdminUserController {
     )
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Preview image must be a png or svga file"
+        "Preview image must be a png or svga file",
       );
     if (isNaN(coinPrice) || isNaN(diamonds))
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Coin price and diamonds must be numbers"
+        "Coin price and diamonds must be numbers",
       );
     if (coinPrice < 1)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Coin price must be greater than 0"
+        "Coin price must be greater than 0",
       );
     if (diamonds < 1)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Diamonds must be greater than 0"
+        "Diamonds must be greater than 0",
       );
 
     const newGift = await this.AdminUserService.createGift({
@@ -270,17 +270,17 @@ export default class AdminUserController {
     if (!giftName && !coinPrice && !diamonds && !image)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "At least one field (giftName, category, coinPrice, or diamonds) is required for update"
+        "At least one field (giftName, category, coinPrice, or diamonds) is required for update",
       );
     if (coinPrice && (isNaN(coinPrice) || coinPrice < 1))
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Coin price must be a number greater than 0"
+        "Coin price must be a number greater than 0",
       );
     if (diamonds && (isNaN(diamonds) || diamonds < 1))
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Diamonds must be a number greater than 0"
+        "Diamonds must be a number greater than 0",
       );
 
     const updatedGift = await this.AdminUserService.updateGift(id, {
@@ -312,7 +312,7 @@ export default class AdminUserController {
 
   getGiftCategory = catchAsync(async (req: Request, res: Response) => {
     const giftCategories = await this.AdminUserService.getGiftCategories(
-      req.query as Record<string, string>
+      req.query as Record<string, string>,
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -325,7 +325,7 @@ export default class AdminUserController {
   createPortalUser = catchAsync(async (req: Request, res: Response) => {
     validateCreatePortalUserData(req.body);
     const newPortalUser = await this.AdminUserService.createPortalUser(
-      req.body
+      req.body,
     );
     sendResponse(res, {
       statusCode: StatusCodes.CREATED,
@@ -365,7 +365,7 @@ export default class AdminUserController {
     const updatedPortalUser =
       await this.AdminUserService.addPermissionsToPortalUser(
         roleId,
-        permissions
+        permissions,
       );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -384,7 +384,7 @@ export default class AdminUserController {
     const updatedPortalUser =
       await this.AdminUserService.removePermissionsFromPortalUser(
         roleId,
-        permissions
+        permissions,
       );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -400,7 +400,7 @@ export default class AdminUserController {
     const result = await this.AdminUserService.updateRoleActivityZone(
       targetId,
       zone,
-      date_till
+      date_till,
     );
     sendResponseEnhanced(res, result);
   });
@@ -408,7 +408,7 @@ export default class AdminUserController {
   getWithdrawRequests = catchAsync(async (req: Request, res: Response) => {
     log(req.query);
     const withdrawRequests = await this.AdminUserService.getWithdrawRequests(
-      req.query as Record<string, unknown>
+      req.query as Record<string, unknown>,
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -427,7 +427,7 @@ export default class AdminUserController {
       if (!Object.values(StatusTypes).includes(status as StatusTypes))
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          `invalid status -> ${status}`
+          `invalid status -> ${status}`,
         );
       const updatedRequest =
         await this.AdminUserService.updateWithdrawBonusStatus(bonusId, status);
@@ -437,7 +437,7 @@ export default class AdminUserController {
         result: updatedRequest,
         message: "Withdraw request status updated successfully",
       });
-    }
+    },
   );
   createSalary = catchAsync(async (req: Request, res: Response) => {
     const { diamondCount, moneyCount, country, type } = req.body;
@@ -483,7 +483,7 @@ export default class AdminUserController {
     if (!diamondCount && !moneyCount && !country) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "At least one field (diamondCount, moneyCount, or country) is required for update"
+        "At least one field (diamondCount, moneyCount, or country) is required for update",
       );
     }
     const updatedSalary = await this.AdminUserService.updateSalary(salaryId, {
@@ -513,7 +513,7 @@ export default class AdminUserController {
     async (req: Request, res: Response) => {
       const result = await this.AdminUserService.autoDistributeBonusToAgency();
       sendResponseEnhanced(res, result);
-    }
+    },
   );
 
   assignRoleToUser = catchAsync(async (req: Request, res: Response) => {
@@ -522,13 +522,13 @@ export default class AdminUserController {
     if (!userId || !role)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "userId and role are required"
+        "userId and role are required",
       );
     if (!Object.values(UserRoles).includes(role as UserRoles))
       throw new AppError(StatusCodes.BAD_REQUEST, `invalid role -> ${role}`);
     const updatedUser = await this.AdminUserService.assignRoleToUser(
       userId,
-      role as UserRoles
+      role as UserRoles,
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -544,7 +544,7 @@ export default class AdminUserController {
       throw new AppError(StatusCodes.BAD_REQUEST, `invalid role -> ${role}`);
     const users = await this.AdminUserService.getUsersBasedOnRole(
       role as UserRoles,
-      req.query as Record<string, unknown>
+      req.query as Record<string, unknown>,
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -565,10 +565,10 @@ export default class AdminUserController {
   });
 
   createBanner = catchAsync(async (req: Request, res: Response) => {
-    const { alt } = req.body;
+    let { alt } = req.body;
     const file = req.file as Express.Multer.File;
     if (!file) throw new AppError(StatusCodes.BAD_REQUEST, "Image is required");
-    if (!alt) throw new AppError(StatusCodes.BAD_REQUEST, "Alt is required");
+    if (!alt) alt = "banner";
     const result = await this.AdminUserService.createBanner(alt, file);
     sendResponse(res, {
       statusCode: StatusCodes.CREATED,
@@ -688,7 +688,7 @@ export default class AdminUserController {
     const result = await this.AdminUserService.getCoinHistory(
       UserRoles.Admin,
       null,
-      req.query
+      req.query,
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -703,7 +703,7 @@ export default class AdminUserController {
     const result = await this.AdminUserService.getCoinHistory(
       UserRoles.Merchant,
       userId,
-      req.query
+      req.query,
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -732,12 +732,12 @@ export default class AdminUserController {
       if (!Object.values(StatusTypes).includes(status as StatusTypes))
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          `invalid status -> ${status}`
+          `invalid status -> ${status}`,
         );
       const updatedRequest =
         await this.AdminUserService.updateAgencyWithdrawStatus(
           withdrawId,
-          status
+          status,
         );
       sendResponse(res, {
         statusCode: StatusCodes.OK,
@@ -745,7 +745,7 @@ export default class AdminUserController {
         result: updatedRequest,
         message: "Agency withdraw status updated successfully",
       });
-    }
+    },
   );
 
   createLevelTag = catchAsync(async (req: Request, res: Response) => {
@@ -756,7 +756,7 @@ export default class AdminUserController {
     if (!tagFile || !bgFile || !level)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Either tag or bg fields cannot be missing"
+        "Either tag or bg fields cannot be missing",
       );
 
     if (!/^\d+-\d+$/.test(level))
@@ -765,7 +765,7 @@ export default class AdminUserController {
     const result = await this.AdminUserService.createLevelTagBg(
       level,
       tagFile,
-      bgFile
+      bgFile,
     );
     sendResponse(res, {
       statusCode: StatusCodes.CREATED,
@@ -795,7 +795,7 @@ export default class AdminUserController {
     if (!level && !tagFile && !bgFile) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "At least one field (level, tag, or bg) is required for update"
+        "At least one field (level, tag, or bg) is required for update",
       );
     }
 
@@ -806,7 +806,7 @@ export default class AdminUserController {
       id,
       level,
       tagFile,
-      bgFile
+      bgFile,
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -850,14 +850,16 @@ export default class AdminUserController {
     if (!nameUpdateCost && !expEquivalentCoin)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "At least one field (nameUpdateCost, expEquivalentCoin) is required for update"
+        "At least one field (nameUpdateCost, expEquivalentCoin) is required for update",
       );
     if (nameUpdateCost) validateNumber(nameUpdateCost, "nameUpdateCost");
     if (expEquivalentCoin)
       validateNumber(expEquivalentCoin, "expEquivalentCoin");
     const result = await this.AdminUserService.updateUpdateCostDocument(id, {
-      nameUpdateCost: nameUpdateCost? Number(nameUpdateCost): undefined,
-      expEquivalentCoin: expEquivalentCoin? Number(expEquivalentCoin): undefined,
+      nameUpdateCost: nameUpdateCost ? Number(nameUpdateCost) : undefined,
+      expEquivalentCoin: expEquivalentCoin
+        ? Number(expEquivalentCoin)
+        : undefined,
     });
     sendResponse(res, {
       statusCode: StatusCodes.OK,
@@ -880,7 +882,7 @@ export default class AdminUserController {
 
   getBannedUsers = catchAsync(async (req: Request, res: Response) => {
     const result = await this.AdminUserService.getBannedUsers(
-      req.query as Record<string, unknown>
+      req.query as Record<string, unknown>,
     );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
