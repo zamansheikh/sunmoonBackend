@@ -280,7 +280,7 @@ router
 
 router
   .route("/banners/docs")
-  .get(authenticate([UserRoles.Admin]), adminUserController.getBannerDoc);
+  .get(authenticate(), adminUserController.getBannerDoc);
 
 router
   .route("/level-tags")
