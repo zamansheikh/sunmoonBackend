@@ -325,7 +325,23 @@ export class AudioRoomPolicy {
         });
         return false;
       }
-    } else {
+    } else if(seatKey == "hostSeat") {
+      if (isEmptyObject(room.hostSeat.member)) {
+        socketResponse(this.io, SocketChannels.error, this.socket.id, {
+          success: false,
+          message: "Host seat is already empty",
+        });
+        return false;
+      }
+      if ((room.hostSeat.member as IMemberDetails)._id != userId) {
+        socketResponse(this.io, SocketChannels.error, this.socket.id, {
+          success: false,
+          message: "You are not on this seat",
+        });
+        return false;
+      }
+    } 
+    else {
       if (isEmptyObject(room.seats[seatKey].member)) {
         socketResponse(this.io, SocketChannels.error, this.socket.id, {
           success: false,
