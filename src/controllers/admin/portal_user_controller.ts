@@ -5,7 +5,7 @@ import { ISharedPowerService } from "../../services/admin/portal_user_service";
 import { StatusCodes } from "http-status-codes";
 import sendResponse from "../../core/Utils/send_response";
 import { UserRoles, WithdrawAccountTypes } from "../../core/Utils/enums";
-import { validatePromoteUserPermission, validateStatus } from "../../core/Utils/helper_functions";
+import { validateNumber, validatePromoteUserPermission, validateStatus } from "../../core/Utils/helper_functions";
 import User from "../../models/user/user_model";
 import { IUserModel } from "../../models/user/user_model_interface";
 
@@ -94,6 +94,18 @@ export class PortalUserControllers {
       success: true,
       result: result?.users,
       meta: result?.pagination,
+      message: "Users retrieved successfully",
+    });
+  });
+
+    searchUserByShortId = catchAsync(async (req: Request, res: Response) => {
+    const { shortId } = req.body;
+    validateNumber(shortId, "shortId");
+    const result = await this.Service.searchUserByShortId(Number(shortId));
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: result,
       message: "Users retrieved successfully",
     });
   });

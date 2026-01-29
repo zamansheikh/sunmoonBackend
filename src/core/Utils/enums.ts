@@ -158,6 +158,7 @@ export enum SocketAudioChannels {
   AudioSeatInvitations = "audio-seat-invitations",
   AcceptAudioSeatInvitation = "accept-audio-seat-invitation",
   AudioRoomSearch = "audio-room-search",
+  AudioRoomUserIdSearch = "audio-room-user-id-search",
   GetMyAudioRoom = "get-my-audio-room",
   RecentVisitedAudioRooms = "recent-visited-audio-rooms",
   ClearChatHistory = "audio-clear-chat-history",

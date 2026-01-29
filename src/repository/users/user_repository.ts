@@ -5,7 +5,11 @@ import {
   IUserModel,
   UserData,
 } from "../../models/user/user_model_interface";
-import { ActivityZoneState, DatabaseNames, UserRoles } from "../../core/Utils/enums";
+import {
+  ActivityZoneState,
+  DatabaseNames,
+  UserRoles,
+} from "../../core/Utils/enums";
 import Friendship from "../../models/friendship/friendship_model";
 import { IPagination, QueryBuilder } from "../../core/Utils/query_builder";
 import AppError from "../../core/errors/app_errors";
@@ -21,53 +25,54 @@ export interface IUserRepository {
   findUserById(id: string): Promise<IUserDocument | null>;
   getUserDetailsSelectedField(
     id: string,
-    fields: string[]
+    fields: string[],
   ): Promise<IUserDocument | null>;
   getPopulatedUserById(
     id: string,
-    populateFields: string
+    populateFields: string,
   ): Promise<IUserDocument | null>;
   findByUID(uid: string): Promise<IUserDocument | null>;
   findUserByEmail(identifier: string): Promise<IUserDocument | null>;
   findAllUser(
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }>;
   findUsersConitionally(
     field: string,
-    value: string | number
+    value: string | number,
   ): Promise<IUserDocument[] | null>;
   findUserByIdAndUpdate(
     id: string,
     payload: Partial<UserData>,
-    session?: mongoose.ClientSession
+    session?: mongoose.ClientSession,
   ): Promise<IUserDocument | null>;
   getUserDetails(details: {
     Id: string;
     myId: string;
   }): Promise<IUserDocument | null>;
   searchUserByQuery(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] } | null>;
+  findUserByShortId(id: number): Promise<IUserDocument>;
   addPermission(id: string, permission: string): Promise<IUserDocument | null>;
   removePermission(
     id: string,
-    permission: string
+    permission: string,
   ): Promise<IUserDocument | null>;
   getAllModarators(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }>;
   setWhoCanTextMe(
     id: string,
-    payload: ITextPrivacy
+    payload: ITextPrivacy,
   ): Promise<IUserDocument | null>;
   deleteUserById(id: string): Promise<IUserDocument | null>;
   getHosts(
     parentId: string,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }>;
   getUserByRole(
     role: UserRoles,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{
     pagination: IPagination;
     users: IUserDocument[];
@@ -82,7 +87,7 @@ export interface IUserRepository {
     pagination: IPagination;
     users: IUserDocument[];
   }>;
-  updateUserXp(id: string, xp: number): Promise<IUserDocument | null >;
+  updateUserXp(id: string, xp: number): Promise<IUserDocument | null>;
 }
 
 export default class UserRepository implements IUserRepository {
@@ -102,7 +107,7 @@ export default class UserRepository implements IUserRepository {
 
   async getUserDetailsSelectedField(
     id: string,
-    fields: string[]
+    fields: string[],
   ): Promise<IUserDocument | null> {
     const user = await this.UserModel.findById(id, fields);
     return user;
@@ -110,7 +115,7 @@ export default class UserRepository implements IUserRepository {
 
   async getPopulatedUserById(
     id: string,
-    populateFields: string
+    populateFields: string,
   ): Promise<IUserDocument | null> {
     return await this.UserModel.findById(id)
       .populate(populateFields)
@@ -129,12 +134,12 @@ export default class UserRepository implements IUserRepository {
     orConditions.push(
       { email: identifier }, // String field
       { uid: identifier },
-      { phone: identifier }
+      { phone: identifier },
     );
     if (isNumeric) {
       orConditions.push(
         { premiumId: numericIdentifier },
-        { userId: numericIdentifier }
+        { userId: numericIdentifier },
       ); // Number field
     }
     const query = { $or: orConditions };
@@ -143,7 +148,7 @@ export default class UserRepository implements IUserRepository {
   }
 
   async findAllUser(
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const qb = new QueryBuilder(this.UserModel, query);
 
@@ -181,7 +186,7 @@ export default class UserRepository implements IUserRepository {
           password: 0,
           "stats._id": 0,
         },
-      }
+      },
     );
 
     const res = qb.aggregate(pipeline);
@@ -199,7 +204,7 @@ export default class UserRepository implements IUserRepository {
   async findUserByIdAndUpdate(
     id: string,
     payload: Partial<UserData>,
-    session?: mongoose.ClientSession
+    session?: mongoose.ClientSession,
   ) {
     const udpated = await this.UserModel.findByIdAndUpdate(id, payload, {
       new: true,
@@ -209,7 +214,7 @@ export default class UserRepository implements IUserRepository {
   }
 
   async searchUserByQuery(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] } | null> {
     const qb = new QueryBuilder(this.UserModel, query);
     const res = qb.search(["email", "uid", "userId", "premiumId"]).sort();
@@ -217,42 +222,52 @@ export default class UserRepository implements IUserRepository {
     const pagination = await res.countTotal();
     return { users, pagination };
   }
+  
+  async findUserByShortId(id: number): Promise<IUserDocument> {
+    const user = await this.UserModel.findOne({
+      $or: [{ userId: id }, { premiumId: id }],
+    });
+    if (!user) {
+      throw new AppError(StatusCodes.NOT_FOUND, "User not found");
+    }
+    return user;
+  }
 
   async setWhoCanTextMe(
     id: string,
-    payload: ITextPrivacy
+    payload: ITextPrivacy,
   ): Promise<IUserDocument | null> {
     return await this.UserModel.findByIdAndUpdate(
       id,
       { ...payload },
-      { new: true }
+      { new: true },
     );
   }
 
   async addPermission(
     id: string,
-    permission: string
+    permission: string,
   ): Promise<IUserDocument | null> {
     return await this.UserModel.findByIdAndUpdate(
       id,
       { $addToSet: { userPermissions: permission } },
-      { new: true }
+      { new: true },
     );
   }
 
   async removePermission(
     id: string,
-    permission: string
+    permission: string,
   ): Promise<IUserDocument | null> {
     return await this.UserModel.findByIdAndUpdate(
       id,
       { $pull: { userPermissions: permission } },
-      { new: true }
+      { new: true },
     );
   }
 
   async getAllModarators(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const qb = new QueryBuilder(this.UserModel, query);
     const res = qb.find({ userRole: UserRoles.Agency });
@@ -398,7 +413,7 @@ export default class UserRepository implements IUserRepository {
 
   async getHosts(
     parentId: string,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const qb = new QueryBuilder(this.UserModel, query);
     const res = qb.find({ parentCreator: parentId });
@@ -409,7 +424,7 @@ export default class UserRepository implements IUserRepository {
 
   async getUserByRole(
     role: UserRoles,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const qb = new QueryBuilder(this.UserModel, query);
     const res = qb.find({ userRole: role });
@@ -443,7 +458,7 @@ export default class UserRepository implements IUserRepository {
   }
 
   async getBannedUsers(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const qb = new QueryBuilder(this.UserModel, query);
     const queryCriteria = {
@@ -461,8 +476,12 @@ export default class UserRepository implements IUserRepository {
     return { users, pagination };
   }
 
- async updateUserXp(id: string, xp: number): Promise<IUserDocument | null> {
-    const user = await this.UserModel.findByIdAndUpdate(id, { $inc: { totalEarnedXp: xp} }, { new: true });
+  async updateUserXp(id: string, xp: number): Promise<IUserDocument | null> {
+    const user = await this.UserModel.findByIdAndUpdate(
+      id,
+      { $inc: { totalEarnedXp: xp } },
+      { new: true },
+    );
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
     return user;
   }

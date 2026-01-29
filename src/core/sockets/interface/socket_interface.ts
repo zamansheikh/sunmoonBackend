@@ -90,6 +90,7 @@ export interface IAudioRoomData {
   hostGifts: number; // host sent amount (used for ranking)
   hostBonus: number;  // host recieved amount (used to display the gifts)
   roomTotalTransaction: number; // total amount exchanged in the room
+  hostSeat: IAudioSeats;
   premiumSeat: IAudioSeats;
   seats: Record<string, IAudioSeats>;
   messages: IRoomMessage[];
@@ -125,6 +126,7 @@ export interface ISearializedAudioRoom {
   roomTotalTransaction: number; // total amount exchanged in the room
   hostDetails?: IMemberDetails;
   adminDetails: string[];
+  hostSeat: IAudioSeats;
   premiumSeat: IAudioSeats;
   seats: Record<`seat-${number}`, IAudioSeats>;
   messages: IRoomMessage[];

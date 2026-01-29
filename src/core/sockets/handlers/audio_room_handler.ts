@@ -160,6 +160,10 @@ export const registerAudioRoomHandler = async (
         roomTotalTransaction: 0,
         hostGifts: 0,
         hostBonus: 0,
+        hostSeat: {
+          member: membersDetails,
+          available: true,
+        },
         premiumSeat: {
           member: {},
           available: true,
@@ -229,6 +233,7 @@ export const registerAudioRoomHandler = async (
         hostBonus: createdRoom.hostBonus,
         hostDetails: createdRoom.hostDetails,
         adminDetails: createdRoom.adminDetails,
+        hostSeat: createdRoom.hostSeat,
         premiumSeat: createdRoom.premiumSeat,
         seats: createdRoom.seats,
         messages: createdRoom.messages,
@@ -269,6 +274,7 @@ export const registerAudioRoomHandler = async (
           hostBonus: roomData.hostBonus,
           hostDetails: roomData.hostDetails,
           adminDetails: roomData.adminDetails,
+          hostSeat: roomData.hostSeat,
           premiumSeat: roomData.premiumSeat,
           seats: roomData.seats,
           messages: roomData.messages,
@@ -326,6 +332,7 @@ export const registerAudioRoomHandler = async (
         hostBonus: roomData.hostBonus,
         hostDetails: roomData.hostDetails,
         adminDetails: roomData.adminDetails,
+        hostSeat: roomData.hostSeat,
         premiumSeat: roomData.premiumSeat,
         seats: roomData.seats,
         messages: roomData.messages,
@@ -377,6 +384,7 @@ export const registerAudioRoomHandler = async (
       hostBonus: room.hostBonus,
       hostDetails: room.hostDetails,
       adminDetails: room.adminDetails,
+      hostSeat: room.hostSeat,
       premiumSeat: room.premiumSeat,
       seats: room.seats,
       messages: room.messages,
@@ -577,6 +585,20 @@ export const registerAudioRoomHandler = async (
     const room = audioRoom[roomId];
     const member = userObj;
     if (
+      !isEmptyObject(room.hostSeat.member) &&
+      (room.hostSeat.member as IMemberDetails)._id == userId
+    ) {
+      room.hostSeat.member = {};
+      socketResponse(io, SocketAudioChannels.leaveSeat, roomId, {
+        success: true,
+        message: "Successfully left the seat",
+        data: {
+          seatKey: "hostSeat",
+          member: {},
+        },
+      });
+    }
+    if (
       !isEmptyObject(room.premiumSeat.member) &&
       (room.premiumSeat.member as IMemberDetails)._id == userId
     ) {
@@ -609,6 +631,8 @@ export const registerAudioRoomHandler = async (
 
     if (seatKey === "premiumSeat")
       room.premiumSeat.member = member! as IMemberDetails;
+    else if (seatKey === "hostSeat")
+      room.hostSeat.member = member! as IMemberDetails;
     else room.seats[seatKey].member = member! as IMemberDetails;
 
     if (room.messages.length >= 100) room.messages.shift();
@@ -637,6 +661,7 @@ export const registerAudioRoomHandler = async (
     if (ensureLeaveSeat == false) return;
 
     if (seatKey == "premiumSeat") audioRoom[roomId].premiumSeat.member = {};
+    else if (seatKey == "hostSeat") audioRoom[roomId].hostSeat.member = {};
     else audioRoom[roomId].seats[seatKey].member = {};
 
     if (audioRoom[roomId].messages.length >= 100)
@@ -665,6 +690,10 @@ export const registerAudioRoomHandler = async (
       if (isEmptyObject(room.premiumSeat.member)) return;
       details = room.premiumSeat.member as IMemberDetails;
       room.premiumSeat.member = {};
+    } else if (seatKey === "hostSeat") {
+      if (isEmptyObject(room.hostSeat.member)) return;
+      details = room.hostSeat.member as IMemberDetails;
+      room.hostSeat.member = {};
     } else {
       if (isEmptyObject(room.seats[seatKey].member)) return;
       details = room.seats[seatKey].member as IMemberDetails;
@@ -780,6 +809,7 @@ export const registerAudioRoomHandler = async (
       hostBonus: room.hostBonus,
       hostDetails: room.hostDetails,
       adminDetails: room.adminDetails,
+      hostSeat: room.hostSeat,
       premiumSeat: room.premiumSeat,
       seats: room.seats,
       messages: room.messages,
@@ -1071,6 +1101,7 @@ export const registerAudioRoomHandler = async (
         hostBonus: room.hostBonus,
         hostDetails: room.hostDetails,
         adminDetails: room.adminDetails,
+        hostSeat: room.hostSeat,
         premiumSeat: room.premiumSeat,
         seats: room.seats,
         messages: room.messages,
@@ -1231,7 +1262,7 @@ export const registerAudioRoomHandler = async (
     },
   );
 
-  // search audio room
+  // search audio room title
   socket.on(SocketAudioChannels.AudioRoomSearch, ({ title }) => {
     const allRoomSerialized: ISearializedAudioRoom[] = [];
     for (const [room, roomData] of Object.entries(audioRoom)) {
@@ -1255,6 +1286,7 @@ export const registerAudioRoomHandler = async (
           hostBonus: roomData.hostBonus,
           hostDetails: roomData.hostDetails,
           adminDetails: roomData.adminDetails,
+          hostSeat: roomData.hostSeat,
           premiumSeat: roomData.premiumSeat,
           seats: roomData.seats,
           messages: roomData.messages,
@@ -1285,6 +1317,58 @@ export const registerAudioRoomHandler = async (
     });
   });
 
+  // search audio room userId
+  socket.on(SocketAudioChannels.AudioRoomUserIdSearch, ({ userId }) => {
+    const allRoomSerialized: ISearializedAudioRoom[] = [];
+    for (const [room, roomData] of Object.entries(audioRoom)) {
+      if (roomData.hostDetails!.userId.toString() == userId.toString()) {
+        const obj: ISearializedAudioRoom = {
+          title: roomData.title,
+          numberOfSeats: roomData.numberOfSeats,
+          announcement: roomData.announcement,
+          roomId: roomData.roomId,
+          roomPhoto: roomData.roomPhoto,
+          currentRocketFuel: roomData.currentRocketFuel,
+          currentRocketLevel: roomData.currentRocketLevel,
+          currentRocketMilestone: roomData.currentRocketMilestone,
+          roomTotalTransaction: roomData.roomTotalTransaction,
+          rocketFuelPercentage:
+            roomData.currentRocketFuel / roomData.currentRocketMilestone,
+          hostGifts: roomData.hostGifts,
+          hostBonus: roomData.hostBonus,
+          hostDetails: roomData.hostDetails,
+          adminDetails: roomData.adminDetails,
+          hostSeat: roomData.hostSeat,
+          premiumSeat: roomData.premiumSeat,
+          seats: roomData.seats,
+          messages: roomData.messages,
+          createdAt: roomData.createdAt,
+          members: Array.from(roomData.members),
+          membersDetails: roomData.membersDetails,
+          bannedUsers: Array.from(roomData.bannedUsers),
+          mutedUsers: Array.from(roomData.mutedUsers),
+          ranking: roomData.ranking,
+          chatPrivacy: roomData.chatPrivacy,
+          duration: Math.floor(
+            (new Date().getTime() - roomData.createdAt.getTime()) / 1000,
+          ),
+          isHostPresent: roomData.isHostPresent,
+          isLocked: roomData.isLocked,
+          password: roomData.password,
+          roomLevel: roomData.roomLevel,
+          roomPartners: roomData.roomPartners,
+        };
+        allRoomSerialized.push(obj);
+      }
+    }
+
+    socketResponse(io, SocketAudioChannels.AudioRoomUserIdSearch, socket.id, {
+      success: true,
+      message: "Successfully fetched all audio rooms",
+      data: allRoomSerialized,
+    });
+  });
+
   // get my audio room
   socket.on(SocketAudioChannels.GetMyAudioRoom, () => {
     const allRoomSerialized: ISearializedAudioRoom[] = [];
@@ -1306,6 +1390,7 @@ export const registerAudioRoomHandler = async (
           hostBonus: roomData.hostBonus,
           hostDetails: roomData.hostDetails,
           adminDetails: roomData.adminDetails,
+          hostSeat: roomData.hostSeat,
           premiumSeat: roomData.premiumSeat,
           seats: roomData.seats,
           messages: roomData.messages,
@@ -1383,6 +1468,7 @@ export const registerAudioRoomHandler = async (
         hostBonus: room.hostBonus,
         hostDetails: room.hostDetails,
         adminDetails: room.adminDetails,
+        hostSeat: room.hostSeat,
         premiumSeat: room.premiumSeat,
         seats: room.seats,
         messages: room.messages,
@@ -1434,6 +1520,7 @@ export const registerAudioRoomHandler = async (
       hostBonus: room.hostBonus,
       hostDetails: room.hostDetails,
       adminDetails: room.adminDetails,
+      hostSeat: room.hostSeat,
       premiumSeat: room.premiumSeat,
       seats: room.seats,
       messages: room.messages,
@@ -1485,6 +1572,7 @@ export const registerAudioRoomHandler = async (
       hostBonus: room.hostBonus,
       hostDetails: room.hostDetails,
       adminDetails: room.adminDetails,
+      hostSeat: room.hostSeat,
       premiumSeat: room.premiumSeat,
       seats: room.seats,
       messages: room.messages,
@@ -1535,6 +1623,7 @@ export const registerAudioRoomHandler = async (
       hostBonus: room.hostBonus,
       hostDetails: room.hostDetails,
       adminDetails: room.adminDetails,
+      hostSeat: room.hostSeat,
       premiumSeat: room.premiumSeat,
       seats: room.seats,
       messages: room.messages,
@@ -1732,6 +1821,7 @@ export const registerAudioRoomHandler = async (
           hostBonus: room.hostBonus,
           hostDetails: room.hostDetails,
           adminDetails: room.adminDetails,
+          hostSeat: room.hostSeat,
           premiumSeat: room.premiumSeat,
           seats: room.seats,
           messages: room.messages,
@@ -1754,7 +1844,7 @@ export const registerAudioRoomHandler = async (
         followingRooms.push(serializedRoom);
       }
     }
-    
+
     socketResponse(io, SocketAudioChannels.getFollowingRooms, socket.id, {
       success: true,
       message: "Successfully fetched following rooms",

@@ -39,50 +39,51 @@ import { ILevelTagBgRepository } from "../../repository/users/level_tag_bg_repos
 export interface ISharedPowerService {
   loginPortalUser(
     userId: string,
-    password: string
+    password: string,
   ): Promise<{ user: IPortalUserDocument; token: string }>;
   updateMyProfile(
     id: string,
-    user: Partial<IPortalUserDocument>
+    user: Partial<IPortalUserDocument>,
   ): Promise<IPortalUserDocument | null>;
   getMyProfile(id: string): Promise<IPortalUserDocument | null>;
   searchUserEmail(
     email: string,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] } | null>;
+  searchUserByShortId(id: number): Promise<IUserDocument>;
   retrieveAllUsers(
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }>;
   promoteUser(
     id: string,
     permissions: string[],
     myId: string,
-    myRole: UserRoles
+    myRole: UserRoles,
   ): Promise<IUserDocument | null>;
   assignCoinToUser(
     userId: string,
     userRole: UserRoles,
     coins: number,
     myId: string,
-    myRole: UserRoles
+    myRole: UserRoles,
   ): Promise<IUSerStatsDocument | IPortalUserDocument>;
   demoteUser(
     userId: string,
     myId: string,
-    myRole: string
+    myRole: string,
   ): Promise<IUserDocument | null>;
   getPortalUsers(
     userRole: UserRoles,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }>;
   getPortalChildUsers(
     userRole: UserRoles,
     parentId: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }>;
   getHosts(
     parentId: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }>;
 
   agencyWithdraw(
@@ -91,24 +92,24 @@ export interface ISharedPowerService {
       accountNumber,
       accountType,
       totalSalary,
-    }: { accountNumber: string; accountType: string; totalSalary: number }
+    }: { accountNumber: string; accountType: string; totalSalary: number },
   ): Promise<IAgencyWithdrawDocument>;
 
   getAgencyWithdrawList(
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IAgencyWithdrawDocument[] }>;
 
   getAllAgencyList(
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }>;
   deleteAgency(agencyId: string): Promise<IPortalUserDocument>;
   getAllJoinRequest(
     myId: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IAgencyJoinRequest[] }>;
   updateJoinRequestStatus(
     reqId: string,
-    status: StatusTypes
+    status: StatusTypes,
   ): Promise<{ status: StatusTypes }>;
 }
 
@@ -132,7 +133,7 @@ export default class SharedPowerService implements ISharedPowerService {
     SalaryRepository: ISalaryRepository,
     CoinHistoryRepository: ICoinHistoryRepository,
     AgencyJoinRequestRepository: IAgencyJoinRequestRepository,
-    LevelTagBgRepository: ILevelTagBgRepository
+    LevelTagBgRepository: ILevelTagBgRepository,
   ) {
     this.UserRepository = UserRepository;
     this.UserStatsRepository = UserStatsRepository;
@@ -147,11 +148,10 @@ export default class SharedPowerService implements ISharedPowerService {
 
   async loginPortalUser(
     userId: string,
-    password: string
+    password: string,
   ): Promise<{ user: IPortalUserDocument; token: string }> {
-    const existingUser = await this.PortalUserRepository.getPortalUserByUserId(
-      userId
-    );
+    const existingUser =
+      await this.PortalUserRepository.getPortalUserByUserId(userId);
     if (!existingUser)
       throw new AppError(StatusCodes.NOT_FOUND, "Invalid credentials");
     const isMatch = await bcrypt.compare(password, existingUser.password!);
@@ -165,12 +165,12 @@ export default class SharedPowerService implements ISharedPowerService {
       throw new AppError(
         StatusCodes.FORBIDDEN,
         "Your account is temporarily blocked till " +
-          existingUser.activityZone.expire!.toDateString()
+          existingUser.activityZone.expire!.toDateString(),
       );
     if (existingUser.activityZone?.zone == ActivityZoneState.permanentBlock)
       throw new AppError(
         StatusCodes.FORBIDDEN,
-        "Your account is permanently blocked"
+        "Your account is permanently blocked",
       );
     const SECRET = process.env.JWT_SECRET || "jwt_secret";
     const token = jwt.sign(
@@ -179,14 +179,14 @@ export default class SharedPowerService implements ISharedPowerService {
         role: existingUser.userRole,
         permissions: existingUser.userPermissions,
       },
-      SECRET
+      SECRET,
     );
     return { user: existingUser.toObject(), token };
   }
 
   async updateMyProfile(
     id: string,
-    user: Partial<IPortalUserDocument>
+    user: Partial<IPortalUserDocument>,
   ): Promise<IPortalUserDocument | null> {
     if (user.password) {
       user.password = await bcrypt.hash(user.password, 10);
@@ -201,7 +201,7 @@ export default class SharedPowerService implements ISharedPowerService {
 
     const updatedUser = await this.PortalUserRepository.updatePortalUser(
       id,
-      user
+      user,
     );
     if (!updatedUser)
       throw new AppError(StatusCodes.NOT_FOUND, "User not found");
@@ -216,14 +216,18 @@ export default class SharedPowerService implements ISharedPowerService {
 
   async searchUserEmail(
     email: string,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] } | null> {
-    const users = await this.UserRepository.searchUserByQuery( query);
+    const users = await this.UserRepository.searchUserByQuery(query);
     return users;
   }
 
+  async searchUserByShortId(id: number): Promise<IUserDocument> {
+    return await this.UserRepository.findUserByShortId(id);
+  }
+
   async retrieveAllUsers(
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const users = await this.UserRepository.findAllUser(query);
     return users;
@@ -233,13 +237,13 @@ export default class SharedPowerService implements ISharedPowerService {
     id: string,
     permissions: string[],
     myId: string,
-    myRole: UserRoles
+    myRole: UserRoles,
   ): Promise<IUserDocument | null> {
     // checking authority
     if (myRole != UserRoles.Agency)
       throw new AppError(
         StatusCodes.UNAUTHORIZED,
-        `${UserRoles} is not authorized to promote user to host`
+        `${UserRoles} is not authorized to promote user to host`,
       );
     // get my profile
     const myProfile = await this.PortalUserRepository.getPortalUserById(myId);
@@ -254,13 +258,13 @@ export default class SharedPowerService implements ISharedPowerService {
     if (user.userRole == UserRoles.Host)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `${user.name} already a host`
+        `${user.name} already a host`,
       );
     const hasPermission = canUserUpdate(myProfile, [AdminPowers.PromoteUser]);
     if (!hasPermission)
       throw new AppError(
         StatusCodes.UNAUTHORIZED,
-        "You are not authorized to perform this action"
+        "You are not authorized to perform this action",
       );
 
     const updatedUser = await this.UserRepository.findUserByIdAndUpdate(id, {
@@ -272,7 +276,7 @@ export default class SharedPowerService implements ISharedPowerService {
     if (!updatedUser) {
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to update user"
+        "Failed to update user",
       );
     }
     return updatedUser;
@@ -282,7 +286,7 @@ export default class SharedPowerService implements ISharedPowerService {
     userRole: UserRoles,
     coins: number,
     myId: string,
-    role: UserRoles
+    role: UserRoles,
   ): Promise<IUSerStatsDocument | IPortalUserDocument> {
     // blocking unconventional transactions
     if (
@@ -293,7 +297,7 @@ export default class SharedPowerService implements ISharedPowerService {
     )
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `${role} cannot assign coins to ${userRole}`
+        `${role} cannot assign coins to ${userRole}`,
       );
 
     // fetching my profile;
@@ -341,7 +345,7 @@ export default class SharedPowerService implements ISharedPowerService {
       returnBody = await this.PortalUserRepository.updateCoin(
         userId,
         coins,
-        session
+        session,
       );
     } else {
       const xpEnv = process.env.XP_MODE ?? "0";
@@ -351,12 +355,11 @@ export default class SharedPowerService implements ISharedPowerService {
         const userProfile = targetProfile as IUserDocument;
         // determine level, bg and tags
         const newLevel = determineUserLevel(
-          userProfile.totalBoughtCoins + coins
+          userProfile.totalBoughtCoins + coins,
         );
         const newTagAndBg = determineUserTagAndBg(newLevel);
-        const tagAndBgDocument = await this.LevelTagBgRepository.findByLevel(
-          newTagAndBg
-        );
+        const tagAndBgDocument =
+          await this.LevelTagBgRepository.findByLevel(newTagAndBg);
         // updating the user profile accordingly;
         await this.UserRepository.findUserByIdAndUpdate(userId, {
           totalBoughtCoins: userProfile.totalBoughtCoins + coins,
@@ -370,7 +373,7 @@ export default class SharedPowerService implements ISharedPowerService {
       returnBody = await this.UserStatsRepository.updateCoins(
         userId,
         coins,
-        session
+        session,
       );
     }
     await this.CoinHistoryRepository.createHistory(historyObj, session);
@@ -384,12 +387,12 @@ export default class SharedPowerService implements ISharedPowerService {
   async demoteUser(
     userId: string,
     myId: string,
-    myRole: string
+    myRole: string,
   ): Promise<IUserDocument | null> {
     if (myRole != UserRoles.Agency)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "You are not authorized to perform this action"
+        "You are not authorized to perform this action",
       );
     const myProfile = await this.PortalUserRepository.getPortalUserById(myId);
     if (!myProfile)
@@ -399,7 +402,7 @@ export default class SharedPowerService implements ISharedPowerService {
     if (!canDemoteUser)
       throw new AppError(
         StatusCodes.UNAUTHORIZED,
-        "You are not authorized to perform this action"
+        "You are not authorized to perform this action",
       );
 
     const user = await this.UserRepository.findUserById(userId);
@@ -409,17 +412,17 @@ export default class SharedPowerService implements ISharedPowerService {
     if (user.userRole === UserRoles.User) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `${user.name} is already a user`
+        `${user.name} is already a user`,
       );
     }
     const updatedUser = await this.UserRepository.findUserByIdAndUpdate(
       userId,
-      { userRole: UserRoles.User, userPermissions: [], parentCreator: null }
+      { userRole: UserRoles.User, userPermissions: [], parentCreator: null },
     );
     if (!updatedUser) {
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to demote user"
+        "Failed to demote user",
       );
     }
     return updatedUser;
@@ -427,11 +430,11 @@ export default class SharedPowerService implements ISharedPowerService {
 
   async getPortalUsers(
     userRole: UserRoles,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }> {
     const users = await this.PortalUserRepository.getPortalUsers(
       userRole,
-      query
+      query,
     );
     return users;
   }
@@ -439,19 +442,19 @@ export default class SharedPowerService implements ISharedPowerService {
   async getPortalChildUsers(
     userRole: UserRoles,
     parentId: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }> {
     const users = await this.PortalUserRepository.getPortalChildUsers(
       userRole,
       parentId,
-      query
+      query,
     );
     return users;
   }
 
   async getHosts(
     parentId: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const users = await this.UserRepository.getHosts(parentId, query);
     return users;
@@ -463,18 +466,18 @@ export default class SharedPowerService implements ISharedPowerService {
       accountNumber,
       accountType,
       totalSalary,
-    }: { accountNumber: string; accountType: string; totalSalary: number }
+    }: { accountNumber: string; accountType: string; totalSalary: number },
   ): Promise<IAgencyWithdrawDocument> {
     // checking for previous withdraw
     const existingWithdraw =
       await this.AgencyWithdrawRepository.getWithdrawWithStatus(
         id,
-        StatusTypes.pending
+        StatusTypes.pending,
       );
     if (existingWithdraw)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "You have already applied for withdraw"
+        "You have already applied for withdraw",
       );
     await this.SalaryRepository.getSalaryByAmount(totalSalary);
     // getting my profile info
@@ -483,7 +486,7 @@ export default class SharedPowerService implements ISharedPowerService {
     if (myProfile?.diamonds! < totalSalary)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `your exisitng fund ${myProfile?.diamonds} is not sufficient for ${totalSalary} to withdraw`
+        `your exisitng fund ${myProfile?.diamonds} is not sufficient for ${totalSalary} to withdraw`,
       );
 
     const session = await mongoose.startSession();
@@ -492,12 +495,12 @@ export default class SharedPowerService implements ISharedPowerService {
     const update = await this.PortalUserRepository.updateDiamonds(
       id,
       -totalSalary,
-      session
+      session,
     );
     if (!update)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to update diamonds"
+        "Failed to update diamonds",
       );
     const withdraw = await this.AgencyWithdrawRepository.createWithdraw(
       {
@@ -509,12 +512,12 @@ export default class SharedPowerService implements ISharedPowerService {
         name: myProfile?.name as string,
         withdrawDate: new Date(),
       },
-      session
+      session,
     );
     if (!withdraw)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to create withdraw"
+        "Failed to create withdraw",
       );
     await session.commitTransaction();
     session.endSession();
@@ -522,13 +525,13 @@ export default class SharedPowerService implements ISharedPowerService {
   }
 
   async getAgencyWithdrawList(
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IAgencyWithdrawDocument[] }> {
     return await this.AgencyWithdrawRepository.getAgencyWithdrawlist(query);
   }
 
   async getAllAgencyList(
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }> {
     const res = await this.PortalUserRepository.getAllAgency(query);
     return res;
@@ -538,38 +541,36 @@ export default class SharedPowerService implements ISharedPowerService {
     if (!profile)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `id -> ${agencyId} does not exist`
+        `id -> ${agencyId} does not exist`,
       );
     if (profile.userRole != UserRoles.Agency)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `${agencyId} belongs to ${profile.userRole} not to an agency`
+        `${agencyId} belongs to ${profile.userRole} not to an agency`,
       );
     const hostCount = await this.UserRepository.getHostCounts(agencyId);
     if (hostCount != 0)
       throw new AppError(
         StatusCodes.CONFLICT,
-        `${profile.name} has ${hostCount} hosts, so cannot be deleted untill host count is 0`
+        `${profile.name} has ${hostCount} hosts, so cannot be deleted untill host count is 0`,
       );
-    const deletedAgency = await this.PortalUserRepository.deletePortalUser(
-      agencyId
-    );
+    const deletedAgency =
+      await this.PortalUserRepository.deletePortalUser(agencyId);
     return deletedAgency;
   }
   async getAllJoinRequest(
     myId: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; data: IAgencyJoinRequest[] }> {
     return await this.AgencyJoinRequestRepository.getRequests(myId, query);
   }
 
   async updateJoinRequestStatus(
     reqId: string,
-    status: StatusTypes
+    status: StatusTypes,
   ): Promise<{ status: StatusTypes }> {
-    const request = await this.AgencyJoinRequestRepository.getRequestById(
-      reqId
-    );
+    const request =
+      await this.AgencyJoinRequestRepository.getRequestById(reqId);
     if (!request)
       throw new AppError(StatusCodes.NOT_FOUND, "Request not found");
     if (status == StatusTypes.rejected) {
@@ -582,7 +583,7 @@ export default class SharedPowerService implements ISharedPowerService {
         {
           userRole: UserRoles.Host,
           parentCreator: request.agencyId,
-        }
+        },
       );
     }
     const update = await this.AgencyJoinRequestRepository.updateRequest(reqId, {

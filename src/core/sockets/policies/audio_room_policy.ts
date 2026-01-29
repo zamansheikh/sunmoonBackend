@@ -156,7 +156,7 @@ export class AudioRoomPolicy {
       });
       return false;
     }
-    if (seatKey != "premiumSeat" && !seatKey.startsWith("seat-")) {
+    if (seatKey != "premiumSeat" && !seatKey.startsWith("seat-") && seatKey != "hostSeat" ) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "Invalid seat key",
@@ -190,7 +190,19 @@ export class AudioRoomPolicy {
         });
         return false;
       }
-    } else {
+    } else if (seatKey == "hostSeat") {
+      if (
+        !room.hostSeat.available ||
+        !isEmptyObject(room.hostSeat.member)
+      ) {
+        socketResponse(this.io, SocketChannels.error, this.socket.id, {
+          success: false,
+          message: "Host seat is not available",
+        });
+        return false;
+      }
+    }
+    else {
       if (
         !room.seats[seatKey].available ||
         !isEmptyObject(room.seats[seatKey].member)

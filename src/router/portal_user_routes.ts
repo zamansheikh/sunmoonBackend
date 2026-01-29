@@ -10,7 +10,7 @@ import Admin from "../models/admin/admin_model";
 import PortalUserRepository from "../repository/portal_user/portal_user_repository";
 import PortalUser from "../models/portal_users/protal_user_model";
 import SharedPowerService from "../services/admin/portal_user_service";
-import {  PortalUserControllers } from "../controllers/admin/portal_user_controller";
+import { PortalUserControllers } from "../controllers/admin/portal_user_controller";
 import { upload } from "../core/middlewares/multer";
 import AgencyWithdrawModel from "../models/room/agency_withdraw_model";
 import AgencyWithdrawRepository from "../repository/room/agency_withdraw_repository";
@@ -30,12 +30,12 @@ const userStatsRepository = new UserStatsRepository(UserStats);
 const adminRepository = new AdminRepository(Admin);
 const portalUserRepository = new PortalUserRepository(PortalUser);
 const agencyWithdrawRepository = new AgencyWithdrawRepository(
-  AgencyWithdrawModel
+  AgencyWithdrawModel,
 );
 const salaryRepository = new SalaryRepository(SalaryModel);
 const coinHistoryRepository = new CoinHistoryRepository(CoinHistoryModel);
 const agencyJoinRequestRepository = new AgencyJoinRequestRepository(
-  AgencyJoinRequestModel
+  AgencyJoinRequestModel,
 );
 
 const tagBgRepository = new LevelTagBgRepository(LevelTagBgModel);
@@ -49,7 +49,7 @@ const sharedPowerService = new SharedPowerService(
   salaryRepository,
   coinHistoryRepository,
   agencyJoinRequestRepository,
-  tagBgRepository
+  tagBgRepository,
 );
 const portalUserControllers = new PortalUserControllers(sharedPowerService);
 
@@ -66,7 +66,7 @@ router
       UserRoles.Agency,
     ]),
     upload.single("avatar"),
-    portalUserControllers.updateMyProfile
+    portalUserControllers.updateMyProfile,
   )
   .get(
     authenticate([
@@ -77,27 +77,24 @@ router
       UserRoles.CountryAdmin,
       UserRoles.Agency,
     ]),
-    portalUserControllers.getMyProfile
+    portalUserControllers.getMyProfile,
   );
 
 router
   .route("/users/search")
   .get(
-    authenticate([
-      UserRoles.Admin,
-      UserRoles.SubAdmin,
-      UserRoles.Agency,
-      UserRoles.Merchant,
-      UserRoles.Reseller,
-    ]),
-    portalUserControllers.searchUsersByEmail
+    authenticate(),
+    portalUserControllers.searchUsersByEmail,
   );
 
-router.get(
-  "/users",
-  authenticate(),
-  portalUserControllers.retrieveAllUsers
-);
+router
+  .route("/users/exact-search")
+  .get(
+    authenticate(),
+    portalUserControllers.searchUserByShortId,
+  );
+
+router.get("/users", authenticate(), portalUserControllers.retrieveAllUsers);
 
 router
   .route("/users/promote")
@@ -111,7 +108,7 @@ router
   .route("/users/assign-coin")
   .put(
     authenticate([UserRoles.Admin, UserRoles.Merchant, UserRoles.Reseller]),
-    portalUserControllers.assignCoinToUser
+    portalUserControllers.assignCoinToUser,
   );
 
 // for upper management exp: sub admin, merchant, country admin
@@ -132,9 +129,10 @@ router
 router
   .route("/agency/withdraw")
   .post(authenticate([UserRoles.Agency]), portalUserControllers.withdrawAgency)
-  .get(authenticate([UserRoles.Admin]), portalUserControllers.getAgencyWithdrawList);
-
-
+  .get(
+    authenticate([UserRoles.Admin]),
+    portalUserControllers.getAgencyWithdrawList,
+  );
 
 router
   .route("/agency-all")
@@ -144,35 +142,35 @@ router
   .route("/portal-user/agency/:agencyId")
   .delete(
     authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
-    portalUserControllers.deleteAgency
+    portalUserControllers.deleteAgency,
   );
 
 router
   .route("/agency-join-request")
   .get(
     authenticate([UserRoles.Agency]),
-    portalUserControllers.getAllJoinRequest
+    portalUserControllers.getAllJoinRequest,
   );
 
 router
   .route("/agency-join-request/:reqId")
   .put(
     authenticate([UserRoles.Agency]),
-    portalUserControllers.updateJoinRequestStatus
+    portalUserControllers.updateJoinRequestStatus,
   );
 
-  // import jwt from "jsonwebtoken";
+// import jwt from "jsonwebtoken";
 
-  // router.route("/exp").get((req, res)=>{
-  //       const token = jwt.sign(
-  //     {
-  //       id: "68b499c5e3d66f1124080da3",
-  //       role: 'merchant',
-  //       permissions: [],
-  //     },
-  //     'thisisjosnwebsecret'
-  //   );
-  //   res.json({token})
-  // })
+// router.route("/exp").get((req, res)=>{
+//       const token = jwt.sign(
+//     {
+//       id: "68b499c5e3d66f1124080da3",
+//       role: 'merchant',
+//       permissions: [],
+//     },
+//     'thisisjosnwebsecret'
+//   );
+//   res.json({token})
+// })
 
 export default router;
