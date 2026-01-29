@@ -761,7 +761,7 @@ export const registerAudioRoomHandler = async (
       }
       room.mutedUsers.delete(targetId);
       targetMember.isMuted = false;
-      socketResponse(io, SocketAudioChannels.MuteUnmute, targetSocketId, {
+      socketResponse(io, SocketAudioChannels.MuteUnmute, roomId, {
         success: true,
         message: "Successfully unmuted the user",
         data: {
@@ -783,7 +783,7 @@ export const registerAudioRoomHandler = async (
       }
       room.mutedUsers.add(targetId);
       targetMember.isMuted = true;
-      socketResponse(io, SocketAudioChannels.MuteUnmute, targetSocketId, {
+      socketResponse(io, SocketAudioChannels.MuteUnmute, roomId, {
         success: true,
         message: "Successfully muted the user",
         data: {
