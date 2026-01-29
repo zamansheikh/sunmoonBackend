@@ -86,6 +86,7 @@ export default class SocketServer {
   private blockedEmailRepository = new BlockedEmailRepository(
     BlockedEmailModel,
   );
+  
   public userRepo = new UserRepository(User);
   public userStatsRepo = new UserStatsRepository(UserStats);
   private adminRepo = new AdminRepository(Admin);
