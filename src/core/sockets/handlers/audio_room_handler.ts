@@ -700,28 +700,9 @@ export const registerAudioRoomHandler = async (
       room.seats[seatKey].member = {};
     }
 
-    const message: IRoomMessage = {
-      name: userDetails.name as string,
-      avatar: userDetails.avatar as string,
-      uid: userDetails.uid as string,
-      userId: userDetails.userId as number,
-      country: userDetails.country as string,
-      _id: userDetails._id as string,
-      text: `removed ${details.name} from ${seatKey}`,
-      currentBackground: userDetails.currentLevelBackground as string,
-      currentTag: userDetails.currentLevelTag as string,
-      currentLevel: userDetails.level as number,
-      equipedStoreItems: userObj.equipedStoreItems,
-    };
-
     if (audioRoom[roomId].messages.length >= 100)
       audioRoom[roomId].messages.shift();
-    audioRoom[roomId].messages.push(message);
-    socketResponse(io, SocketAudioChannels.SendMessage, roomId, {
-      success: true,
-      message: "Successfully removed from the seat",
-      data: message,
-    });
+
     socketResponse(io, SocketAudioChannels.leaveSeat, roomId, {
       success: true,
       message: "Successfully removed from the seat",
