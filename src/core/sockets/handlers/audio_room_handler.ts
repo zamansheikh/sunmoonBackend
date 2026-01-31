@@ -178,6 +178,7 @@ export const registerAudioRoomHandler = async (
         ranking: [membersDetails],
         chatPrivacy: "any",
         isLocked: false,
+        password: "",
         hostId: userId,
         isHostPresent: true,
         uniqueUsers: new Set([userId]),
@@ -1163,7 +1164,7 @@ export const registerAudioRoomHandler = async (
           return;
         }
         room.isLocked = false;
-        room.password = undefined;
+        room.password = '';
       }
       // if room is unlocked -> locking it
       else {
