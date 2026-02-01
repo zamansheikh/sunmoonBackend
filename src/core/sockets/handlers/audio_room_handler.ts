@@ -668,7 +668,7 @@ export const registerAudioRoomHandler = async (
 
     if (audioRoom[roomId].messages.length >= 100)
       audioRoom[roomId].messages.shift();
-    
+
     socketResponse(io, SocketAudioChannels.leaveSeat, roomId, {
       success: true,
       message: "Successfully left the seat",
@@ -884,15 +884,15 @@ export const registerAudioRoomHandler = async (
   socket.on(SocketAudioChannels.BanUser, ({ roomId, targetId, banType, banTill }) => {
     const canBanUser = audioRoomPolicy.ensureBanUser(roomId, userId, targetId, banType, banTill);
     if (canBanUser == false) return;
-
     const room = audioRoom[roomId];
-    const prevBannedUser = room.bannedUsers.filter((user) => user.userId == targetId);
+    const userDetails = room.membersDetails.find((user) => user._id == targetId);
+    const prevBannedUser = room.bannedUsers.filter((user) => user.user._id == targetId);
     if (prevBannedUser.length > 0) {
       prevBannedUser[0].banType = banType;
       prevBannedUser[0].bannedTill = banTill;
     } else {
       room.bannedUsers.push({
-        userId: targetId,
+        user: userDetails!,
         banType,
         bannedTill: banTill,
       });
@@ -914,7 +914,9 @@ export const registerAudioRoomHandler = async (
     if (canUnbanUser == false) return;
 
     const room = audioRoom[roomId];
-    room.bannedUsers = room.bannedUsers.filter((user) => user.userId !== targetId);
+    room.bannedUsers = room.bannedUsers.filter((user) => user.user._id != targetId);
+    console.log(room.bannedUsers);
+
     socketResponse(io, SocketAudioChannels.UnBanUser, roomId, {
       success: true,
       message: "Successfully unbanned the user",

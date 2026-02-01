@@ -75,7 +75,7 @@ export interface IAudioSeats {
 }
 
 export interface IBannedUser {
-  userId: string;
+  user: IMemberDetails;
   banType: ActivityZoneState;
   bannedTill: string;
 }
