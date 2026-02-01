@@ -77,7 +77,7 @@ export interface IAudioSeats {
 export interface IBannedUser {
   userId: string;
   banType: ActivityZoneState;
-  bannedTill: Date;
+  bannedTill: string;
 }
 
 
@@ -85,7 +85,7 @@ export interface IBannedUser {
 export interface IAudioRoomData {
   title: string;
   numberOfSeats: number;
-  announcement: string; 
+  announcement: string;
   roomId: string;
   roomPhoto: string;
   currentRocketLevel: number; // eg: level 1 to level 5
@@ -166,7 +166,7 @@ export interface ILaunchRocketInfo {
   roomId: string,
   currentIterationIdx: number; // current milestone to launch the rocket
   currentDay: Date; // to keep track of the day (since each day it gets reset)
-  cooldownTill: Date; 
+  cooldownTill: Date;
 }
 
 export interface IRoomXPData {

@@ -128,11 +128,18 @@ export class AudioRoomPolicy {
     // }
 
     if (room.hostId == userId) return true;
-
-    if (room.bannedUsers.filter((user) => user.userId == userId).length > 0) {
+    const bannedUser = room.bannedUsers.filter((user) => user.userId == userId);
+    if (bannedUser.length > 0 && bannedUser[0].banType == ActivityZoneState.permanentBlock) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "you are banned from this room",
+      });
+      return false;
+    }
+    if (bannedUser.length > 0 && bannedUser[0].banType == ActivityZoneState.temporaryBlock && bannedUser[0].bannedTill > new Date().toISOString()) {
+      socketResponse(this.io, SocketChannels.error, this.socket.id, {
+        success: false,
+        message: `you are banned from this room until ${bannedUser[0].bannedTill?.toLocaleString()}`,
       });
       return false;
     }
@@ -681,18 +688,27 @@ export class AudioRoomPolicy {
       if (!bannedTill) {
         socketResponse(this.io, SocketChannels.error, this.socket.id, {
           success: false,
-          message: "bannedTill is required",
+          message: "banTill is required",
         });
         return false;
       }
     }
-
-    if (room.bannedUsers.filter((user) => user.userId == targetId).length > 0) {
-      socketResponse(this.io, SocketChannels.error, this.socket.id, {
-        success: false,
-        message: "User is already banned",
-      });
-      return false;
+    const bannedUser = room.bannedUsers.filter((user) => user.userId == targetId);
+    if (bannedUser.length > 0) {
+      if (bannedUser[0].banType == ActivityZoneState.temporaryBlock && bannedUser[0].bannedTill!.toString() > new Date().toISOString()) {
+        socketResponse(this.io, SocketChannels.error, this.socket.id, {
+          success: false,
+          message: "User is already banned",
+        });
+        return false;
+      }
+      if (bannedUser[0].banType == ActivityZoneState.permanentBlock) {
+        socketResponse(this.io, SocketChannels.error, this.socket.id, {
+          success: false,
+          message: "User is already permanently banned",
+        });
+        return false;
+      }
     }
     return true;
   }
@@ -701,7 +717,7 @@ export class AudioRoomPolicy {
     roomId: string,
     userId: string,
     targetId: string,
-  ) { 
+  ) {
     const ensureIsHost = this.ensureIsHost(roomId, userId);
     const ensureRoomExists = this.ensureRoomExists(roomId);
     if (ensureIsHost == false) return false;

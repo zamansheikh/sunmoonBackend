@@ -1,5 +1,6 @@
 import { Socket, Server } from "socket.io";
 import {
+  ActivityZoneState,
   RoomTypes,
   SocketAudioChannels,
   SocketChannels,
@@ -511,11 +512,11 @@ export const registerAudioRoomHandler = async (
     };
     if (room.messages.length >= 100) room.messages.shift();
     room.messages.push(message);
-    socketResponse(io, SocketAudioChannels.SendMessage, roomId, {
-      success: true,
-      message: "Successfully joined the room",
-      data: message,
-    });
+    // socketResponse(io, SocketAudioChannels.SendMessage, roomId, {
+    //   success: true,
+    //   message: "Successfully joined the room",
+    //   data: message,
+    // });
     // const serializedRoom: ISearializedAudioRoom = {
     //   title: room.title,
     //   numberOfSeats: room.numberOfSeats,
@@ -667,6 +668,7 @@ export const registerAudioRoomHandler = async (
 
     if (audioRoom[roomId].messages.length >= 100)
       audioRoom[roomId].messages.shift();
+    
     socketResponse(io, SocketAudioChannels.leaveSeat, roomId, {
       success: true,
       message: "Successfully left the seat",
@@ -884,12 +886,17 @@ export const registerAudioRoomHandler = async (
     if (canBanUser == false) return;
 
     const room = audioRoom[roomId];
-    room.bannedUsers.push({
-      userId: targetId,
-      banType,
-      bannedTill: banTill,
-    });
-
+    const prevBannedUser = room.bannedUsers.filter((user) => user.userId == targetId);
+    if (prevBannedUser.length > 0) {
+      prevBannedUser[0].banType = banType;
+      prevBannedUser[0].bannedTill = banTill;
+    } else {
+      room.bannedUsers.push({
+        userId: targetId,
+        banType,
+        bannedTill: banTill,
+      });
+    }
     const socketInstance = SocketServer.getInstance();
     socketResponse(io, SocketAudioChannels.BanUser, roomId, {
       success: true,

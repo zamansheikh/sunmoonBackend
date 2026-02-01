@@ -86,7 +86,7 @@ export default class SocketServer {
   private blockedEmailRepository = new BlockedEmailRepository(
     BlockedEmailModel,
   );
-  
+
   public userRepo = new UserRepository(User);
   public userStatsRepo = new UserStatsRepository(UserStats);
   private adminRepo = new AdminRepository(Admin);
@@ -351,7 +351,7 @@ export default class SocketServer {
     );
 
     // notifying the app about the rocket launch
-    socketResponse(this.io, SocketAudioChannels.LaunchRocket, roomId,  {
+    socketResponse(this.io, SocketAudioChannels.LaunchRocket, roomId, {
       success: true,
       message: "Rocket is about to be launched",
       data: {
@@ -486,9 +486,9 @@ export default class SocketServer {
     )
       .filter((obj) => obj.isPremium != true)
       .map((obj) => ({ _id: obj._id, name: obj.title })) as {
-      _id: string;
-      name: string;
-    }[];
+        _id: string;
+        name: string;
+      }[];
     const randomCategory: { _id: string; name: string } =
       categories[Math.floor(Math.random() * categories.length)];
     // select a random item
@@ -656,11 +656,14 @@ export default class SocketServer {
   ) {
     const isPersistRoom =
       process.env.ROOM_PERSIST && process.env.ROOM_PERSIST == "1";
+    const audioRoom = this.hostedAudioRooms[roomId];
 
+    // if host left the non persisitent room
     if (
       !isPersistRoom &&
       (roomData.hostDetails as IMemberDetails)._id == userId
     ) {
+
       socketResponse(this.io, SocketAudioChannels.RoomDetails, roomId, {
         success: true,
         message: "Room has been closed by the host",
@@ -749,6 +752,7 @@ export default class SocketServer {
         currentLevel: roomData.hostDetails!.currentLevel as number,
         equipedStoreItems: roomData.hostDetails!.equipedStoreItems,
       };
+      audioRoom.messages.push(message);
       socketResponse(this.io, SocketAudioChannels.SendMessage, roomId, {
         success: true,
         message: "Successfully left the seat",
@@ -758,7 +762,7 @@ export default class SocketServer {
         success: true,
         message: "host left the room",
         data: {
-          seatKey: "hostDetails",
+          seatKey: "hostSeat",
           member: {},
         },
       });
@@ -804,6 +808,7 @@ export default class SocketServer {
       ) {
         roomData.premiumSeat.member = {};
         message.text = "left premiumSeat";
+        audioRoom.messages.push(message);
         socketResponse(this.io, SocketAudioChannels.SendMessage, roomId, {
           success: true,
           message: "Successfully left the seat",
@@ -827,6 +832,7 @@ export default class SocketServer {
         ) {
           roomData.seats[seatKey].member = {};
           message.text = `left ${seatKey}`;
+          audioRoom.messages.push(message);
           socketResponse(this.io, SocketAudioChannels.SendMessage, roomId, {
             success: true,
             message: "Successfully left the seat",
