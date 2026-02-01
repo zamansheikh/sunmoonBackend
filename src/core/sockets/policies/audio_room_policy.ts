@@ -25,7 +25,7 @@ export class AudioRoomPolicy {
     hostedRooms: Record<string, IAudioRoomData>,
     io: Server,
     socket: Socket,
-    userRepository: IUserRepository
+    userRepository: IUserRepository,
   ) {
     this.io = io;
     this.socket = socket;
@@ -62,7 +62,7 @@ export class AudioRoomPolicy {
   ensureCreateRoomPolicy(
     roomId: string,
     title: string,
-    numberOfSeats: any
+    numberOfSeats: any,
   ): boolean {
     if (!roomId || !title || !numberOfSeats) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
@@ -129,7 +129,7 @@ export class AudioRoomPolicy {
 
     if (room.hostId == userId) return true;
 
-    if (room.bannedUsers.has(userId)) {
+    if (room.bannedUsers.filter((user) => user.userId == userId).length > 0) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "you are banned from this room",
@@ -156,7 +156,11 @@ export class AudioRoomPolicy {
       });
       return false;
     }
-    if (seatKey != "premiumSeat" && !seatKey.startsWith("seat-") && seatKey != "hostSeat" ) {
+    if (
+      seatKey != "premiumSeat" &&
+      !seatKey.startsWith("seat-") &&
+      seatKey != "hostSeat"
+    ) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "Invalid seat key",
@@ -191,18 +195,14 @@ export class AudioRoomPolicy {
         return false;
       }
     } else if (seatKey == "hostSeat") {
-      if (
-        !room.hostSeat.available ||
-        !isEmptyObject(room.hostSeat.member)
-      ) {
+      if (!room.hostSeat.available || !isEmptyObject(room.hostSeat.member)) {
         socketResponse(this.io, SocketChannels.error, this.socket.id, {
           success: false,
           message: "Host seat is not available",
         });
         return false;
       }
-    }
-    else {
+    } else {
       if (
         !room.seats[seatKey].available ||
         !isEmptyObject(room.seats[seatKey].member)
@@ -220,7 +220,7 @@ export class AudioRoomPolicy {
 
   async ensurePremiumUser(
     userId: string,
-    bucketRepo: IMyBucketRepository
+    bucketRepo: IMyBucketRepository,
   ): Promise<boolean> {
     if (!userId) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
@@ -271,7 +271,7 @@ export class AudioRoomPolicy {
   async ensureJoinSeat(
     roomId: string,
     userId: string,
-    seatKey: string
+    seatKey: string,
   ): Promise<boolean> {
     const ensureRoomExists = this.ensureRoomExists(roomId);
     if (ensureRoomExists == false) return false;
@@ -293,7 +293,7 @@ export class AudioRoomPolicy {
     if (seatKey === "premiumSeat") {
       return await this.ensurePremiumUser(
         userId,
-        new MyBucketRepository(MyBucketModel)
+        new MyBucketRepository(MyBucketModel),
       );
     }
     return true;
@@ -325,7 +325,7 @@ export class AudioRoomPolicy {
         });
         return false;
       }
-    } else if(seatKey == "hostSeat") {
+    } else if (seatKey == "hostSeat") {
       if (isEmptyObject(room.hostSeat.member)) {
         socketResponse(this.io, SocketChannels.error, this.socket.id, {
           success: false,
@@ -340,8 +340,7 @@ export class AudioRoomPolicy {
         });
         return false;
       }
-    } 
-    else {
+    } else {
       if (isEmptyObject(room.seats[seatKey].member)) {
         socketResponse(this.io, SocketChannels.error, this.socket.id, {
           success: false,
@@ -425,7 +424,7 @@ export class AudioRoomPolicy {
   ensureCanMakeAdmin(
     roomId: string,
     userId: string,
-    targetId: string
+    targetId: string,
   ): boolean {
     const isHost = this.ensureIsHost(roomId, userId);
     if (isHost == false) {
@@ -546,12 +545,16 @@ export class AudioRoomPolicy {
     return true;
   }
 
-  async ensureAddRoomPartner(roomId: string, userId: string, partnerId: string): Promise<boolean> {
+  async ensureAddRoomPartner(
+    roomId: string,
+    userId: string,
+    partnerId: string,
+  ): Promise<boolean> {
     const isHost = this.ensureIsHost(roomId, userId);
     if (isHost == false) return false;
     const room = this.hostestRooms[roomId];
 
-    if(room.hostDetails?._id != userId) {
+    if (room.hostDetails?._id != userId) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "Only the host can add a partner",
@@ -579,7 +582,7 @@ export class AudioRoomPolicy {
     }
 
     const hasPartner = room.roomPartners.filter(
-      (partner) => partner._id == partnerId
+      (partner) => partner._id == partnerId,
     );
 
     if (hasPartner.length > 0) {
@@ -591,9 +594,8 @@ export class AudioRoomPolicy {
     }
 
     // fetching the relavent informations
-    const partnerDetails = await this.userRepository.getUserDetailsSelectedField(
-      partnerId,
-      [
+    const partnerDetails =
+      await this.userRepository.getUserDetailsSelectedField(partnerId, [
         "name",
         "avatar",
         "uid",
@@ -603,8 +605,7 @@ export class AudioRoomPolicy {
         "currentLevelTag",
         "level",
         "activityZone",
-      ]
-    );
+      ]);
     if (!partnerDetails) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
@@ -615,12 +616,16 @@ export class AudioRoomPolicy {
     return true;
   }
 
-  ensureRemoveRoomPartner(roomId: string, userId: string, partnerId: string): boolean {
+  ensureRemoveRoomPartner(
+    roomId: string,
+    userId: string,
+    partnerId: string,
+  ): boolean {
     const isHost = this.ensureIsHost(roomId, userId);
     if (isHost == false) return false;
     const room = this.hostestRooms[roomId];
 
-    if(room.hostDetails?._id != userId) {
+    if (room.hostDetails?._id != userId) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "Only the host can remove a partner",
@@ -629,7 +634,7 @@ export class AudioRoomPolicy {
     }
 
     const hasPartner = room.roomPartners.filter(
-      (partner) => partner._id == partnerId
+      (partner) => partner._id == partnerId,
     );
 
     if (hasPartner.length == 0) {
@@ -641,4 +646,85 @@ export class AudioRoomPolicy {
     }
     return true;
   }
+
+  ensureBanUser(
+    roomId: string,
+    userId: string,
+    targetId: string,
+    banType: string,
+    bannedTill: string,
+  ) {
+    const ensureIsHost = this.ensureIsHost(roomId, userId);
+    const ensureRoomExists = this.ensureRoomExists(roomId);
+    const ensureHasMember = this.ensureHasMember(roomId, targetId);
+    if (ensureIsHost == false) return false;
+    if (ensureRoomExists == false) return false;
+    if (ensureHasMember == false) return false;
+
+    const room = this.hostestRooms[roomId];
+
+    if (targetId === userId) {
+      socketResponse(this.io, SocketChannels.error, this.socket.id, {
+        success: false,
+        message: "You can't ban yourself",
+      });
+    }
+    if (!Object.values(ActivityZoneState).includes(banType as ActivityZoneState)) {
+      socketResponse(this.io, SocketChannels.error, this.socket.id, {
+        success: false,
+        message: "Invalid ban type",
+      });
+      return false;
+    }
+
+    if (banType == ActivityZoneState.temporaryBlock) {
+      if (!bannedTill) {
+        socketResponse(this.io, SocketChannels.error, this.socket.id, {
+          success: false,
+          message: "bannedTill is required",
+        });
+        return false;
+      }
+    }
+
+    if (room.bannedUsers.filter((user) => user.userId == targetId).length > 0) {
+      socketResponse(this.io, SocketChannels.error, this.socket.id, {
+        success: false,
+        message: "User is already banned",
+      });
+      return false;
+    }
+    return true;
+  }
+
+  ensureUnbanUser(
+    roomId: string,
+    userId: string,
+    targetId: string,
+  ) { 
+    const ensureIsHost = this.ensureIsHost(roomId, userId);
+    const ensureRoomExists = this.ensureRoomExists(roomId);
+    if (ensureIsHost == false) return false;
+    if (ensureRoomExists == false) return false;
+
+    const room = this.hostestRooms[roomId];
+
+    if (targetId === userId) {
+      socketResponse(this.io, SocketChannels.error, this.socket.id, {
+        success: false,
+        message: "You can't unban yourself",
+      });
+    }
+
+    if (room.bannedUsers.filter((user) => user.userId == targetId).length == 0) {
+      socketResponse(this.io, SocketChannels.error, this.socket.id, {
+        success: false,
+        message: "User is not banned",
+      });
+      return false;
+    }
+    return true;
+  }
+
+
 }

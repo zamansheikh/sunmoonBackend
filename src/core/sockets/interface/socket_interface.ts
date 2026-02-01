@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { Socket } from "socket.io";
-import { LaunchGiftTypes, RoomTypes } from "../../Utils/enums";
+import { ActivityZoneState, LaunchGiftTypes, RoomTypes } from "../../Utils/enums";
 import { IUserDocument } from "../../../models/user/user_model_interface";
 
 export interface ISocketHandler {
@@ -74,6 +74,12 @@ export interface IAudioSeats {
   available: boolean;
 }
 
+export interface IBannedUser {
+  userId: string;
+  banType: ActivityZoneState;
+  bannedTill: Date;
+}
+
 
 
 export interface IAudioRoomData {
@@ -97,7 +103,7 @@ export interface IAudioRoomData {
   createdAt: Date;
   members: Set<string>;
   membersDetails: IMemberDetails[];
-  bannedUsers: Set<string>;
+  bannedUsers: IBannedUser[];
   mutedUsers: Set<string>;
   ranking: IMemberDetails[];
   chatPrivacy: string | string[];
@@ -133,7 +139,7 @@ export interface ISearializedAudioRoom {
   createdAt: Date;
   members: string[];
   membersDetails: IMemberDetails[];
-  bannedUsers: string[];
+  bannedUsers: IBannedUser[];
   mutedUsers: string[];
   ranking: IMemberDetails[];
   chatPrivacy: string | string[];
