@@ -512,11 +512,15 @@ export const registerAudioRoomHandler = async (
     };
     if (room.messages.length >= 100) room.messages.shift();
     room.messages.push(message);
-    // socketResponse(io, SocketAudioChannels.SendMessage, roomId, {
-    //   success: true,
-    //   message: "Successfully joined the room",
-    //   data: message,
-    // });
+
+
+    socketResponse(io, SocketAudioChannels.SendMessage, roomId, {
+      success: true,
+      message: "Successfully joined the room",
+      data: message,
+    });
+
+
     // const serializedRoom: ISearializedAudioRoom = {
     //   title: room.title,
     //   numberOfSeats: room.numberOfSeats,
@@ -871,7 +875,7 @@ export const registerAudioRoomHandler = async (
       socketResponse(io, SocketAudioChannels.SendAudioEmoji, roomId, {
         success: true,
         message: "Successfully sent emoji",
-        data: {
+        data: { 
           seatKey,
           emoji,
           sender: userDetails.name,

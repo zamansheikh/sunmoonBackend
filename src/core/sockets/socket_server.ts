@@ -866,6 +866,7 @@ export default class SocketServer {
           _id: userId,
         },
       });
+      audioRoom.messages.push(message);
       socketResponse(this.io, SocketAudioChannels.SendMessage, roomId, {
         success: true,
         message: "Successfully left the room",
