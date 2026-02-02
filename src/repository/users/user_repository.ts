@@ -102,6 +102,9 @@ export default class UserRepository implements IUserRepository {
   }
 
   async findUserById(id: string) {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    }
     return await this.UserModel.findById(id);
   }
 
@@ -109,6 +112,9 @@ export default class UserRepository implements IUserRepository {
     id: string,
     fields: string[],
   ): Promise<IUserDocument | null> {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    }
     const user = await this.UserModel.findById(id, fields);
     return user;
   }
@@ -117,6 +123,9 @@ export default class UserRepository implements IUserRepository {
     id: string,
     populateFields: string,
   ): Promise<IUserDocument | null> {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    }
     return await this.UserModel.findById(id)
       .populate(populateFields)
       .select("-password");
@@ -206,6 +215,9 @@ export default class UserRepository implements IUserRepository {
     payload: Partial<UserData>,
     session?: mongoose.ClientSession,
   ) {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    }
     const udpated = await this.UserModel.findByIdAndUpdate(id, payload, {
       new: true,
     }).select("-password");
@@ -222,7 +234,7 @@ export default class UserRepository implements IUserRepository {
     const pagination = await res.countTotal();
     return { users, pagination };
   }
-  
+
   async findUserByShortId(id: number): Promise<IUserDocument> {
     const user = await this.UserModel.findOne({
       $or: [{ userId: id }, { premiumId: id }],
@@ -237,6 +249,9 @@ export default class UserRepository implements IUserRepository {
     id: string,
     payload: ITextPrivacy,
   ): Promise<IUserDocument | null> {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    }
     return await this.UserModel.findByIdAndUpdate(
       id,
       { ...payload },
@@ -248,6 +263,9 @@ export default class UserRepository implements IUserRepository {
     id: string,
     permission: string,
   ): Promise<IUserDocument | null> {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    }
     return await this.UserModel.findByIdAndUpdate(
       id,
       { $addToSet: { userPermissions: permission } },
@@ -259,6 +277,9 @@ export default class UserRepository implements IUserRepository {
     id: string,
     permission: string,
   ): Promise<IUserDocument | null> {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    }
     return await this.UserModel.findByIdAndUpdate(
       id,
       { $pull: { userPermissions: permission } },
@@ -408,6 +429,9 @@ export default class UserRepository implements IUserRepository {
   }
 
   async deleteUserById(id: string): Promise<IUserDocument | null> {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    }
     return await this.UserModel.findByIdAndDelete(id);
   }
 
@@ -477,6 +501,9 @@ export default class UserRepository implements IUserRepository {
   }
 
   async updateUserXp(id: string, xp: number): Promise<IUserDocument | null> {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    }
     const user = await this.UserModel.findByIdAndUpdate(
       id,
       { $inc: { totalEarnedXp: xp } },
