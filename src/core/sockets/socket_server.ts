@@ -131,17 +131,17 @@ export default class SocketServer {
 
       // Register handlers for specific events
 
-      registerGroupRoomHandler(
-        this.io,
-        socket,
-        this.onlineUsers,
-        this.hostedRooms,
-        this.userRepo,
-        this.adminRepo,
-        this.bucketRepo,
-        this.categoryRepo,
-        this.blockedEmailRepository,
-      );
+      // registerGroupRoomHandler(
+      //   this.io,
+      //   socket,
+      //   this.onlineUsers,
+      //   this.hostedRooms,
+      //   this.userRepo,
+      //   this.adminRepo,
+      //   this.bucketRepo,
+      //   this.categoryRepo,
+      //   this.blockedEmailRepository,
+      // );
 
       registerAudioRoomHandler(
         this.io,

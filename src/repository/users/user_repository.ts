@@ -14,6 +14,7 @@ import Friendship from "../../models/friendship/friendship_model";
 import { IPagination, QueryBuilder } from "../../core/Utils/query_builder";
 import AppError from "../../core/errors/app_errors";
 import { StatusCodes } from "http-status-codes";
+import { isValidMongooseToken } from "../../core/Utils/helper_functions";
 
 export interface ITextPrivacy {
   whoCanTextMe: string;
@@ -101,19 +102,12 @@ export default class UserRepository implements IUserRepository {
     return await user.save();
   }
 
-  async findUserById(id: string) {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
-    }
-    return await this.UserModel.findById(id);
-  }
-
   async getUserDetailsSelectedField(
     id: string,
     fields: string[],
   ): Promise<IUserDocument | null> {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    if (!isValidMongooseToken(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
     const user = await this.UserModel.findById(id, fields);
     return user;
@@ -123,8 +117,8 @@ export default class UserRepository implements IUserRepository {
     id: string,
     populateFields: string,
   ): Promise<IUserDocument | null> {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    if (!isValidMongooseToken(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
     return await this.UserModel.findById(id)
       .populate(populateFields)
@@ -215,8 +209,8 @@ export default class UserRepository implements IUserRepository {
     payload: Partial<UserData>,
     session?: mongoose.ClientSession,
   ) {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    if (!isValidMongooseToken(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
     const udpated = await this.UserModel.findByIdAndUpdate(id, payload, {
       new: true,
@@ -229,7 +223,7 @@ export default class UserRepository implements IUserRepository {
     query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] } | null> {
     const qb = new QueryBuilder(this.UserModel, query);
-    const res = qb.search(["email", "uid", "userId", "premiumId"]).sort();
+    const res = qb.search(["email", "uid"]).sort();
     const users = await res.paginate().sort().exec();
     const pagination = await res.countTotal();
     return { users, pagination };
@@ -249,8 +243,8 @@ export default class UserRepository implements IUserRepository {
     id: string,
     payload: ITextPrivacy,
   ): Promise<IUserDocument | null> {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    if (!isValidMongooseToken(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
     return await this.UserModel.findByIdAndUpdate(
       id,
@@ -263,8 +257,8 @@ export default class UserRepository implements IUserRepository {
     id: string,
     permission: string,
   ): Promise<IUserDocument | null> {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    if (!isValidMongooseToken(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
     return await this.UserModel.findByIdAndUpdate(
       id,
@@ -277,8 +271,8 @@ export default class UserRepository implements IUserRepository {
     id: string,
     permission: string,
   ): Promise<IUserDocument | null> {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    if (!isValidMongooseToken(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
     return await this.UserModel.findByIdAndUpdate(
       id,
@@ -296,8 +290,17 @@ export default class UserRepository implements IUserRepository {
     const pagination = await res.countTotal();
     return { users, pagination };
   }
+
+  async findUserById(id: string) {
+    if (!isValidMongooseToken(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
+    }
+    return await this.UserModel.findById("686e46eb9edb3a9f2d80e1fd");
+  }
+
   async getUserDetails(details: { Id: string; myId: string }) {
     const userObjectId = new mongoose.Types.ObjectId(details.Id);
+    const myObjectId = new mongoose.Types.ObjectId(details.myId);
     const user = await this.UserModel.aggregate([
       { $match: { _id: userObjectId } },
       {
@@ -312,10 +315,7 @@ export default class UserRepository implements IUserRepository {
                     {
                       $and: [
                         {
-                          $eq: [
-                            "$user1",
-                            new mongoose.Types.ObjectId(details.myId),
-                          ],
+                          $eq: ["$user1", myObjectId],
                         },
                         { $eq: ["$user2", "$$userId"] },
                       ],
@@ -324,10 +324,7 @@ export default class UserRepository implements IUserRepository {
                       $and: [
                         { $eq: ["$user1", "$$userId"] },
                         {
-                          $eq: [
-                            "$user2",
-                            new mongoose.Types.ObjectId(details.myId),
-                          ],
+                          $eq: ["$user2", myObjectId],
                         },
                       ],
                     },
@@ -350,7 +347,7 @@ export default class UserRepository implements IUserRepository {
                 $expr: {
                   $and: [
                     {
-                      $eq: ["$myId", new mongoose.Types.ObjectId(details.myId)],
+                      $eq: ["$myId", myObjectId],
                     },
                     { $eq: ["$followerId", "$$userId"] },
                   ],
@@ -372,10 +369,7 @@ export default class UserRepository implements IUserRepository {
                 $expr: {
                   $and: [
                     {
-                      $eq: [
-                        "$followerId",
-                        new mongoose.Types.ObjectId(details.myId),
-                      ],
+                      $eq: ["$followerId", myObjectId],
                     },
                     { $eq: ["$myId", "$$userId"] },
                   ],
@@ -429,8 +423,8 @@ export default class UserRepository implements IUserRepository {
   }
 
   async deleteUserById(id: string): Promise<IUserDocument | null> {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    if (!isValidMongooseToken(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
     return await this.UserModel.findByIdAndDelete(id);
   }
@@ -501,8 +495,8 @@ export default class UserRepository implements IUserRepository {
   }
 
   async updateUserXp(id: string, xp: number): Promise<IUserDocument | null> {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user id");
+    if (!isValidMongooseToken(id)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
     const user = await this.UserModel.findByIdAndUpdate(
       id,

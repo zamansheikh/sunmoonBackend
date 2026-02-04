@@ -66,7 +66,7 @@ export async function registerGroupRoomHandler(
   adminRepository: IAdminRepository,
   bucketRepository: IMyBucketRepository,
   categoryRepository: IStoreCategoryRepository,
-  blockedEmailRepository: IBlockedEmailRepository
+  blockedEmailRepository: IBlockedEmailRepository,
 ) {
   const userId = socket.handshake.query.userId as string;
 
@@ -91,17 +91,26 @@ export async function registerGroupRoomHandler(
     });
   });
 
-  const userDetails = await userRepository.getUserDetailsSelectedField(userId, [
-    "name",
-    "avatar",
-    "uid",
-    "userId",
-    "country",
-    "currentLevelBackground",
-    "currentLevelTag",
-    "level",
-    "activityZone",
-  ]);
+  let userDetails;
+  try {
+    userDetails = await userRepository.getUserDetailsSelectedField(userId, [
+      "name",
+      "avatar",
+      "uid",
+      "userId",
+      "country",
+      "currentLevelBackground",
+      "currentLevelTag",
+      "level",
+      "activityZone",
+    ]);
+  } catch (error) {
+    socketResponse(io, SocketChannels.error, socket.id, {
+      success: false,
+      message: "Invalid User ID",
+    });
+    return;
+  }
 
   if (!userDetails) {
     socketResponse(io, SocketChannels.error, socket.id, {
@@ -115,7 +124,7 @@ export async function registerGroupRoomHandler(
   userObj.equipedStoreItems = await getEquipedItemObjects(
     bucketRepository,
     categoryRepository,
-    userId
+    userId,
   );
 
   // send message
@@ -284,7 +293,7 @@ export async function registerGroupRoomHandler(
         title: roomData.title,
         ranking: roomData.ranking,
         duration: Math.floor(
-          (new Date().getTime() - roomData.createdAt.getTime()) / 1000
+          (new Date().getTime() - roomData.createdAt.getTime()) / 1000,
         ),
       };
       serializedRoom.push(obj);
@@ -366,7 +375,7 @@ export async function registerGroupRoomHandler(
         message: "Room already has an admin",
       });
     const broadcaster = room.broadcastersDetails.find(
-      (broadcaster) => broadcaster._id.toString() === targetId
+      (broadcaster) => broadcaster._id.toString() === targetId,
     );
     if (!broadcaster)
       return io.to(socket.id).emit(SocketChannels.error, {
@@ -422,7 +431,7 @@ export async function registerGroupRoomHandler(
 
     const targetIdDetails = await userRepository.getUserDetailsSelectedField(
       targetId,
-      ["name", "avatar", "uid", "country"]
+      ["name", "avatar", "uid", "country"],
     );
     if (!targetIdDetails) {
       socketResponse(io, SocketChannels.error, socket.id, {
@@ -434,7 +443,7 @@ export async function registerGroupRoomHandler(
     const targetEquipedStoreItems = await getEquipedItemObjects(
       bucketRepository,
       categoryRepository,
-      targetId
+      targetId,
     );
 
     let message: IRoomMessage = {
@@ -512,7 +521,7 @@ export async function registerGroupRoomHandler(
         message: "You are already a broadcaster",
       });
     const hasId = Array.from(room.callRequests).some(
-      (request) => request._id.toString() === userId
+      (request) => request._id.toString() === userId,
     );
     if (hasId)
       return io.to(socket.id).emit(SocketChannels.error, {
@@ -558,7 +567,7 @@ export async function registerGroupRoomHandler(
     }
     io.to(roomId).emit(
       SocketChannels.joinCallReqList,
-      Array.from(room.callRequests)
+      Array.from(room.callRequests),
     );
   });
 
@@ -583,7 +592,7 @@ export async function registerGroupRoomHandler(
 
     io.to(socket.id).emit(
       SocketChannels.joinCallReqList,
-      Array.from(room.callRequests)
+      Array.from(room.callRequests),
     );
   });
 
@@ -610,7 +619,7 @@ export async function registerGroupRoomHandler(
       });
     // check if the target user has sent a call request
     const hasId = Array.from(room.callRequests).some(
-      (request) => request._id.toString() === targetId
+      (request) => request._id.toString() === targetId,
     );
     if (!hasId)
       return io.to(socket.id).emit(SocketChannels.error, {
@@ -634,7 +643,7 @@ export async function registerGroupRoomHandler(
         message: "Maximum 3 broadcasters are allowed",
       });
     const objectToDelete = Array.from(room.callRequests).find(
-      (request) => request._id.toString() === targetId
+      (request) => request._id.toString() === targetId,
     );
     if (objectToDelete) {
       room.callRequests.delete(objectToDelete);
@@ -652,7 +661,7 @@ export async function registerGroupRoomHandler(
         "currentLevelBackground",
         "currentLevelTag",
         "level",
-      ]
+      ],
     );
 
     if (!targetUser) {
@@ -666,7 +675,7 @@ export async function registerGroupRoomHandler(
     const targetEquipedStoreItems = await getEquipedItemObjects(
       bucketRepository,
       categoryRepository,
-      targetId
+      targetId,
     );
 
     room.broadcastersDetails.push({
@@ -680,7 +689,7 @@ export async function registerGroupRoomHandler(
       currentBackground: targetUser.currentLevelBackground as string,
       currentLevel: targetUser.level as number,
       currentTag: targetUser.currentLevelTag as string,
-        totalGiftSent: 0,
+      totalGiftSent: 0,
     });
 
     const targetIdDetails = await userRepository.getUserDetailsSelectedField(
@@ -694,7 +703,7 @@ export async function registerGroupRoomHandler(
         "currentLevelBackground",
         "currentLevelTag",
         "level",
-      ]
+      ],
     );
 
     if (!targetIdDetails) {
@@ -730,7 +739,7 @@ export async function registerGroupRoomHandler(
     }
     io.to(roomId).emit(
       SocketChannels.broadcasterList,
-      room.broadcastersDetails
+      room.broadcastersDetails,
     );
     // io.to(roomId).emit(
     //   SocketChannels.joinCallReqList,
@@ -753,7 +762,7 @@ export async function registerGroupRoomHandler(
 
     io.to(socket.id).emit(
       SocketChannels.broadcasterDetails,
-      room.broadcastersDetails
+      room.broadcastersDetails,
     );
   });
 
@@ -771,7 +780,7 @@ export async function registerGroupRoomHandler(
       });
     io.to(socket.id).emit(
       SocketChannels.broadcasterList,
-      room.broadcastersDetails
+      room.broadcastersDetails,
     );
   });
 
@@ -791,12 +800,12 @@ export async function registerGroupRoomHandler(
     if (userId == targetId) {
       room.brodcasters.delete(targetId);
       room.broadcastersDetails = room.broadcastersDetails.filter(
-        (broadcaster) => broadcaster._id.toString() !== targetId
+        (broadcaster) => broadcaster._id.toString() !== targetId,
       );
 
       io.to(roomId).emit(
         SocketChannels.broadcasterList,
-        room.broadcastersDetails
+        room.broadcastersDetails,
       );
       return io.to(socket.id).emit(SocketChannels.removeBroadCaster, {
         roomId,
@@ -818,7 +827,7 @@ export async function registerGroupRoomHandler(
     room.brodcasters.delete(targetId);
 
     room.broadcastersDetails = room.broadcastersDetails.filter(
-      (broadcaster) => broadcaster._id.toString() !== targetId
+      (broadcaster) => broadcaster._id.toString() !== targetId,
     );
 
     const targetIdDetails = await userRepository.getUserDetailsSelectedField(
@@ -832,7 +841,7 @@ export async function registerGroupRoomHandler(
         `currentLevelBackground`,
         `currentLevelTag`,
         `level`,
-      ]
+      ],
     );
 
     if (!targetIdDetails) {
@@ -845,7 +854,7 @@ export async function registerGroupRoomHandler(
     const targetEquipedStoreItems = await getEquipedItemObjects(
       bucketRepository,
       categoryRepository,
-      targetId
+      targetId,
     );
     const message: IRoomMessage = {
       name: targetIdDetails.name as string,
@@ -871,7 +880,7 @@ export async function registerGroupRoomHandler(
     }
     io.to(roomId).emit(
       SocketChannels.broadcasterList,
-      room.broadcastersDetails
+      room.broadcastersDetails,
     );
   });
 
@@ -993,14 +1002,14 @@ export async function registerGroupRoomHandler(
 
     room.members.delete(userId);
     room.membersDetails = room.membersDetails.filter(
-      (member) => member._id.toString() !== userId
+      (member) => member._id.toString() !== userId,
     );
     if (room.brodcasters.has(userId)) room.brodcasters.delete(userId);
     room.broadcastersDetails = room.broadcastersDetails.filter(
-      (broadcaster) => broadcaster._id.toString() !== userId
+      (broadcaster) => broadcaster._id.toString() !== userId,
     );
     const objectToDelete = Array.from(room.callRequests).find(
-      (request) => request._id.toString() === userId
+      (request) => request._id.toString() === userId,
     );
     if (objectToDelete) room.callRequests.delete(objectToDelete);
 
@@ -1048,7 +1057,7 @@ export async function registerGroupRoomHandler(
         ranking: roomData.ranking,
         title: roomData.title,
         duration: Math.floor(
-          (new Date().getTime() - roomData.createdAt.getTime()) / 1000
+          (new Date().getTime() - roomData.createdAt.getTime()) / 1000,
         ),
       };
       if (!obj.bannedUsers.includes(userId)) {
@@ -1098,15 +1107,15 @@ export async function registerGroupRoomHandler(
     room.membersDetails.filter((member) => member._id.toString() !== targetId);
     if (room.brodcasters.has(targetId)) room.brodcasters.delete(targetId);
     room.broadcastersDetails = room.broadcastersDetails.filter(
-      (broadcaster) => broadcaster._id.toString() !== targetId
+      (broadcaster) => broadcaster._id.toString() !== targetId,
     );
     const objectToDelete = Array.from(room.callRequests).find(
-      (request) => request._id.toString() === targetId
+      (request) => request._id.toString() === targetId,
     );
 
     if (objectToDelete) room.callRequests.delete(objectToDelete);
     room.broadcastersDetails.filter(
-      (broadcaster) => broadcaster._id.toString() !== targetId
+      (broadcaster) => broadcaster._id.toString() !== targetId,
     );
 
     const targetSocketId = onlineUsers.get(targetId);
@@ -1122,7 +1131,7 @@ export async function registerGroupRoomHandler(
         `currentLevelBackground`,
         `currentLevelTag`,
         `level`,
-      ]
+      ],
     );
 
     if (!targetIdDetails) {
@@ -1136,10 +1145,10 @@ export async function registerGroupRoomHandler(
     const targetEquipedStoreItems = await getEquipedItemObjects(
       bucketRepository,
       categoryRepository,
-      targetId
+      targetId,
     );
 
-    const message:IRoomMessage = {
+    const message: IRoomMessage = {
       name: targetIdDetails.name as string,
       avatar: targetIdDetails.avatar as string,
       uid: targetIdDetails.uid as string,
@@ -1186,7 +1195,7 @@ export async function registerGroupRoomHandler(
       });
     io.to(socket.id).emit(
       SocketChannels.bannedList,
-      Array.from(room.bannedUsers)
+      Array.from(room.bannedUsers),
     );
   });
 

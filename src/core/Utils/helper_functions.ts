@@ -58,14 +58,14 @@ export function validatePromoteUserPermission(permissions: string[]): void {
 
 export function canUserUpdate(
   myProfile: IUserDocument | IAdminDocument | IPortalUserDocument,
-  requiredPermissions: AdminPowers[]
+  requiredPermissions: AdminPowers[],
 ): boolean {
   if (myProfile.userRole == UserRoles.Admin) {
     return true;
   }
 
   const hasPermission = (myProfile as IUserDocument).userPermissions.filter(
-    (p) => requiredPermissions.includes(p as AdminPowers)
+    (p) => requiredPermissions.includes(p as AdminPowers),
   );
 
   if (hasPermission.length == requiredPermissions.length) return true;
@@ -75,7 +75,7 @@ export function canUserUpdate(
 }
 
 export function validateCreatePortalUserData(
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): void {
   const { name, userId, password, designation, userPermissions, userRole } =
     body;
@@ -97,7 +97,7 @@ export function validateCreatePortalUserData(
   )
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      `Admin cannot create -> ${userRole}`
+      `Admin cannot create -> ${userRole}`,
     );
   validatePermissions(userPermissions);
 }
@@ -110,15 +110,15 @@ export function validatePermissions(permissions: any) {
   if (permissions.length === 0)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "permissions array must contain at least one permission"
+      "permissions array must contain at least one permission",
     );
   const invalidatePermissions = permissions.filter(
-    (p: any) => !Object.values(AdminPowers).includes(p as AdminPowers)
+    (p: any) => !Object.values(AdminPowers).includes(p as AdminPowers),
   );
   if (invalidatePermissions.length > 0)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      `Invalid permissions: ${invalidatePermissions.join(", ")}`
+      `Invalid permissions: ${invalidatePermissions.join(", ")}`,
     );
 }
 
@@ -127,14 +127,14 @@ export function validateblockUser(body: any): void {
   if (!targetId || !zone)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "Target ID and activity zone are required"
+      "Target ID and activity zone are required",
     );
   if (!Object.values(ActivityZoneState).includes(zone))
     throw new AppError(StatusCodes.BAD_REQUEST, "Invalid activity zone");
   if (zone === ActivityZoneState.temporaryBlock && !date_till)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "dateTill is required for temporary block"
+      "dateTill is required for temporary block",
     );
 }
 
@@ -143,11 +143,11 @@ export function validateWithdrawBonus(body: Record<string, unknown>) {
   if (!accountType || !accountNumber || !totalSalary)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "Host ID, account type, account number, and total salary are required"
+      "Host ID, account type, account number, and total salary are required",
     );
   if (
     !Object.values(WithdrawAccountTypes).includes(
-      accountType as WithdrawAccountTypes
+      accountType as WithdrawAccountTypes,
     )
   )
     throw new AppError(StatusCodes.BAD_REQUEST, "Invalid account type");
@@ -155,7 +155,7 @@ export function validateWithdrawBonus(body: Record<string, unknown>) {
   if (isNaN(Number(totalSalary)))
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "Total salary must be a number"
+      "Total salary must be a number",
     );
 }
 
@@ -218,14 +218,14 @@ export function validateNumber(number: any, fieldName: string) {
   if (isNaN(Number(number)))
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      `${fieldName} must be a number`
+      `${fieldName} must be a number`,
     );
 }
 
 export async function getEquipedItemObjects(
   repository: IMyBucketRepository,
   catRepository: IStoreCategoryRepository,
-  userId: string
+  userId: string,
 ): Promise<Record<string, any>> {
   const equipedBuccket = await repository.getEquipedBuckets(userId);
   let equipedFeatures: Record<string, any> = {};
@@ -244,7 +244,7 @@ export async function getEquipedItemObjects(
       }
     } else {
       const category = await catRepository.getCategoryById(
-        item.categoryId as string
+        item.categoryId as string,
       );
       if (!category)
         throw new AppError(StatusCodes.NOT_FOUND, "category not found");
@@ -256,7 +256,7 @@ export async function getEquipedItemObjects(
 
 export async function checkPremiumItem(
   repository: IMyBucketRepository,
-  userId: string
+  userId: string,
 ): Promise<boolean> {
   const equipedBuccket = await repository.getEquipedBuckets(userId);
 
@@ -317,64 +317,64 @@ export function isEmptyObject(obj: object): boolean {
 
 export function validateGiftAudioRocket(
   body: Record<string, unknown>,
-  isUpdate: boolean = false
+  isUpdate: boolean = false,
 ) {
   const { cooldown, milestones, giftPercentage } = body;
   if (isUpdate) {
     if (!cooldown && !milestones && !giftPercentage)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "At least one of cooldown, milestones, or giftPercentage is required for update"
+        "At least one of cooldown, milestones, or giftPercentage is required for update",
       );
     if (cooldown && isNaN(Number(cooldown)))
       throw new AppError(StatusCodes.BAD_REQUEST, "cooldown must be a number");
     if (milestones && !Array.isArray(milestones))
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "milestones must be an array"
+        "milestones must be an array",
       );
     if (milestones && Array.isArray(milestones) && milestones.length < 1)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "milestones must contain at least one milestone"
+        "milestones must contain at least one milestone",
       );
     if (milestones && Array.isArray(milestones)) {
       for (let i = 0; i < milestones.length; i++) {
         if (isNaN(Number(milestones[i])))
           throw new AppError(
             StatusCodes.BAD_REQUEST,
-            `milestones[${i}] must be a number`
+            `milestones[${i}] must be a number`,
           );
       }
     }
     if (giftPercentage && isNaN(Number(giftPercentage)))
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "giftPercentage must be a number"
+        "giftPercentage must be a number",
       );
   } else {
     if (!cooldown || !milestones || !giftPercentage)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "cooldown, milestones, and giftPercentage are required"
+        "cooldown, milestones, and giftPercentage are required",
       );
     if (isNaN(Number(cooldown)))
       throw new AppError(StatusCodes.BAD_REQUEST, "cooldown must be a number");
     if (!Array.isArray(milestones))
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "milestones must be an array"
+        "milestones must be an array",
       );
     if (milestones.length < 1)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "milestones must contain at least one milestone"
+        "milestones must contain at least one milestone",
       );
     for (let i = 0; i < milestones.length; i++) {
       if (isNaN(Number(milestones[i])))
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          `milestones[${i}] must be a number`
+          `milestones[${i}] must be a number`,
         );
     }
   }
@@ -382,7 +382,7 @@ export function validateGiftAudioRocket(
 
 export function getAudioUserSeat(
   userId: string,
-  roomData: IAudioRoomData
+  roomData: IAudioRoomData,
 ): string {
   if (
     !isEmptyObject(roomData.premiumSeat.member) &&
@@ -414,7 +414,7 @@ export function socketResponse(
   io: Server,
   channel: string,
   dest: string,
-  { success, message, data }: { success: boolean; message: string; data?: any }
+  { success, message, data }: { success: boolean; message: string; data?: any },
 ) {
   io.to(dest).emit(channel, {
     success,
@@ -427,7 +427,7 @@ export async function updateUserXpFunc(
   repository: IUserRepository,
   userId: string,
   xp: number,
-  io: Server
+  io: Server,
 ) {
   const exisitngUser = await repository.findUserById(userId);
   if (!exisitngUser) return;
@@ -453,9 +453,14 @@ export async function updateUserXpFunc(
   exisitngUser.save();
 }
 
-
 export function getRandomNumberFromRange(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-
+export function isValidMongooseToken(id: string): boolean {
+  // user regex to find out if the id is a valid mongoose id
+  const regex = /^[0-9a-fA-F]{24}$/;
+  const res = regex.test(id);
+  console.log(res);
+  return res;
+}
