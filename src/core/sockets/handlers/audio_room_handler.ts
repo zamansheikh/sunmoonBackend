@@ -198,6 +198,7 @@ export const registerAudioRoomHandler = async (
       audioRoom[roomId] = createdRoom;
 
       socket.join(roomId);
+
       // keeping track of audio room joinings
       if (!audioRoomVisitedHistory[userId])
         audioRoomVisitedHistory[userId] = {};
@@ -207,10 +208,16 @@ export const registerAudioRoomHandler = async (
       const socketInstance = SocketServer.getInstance();
       const prevRoomId = socketInstance.joinUserTrackingSystem[userId];
       if (prevRoomId && prevRoomId !== roomId) {
-        const prevRoom = audioRoom[prevRoomId];
-        socketInstance.handleAudioRoomDisconnect(userId, prevRoomId, prevRoom);
+        socketInstance.handleAudioRoomDisconnect(
+          userId,
+          prevRoomId,
+          audioRoom[prevRoomId],
+        );
       }
       socketInstance.joinUserTrackingSystem[userId] = roomId;
+
+      // keep room owner tracking
+      socketInstance.audioRoomOwnerTrackingSystem[userId] = roomId;
 
       // xp tracking
       if (process.env.XP_MODE == "1") {
@@ -453,8 +460,11 @@ export const registerAudioRoomHandler = async (
     const socketInstance = SocketServer.getInstance();
     const prevRoomId = socketInstance.joinUserTrackingSystem[userId];
     if (prevRoomId && prevRoomId !== roomId) {
-      const prevRoom = audioRoom[prevRoomId];
-      socketInstance.handleAudioRoomDisconnect(userId, prevRoomId, prevRoom);
+      socketInstance.handleAudioRoomDisconnect(
+        userId,
+        prevRoomId,
+        audioRoom[prevRoomId],
+      );
     }
     socketInstance.joinUserTrackingSystem[userId] = roomId;
 
@@ -1874,6 +1884,91 @@ export const registerAudioRoomHandler = async (
       success: true,
       message: "Successfully fetched following rooms",
       data: followingRooms,
+    });
+  });
+
+  socket.on(SocketAudioChannels.getUsersCurrentRoom, ({ targetId }) => {
+    if (!targetId) {
+      socketResponse(io, SocketAudioChannels.getUsersCurrentRoom, socket.id, {
+        success: false,
+        message: "Target ID is required",
+        data: null,
+      });
+      return;
+    }
+    const socketInstance = SocketServer.getInstance();
+    console.log(
+      targetId,
+      socketInstance.joinUserTrackingSystem[targetId],
+      socketInstance.audioRoomOwnerTrackingSystem[targetId],
+    );
+
+    const roomId = socketInstance.joinUserTrackingSystem[targetId];
+    let responseRoomId = undefined;
+    if (roomId) {
+      const room = audioRoom[roomId];
+      if (room && room.members.has(targetId)) {
+        responseRoomId = roomId;
+      }
+    }
+
+    if (!responseRoomId) {
+      const ownRoomId = socketInstance.audioRoomOwnerTrackingSystem[targetId];
+      if (ownRoomId) {
+        responseRoomId = ownRoomId;
+      }
+    }
+
+    if (!responseRoomId) {
+      socketResponse(io, SocketAudioChannels.getUsersCurrentRoom, socket.id, {
+        success: true,
+        message: "User is not in any room",
+        data: {},
+      });
+      return;
+    }
+
+    const room = audioRoom[responseRoomId];
+    const serializedRoom: ISearializedAudioRoom = {
+      title: room.title,
+      numberOfSeats: room.numberOfSeats,
+      announcement: room.announcement,
+      roomId: room.roomId,
+      roomPhoto: room.roomPhoto,
+      currentRocketFuel: room.currentRocketFuel,
+      currentRocketLevel: room.currentRocketLevel,
+      currentRocketMilestone: room.currentRocketMilestone,
+      roomTotalTransaction: room.roomTotalTransaction,
+      rocketFuelPercentage:
+        room.currentRocketFuel / room.currentRocketMilestone,
+      hostGifts: room.hostGifts,
+      hostBonus: room.hostBonus,
+      hostDetails: room.hostDetails,
+      adminDetails: room.adminDetails,
+      hostSeat: room.hostSeat,
+      premiumSeat: room.premiumSeat,
+      seats: room.seats,
+      messages: room.messages,
+      createdAt: room.createdAt,
+      bannedUsers: Array.from(room.bannedUsers),
+      members: Array.from(room.members),
+      membersDetails: room.membersDetails,
+      mutedUsers: Array.from(room.mutedUsers),
+      ranking: room.ranking,
+      chatPrivacy: room.chatPrivacy,
+      duration: Math.floor(
+        (new Date().getTime() - room.createdAt.getTime()) / 1000,
+      ),
+      isHostPresent: room.isHostPresent,
+      isLocked: room.isLocked,
+      password: room.password,
+      roomLevel: room.roomLevel,
+      roomPartners: room.roomPartners,
+    };
+    socketResponse(io, SocketAudioChannels.getUsersCurrentRoom, socket.id, {
+      success: true,
+      message: "Successfully fetched user's current room",
+      data: serializedRoom,
     });
   });
 };

@@ -82,6 +82,7 @@ export default class SocketServer {
   >; // eg. {userId: {roomId: lastVisited}}
   public roomXpTrackingSystem = {} as Record<string, IRoomXPData>; // eg. {userId: {RoomXpData}}
   public joinUserTrackingSystem = {} as Record<string, string>; // eg. {userId: roomId}
+  public audioRoomOwnerTrackingSystem = {} as Record<string, string>; // eg. {userId: roomId}
   public roomSupportHistory = {} as Record<string, IRoomSupportHistory>; // eg. {roomId: IRoomSupportHistory};
   private blockedEmailRepository = new BlockedEmailRepository(
     BlockedEmailModel,
