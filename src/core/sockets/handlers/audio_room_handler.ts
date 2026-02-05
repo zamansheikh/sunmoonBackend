@@ -1897,11 +1897,6 @@ export const registerAudioRoomHandler = async (
       return;
     }
     const socketInstance = SocketServer.getInstance();
-    console.log(
-      targetId,
-      socketInstance.joinUserTrackingSystem[targetId],
-      socketInstance.audioRoomOwnerTrackingSystem[targetId],
-    );
 
     const roomId = socketInstance.joinUserTrackingSystem[targetId];
     let responseRoomId = undefined;
