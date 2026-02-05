@@ -128,15 +128,24 @@ export class AudioRoomPolicy {
     // }
 
     if (room.hostId == userId) return true;
-    const bannedUser = room.bannedUsers.filter((user) => user.user._id == userId);
-    if (bannedUser.length > 0 && bannedUser[0].banType == ActivityZoneState.permanentBlock) {
+    const bannedUser = room.bannedUsers.filter(
+      (user) => user.user._id == userId,
+    );
+    if (
+      bannedUser.length > 0 &&
+      bannedUser[0].banType == ActivityZoneState.permanentBlock
+    ) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "you are banned from this room",
       });
       return false;
     }
-    if (bannedUser.length > 0 && bannedUser[0].banType == ActivityZoneState.temporaryBlock && bannedUser[0].bannedTill > new Date().toISOString()) {
+    if (
+      bannedUser.length > 0 &&
+      bannedUser[0].banType == ActivityZoneState.temporaryBlock &&
+      bannedUser[0].bannedTill > new Date().toISOString()
+    ) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: `you are banned from this room until ${bannedUser[0].bannedTill?.toLocaleString()}`,
@@ -366,17 +375,57 @@ export class AudioRoomPolicy {
     return true;
   }
 
-  ensureIsHost(roomId: string, userId: string): boolean {
+  ensureIsHost(
+    roomId: string,
+    userId: string,
+    targetId?: string,
+    seatKey?: string,
+  ): boolean {
     const ensureRoomExists = this.ensureRoomExists(roomId);
     if (ensureRoomExists == false) return false;
     const room = this.hostestRooms[roomId];
     const hostId = room.hostDetails?._id;
     const isHost = userId.toString() === hostId?.toString();
     const isAdmin = room.adminDetails.includes(userId);
+
+    if (seatKey) {
+      if (seatKey == "premiumSeat" && !isEmptyObject(room.premiumSeat.member)) {
+        targetId = (room.premiumSeat.member as IMemberDetails)._id.toString();
+      } else if (
+        seatKey == "hostSeat" &&
+        !isEmptyObject(room.hostSeat.member)
+      ) {
+        targetId = (room.hostSeat.member as IMemberDetails)._id.toString();
+      } else if (
+        seatKey != "premiumSeat" &&
+        seatKey != "hostSeat" &&
+        !isEmptyObject(room.seats[seatKey].member)
+      ) {
+        targetId = (
+          room.seats[seatKey].member as IMemberDetails
+        )._id.toString();
+      }
+    }
+
+    let isTargetHost = false;
+    let isTargetAdmin = false;
+    if (targetId) {
+      isTargetHost = targetId.toString() === hostId?.toString();
+      isTargetAdmin = room.adminDetails.includes(targetId);
+    }
+
     if (!isHost && !isAdmin) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "You are not authorized to perform this action",
+      });
+      return false;
+    }
+
+    if ((isAdmin && isTargetHost) || (isAdmin && isTargetAdmin)) {
+      socketResponse(this.io, SocketChannels.error, this.socket.id, {
+        success: false,
+        message: "You can't perform this action on host or admin",
       });
       return false;
     }
@@ -661,7 +710,7 @@ export class AudioRoomPolicy {
     banType: string,
     bannedTill: string,
   ) {
-    const ensureIsHost = this.ensureIsHost(roomId, userId);
+    const ensureIsHost = this.ensureIsHost(roomId, userId, targetId);
     const ensureRoomExists = this.ensureRoomExists(roomId);
     const ensureHasMember = this.ensureHasMember(roomId, targetId);
     if (ensureIsHost == false) return false;
@@ -670,7 +719,9 @@ export class AudioRoomPolicy {
 
     const room = this.hostestRooms[roomId];
 
-    const userDetails = room.membersDetails.find((user) => user._id == targetId);
+    const userDetails = room.membersDetails.find(
+      (user) => user._id == targetId,
+    );
     if (!userDetails) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
@@ -685,7 +736,9 @@ export class AudioRoomPolicy {
         message: "You can't ban yourself",
       });
     }
-    if (!Object.values(ActivityZoneState).includes(banType as ActivityZoneState)) {
+    if (
+      !Object.values(ActivityZoneState).includes(banType as ActivityZoneState)
+    ) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "Invalid ban type",
@@ -702,9 +755,14 @@ export class AudioRoomPolicy {
         return false;
       }
     }
-    const bannedUser = room.bannedUsers.filter((user) => user.user._id == targetId);
+    const bannedUser = room.bannedUsers.filter(
+      (user) => user.user._id == targetId,
+    );
     if (bannedUser.length > 0) {
-      if (bannedUser[0].banType == ActivityZoneState.temporaryBlock && bannedUser[0].bannedTill!.toString() > new Date().toISOString()) {
+      if (
+        bannedUser[0].banType == ActivityZoneState.temporaryBlock &&
+        bannedUser[0].bannedTill!.toString() > new Date().toISOString()
+      ) {
         socketResponse(this.io, SocketChannels.error, this.socket.id, {
           success: false,
           message: "User is already banned",
@@ -722,12 +780,8 @@ export class AudioRoomPolicy {
     return true;
   }
 
-  ensureUnbanUser(
-    roomId: string,
-    userId: string,
-    targetId: string,
-  ) {
-    const ensureIsHost = this.ensureIsHost(roomId, userId);
+  ensureUnbanUser(roomId: string, userId: string, targetId: string) {
+    const ensureIsHost = this.ensureIsHost(roomId, userId, targetId);
     const ensureRoomExists = this.ensureRoomExists(roomId);
     if (ensureIsHost == false) return false;
     if (ensureRoomExists == false) return false;
@@ -741,7 +795,9 @@ export class AudioRoomPolicy {
       });
     }
 
-    if (room.bannedUsers.filter((user) => user.user._id == targetId).length == 0) {
+    if (
+      room.bannedUsers.filter((user) => user.user._id == targetId).length == 0
+    ) {
       socketResponse(this.io, SocketChannels.error, this.socket.id, {
         success: false,
         message: "User is not banned",
@@ -750,6 +806,4 @@ export class AudioRoomPolicy {
     }
     return true;
   }
-
-
 }

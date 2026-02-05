@@ -461,6 +461,5 @@ export function isValidMongooseToken(id: string): boolean {
   // user regex to find out if the id is a valid mongoose id
   const regex = /^[0-9a-fA-F]{24}$/;
   const res = regex.test(id);
-  console.log(res);
   return res;
 }

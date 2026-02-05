@@ -694,7 +694,7 @@ export const registerAudioRoomHandler = async (
   socket.on(SocketAudioChannels.RemoveFromSeat, ({ roomId, seatKey }) => {
     const ensureRightSeatType = audioRoomPolicy.ensureRightSeatType(seatKey);
     const ensureRoomExists = audioRoomPolicy.ensureRoomExists(roomId);
-    const ensureIsHost = audioRoomPolicy.ensureIsHost(roomId, userId);
+    const ensureIsHost = audioRoomPolicy.ensureIsHost(roomId, userId, undefined, seatKey);
     if (ensureRightSeatType == false) return;
     if (ensureRoomExists == false) return;
     if (ensureIsHost == false) return;
@@ -1243,7 +1243,7 @@ export const registerAudioRoomHandler = async (
   socket.on(
     SocketAudioChannels.InviteUserToSeat,
     async ({ roomId, seatKey, targetId }) => {
-      const isHost = audioRoomPolicy.ensureIsHost(roomId, userId);
+      const isHost = audioRoomPolicy.ensureIsHost(roomId, userId, targetId);
       const joinSeat = await audioRoomPolicy.ensureJoinSeat(
         roomId,
         targetId,

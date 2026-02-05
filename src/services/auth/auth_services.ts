@@ -516,7 +516,7 @@ export default class AuthService implements IAuthService {
           "either xpCoinEquivalent is missing or not a number"
         );
       const totalNewXpGained = totalPrice / coinEquivalent;
-      updateUserXpFunc(this.UserRepository, myId, totalNewXpGained, ioInstance);
+      await updateUserXpFunc(this.UserRepository, myId, totalNewXpGained, ioInstance);
     }
 
     mystats.coins! -= totalPrice;
