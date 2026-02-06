@@ -295,7 +295,7 @@ export default class UserRepository implements IUserRepository {
     if (!isValidMongooseToken(id)) {
       throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
-    return await this.UserModel.findById("686e46eb9edb3a9f2d80e1fd");
+    return await this.UserModel.findById(id);
   }
 
   async getUserDetails(details: { Id: string; myId: string }) {
