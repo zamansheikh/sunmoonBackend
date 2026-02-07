@@ -253,14 +253,10 @@ export default class SocketServer {
       audioRoom.roomTotalTransaction += totalCoins;
       // global event for gift banner
       if (totalCoins >= GIFT_BANNER_TRIGGER) {
-        socketResponse(this.io, GlobalSocketChannels.GiftBanner, roomId, {
-          success: true,
-          message: "Gift sent successfully",
-          data: {
-            roomId: roomId,
-            totalCoins: totalCoins,
-            roomDetails: this.roomSerializer(audioRoom),
-          },
+        this.io.emit(GlobalSocketChannels.GiftBanner, {
+          roomId,
+          totalCoins,
+          roomDetails: this.roomSerializer(audioRoom),
         });
       }
       // Room level up condition check
@@ -374,13 +370,9 @@ export default class SocketServer {
       },
     });
     // banner notification
-    socketResponse(this.io, GlobalSocketChannels.RocketLaunchBanner, roomId, {
-      success: true,
-      message: "Rocket is about to be launched",
-      data: {
-        roomId: roomId,
-        roomDetails: this.roomSerializer(room),
-      },
+    this.io.emit(GlobalSocketChannels.RocketLaunchBanner, {
+      roomId,
+      roomDetails: this.roomSerializer(room),
     });
 
     // update the rocket informations
