@@ -85,6 +85,11 @@ export enum RequestTypes {
   recieved = "recieved",
 }
 
+export enum GlobalSocketChannels {
+  RocketLaunchBanner = "rocket-launch-banner",
+  GiftBanner = "gift-banner",
+}
+
 export enum SocketChannels {
   newMessage = "newMessage",
   newConversation = "newConversation",

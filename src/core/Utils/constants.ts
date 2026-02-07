@@ -9,6 +9,9 @@ export const OTHERS_ROOM_MAX_XP = 200;
 export const OWN_ROOM_XP_MULTIPLIER = 10;
 export const OTHERS_ROOM_XP_MULTIPLIER = 10;
 
+// banner trigger conditions
+export const GIFT_BANNER_TRIGGER = 3000000;
+
 // Rocket features
 export const ROCKET_MILESTONES = [1000000, 2000000, 3000000, 4000000, 5000000];
 export const REWARD_NUMBERS = [20, 35, 55, 75, 100];
@@ -27,7 +30,6 @@ export interface ROOM_LEVEL_CRITERIA_INTERFACE {
   partnerCoin: number;
   numberOfPartners: number;
 }
-
 
 export const ROOM_LEVEL_CRITERIA: ROOM_LEVEL_CRITERIA_INTERFACE[] = [
   {
@@ -247,12 +249,6 @@ export const ROOM_LEVEL_CRITERIA: ROOM_LEVEL_CRITERIA_INTERFACE[] = [
     numberOfPartners: 14,
   },
 ];
-
-
-
-
-
-
 
 // level tracking
 

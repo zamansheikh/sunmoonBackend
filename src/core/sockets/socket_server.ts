@@ -4,6 +4,7 @@ import { Server, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
 import { registerGroupRoomHandler } from "./handlers/group_room_handler";
 import {
+  GlobalSocketChannels,
   LaunchGiftTypes,
   RoomTypes,
   SocketAudioChannels,
@@ -49,6 +50,7 @@ import { CursorTimeoutMode } from "mongodb";
 import {
   COIN_MAX,
   COIN_MIN,
+  GIFT_BANNER_TRIGGER,
   REWARD_NUMBERS,
   ROCKET_MILESTONES,
   ROOM_LEVEL_CRITERIA,
@@ -249,7 +251,18 @@ export default class SocketServer {
       }
       const totalCoins = coin * targetUserIds.length;
       audioRoom.roomTotalTransaction += totalCoins;
-
+      // global event for gift banner
+      if (totalCoins >= GIFT_BANNER_TRIGGER) {
+        socketResponse(this.io, GlobalSocketChannels.GiftBanner, roomId, {
+          success: true,
+          message: "Gift sent successfully",
+          data: {
+            roomId: roomId,
+            totalCoins: totalCoins,
+            roomDetails: this.roomSerializer(audioRoom),
+          },
+        });
+      }
       // Room level up condition check
       const currentLevelCriteria = ROOM_LEVEL_CRITERIA[audioRoom.roomLevel];
       if (
@@ -360,6 +373,15 @@ export default class SocketServer {
         rewardedUsers,
       },
     });
+    // banner notification
+    socketResponse(this.io, GlobalSocketChannels.RocketLaunchBanner, roomId, {
+      success: true,
+      message: "Rocket is about to be launched",
+      data: {
+        roomId: roomId,
+        roomDetails: this.roomSerializer(room),
+      },
+    });
 
     // update the rocket informations
     if (room.currentRocketLevel == 5) {
@@ -402,6 +424,47 @@ export default class SocketServer {
         },
       },
     );
+  }
+
+  public roomSerializer(room: IAudioRoomData): ISearializedAudioRoom {
+    const obj: ISearializedAudioRoom = {
+      title: room.title,
+      numberOfSeats: room.numberOfSeats,
+      announcement: room.announcement,
+      roomId: room.roomId,
+      roomPhoto: room.roomPhoto,
+      currentRocketFuel: room.currentRocketFuel,
+      currentRocketLevel: room.currentRocketLevel,
+      currentRocketMilestone: room.currentRocketMilestone,
+      roomTotalTransaction: room.roomTotalTransaction,
+      rocketFuelPercentage: Math.floor(
+        room.currentRocketFuel / room.currentRocketMilestone,
+      ),
+      hostGifts: room.hostGifts,
+      hostBonus: room.hostBonus,
+      hostDetails: room.hostDetails,
+      adminDetails: room.adminDetails,
+      hostSeat: room.hostSeat,
+      premiumSeat: room.premiumSeat,
+      seats: room.seats,
+      messages: room.messages,
+      createdAt: room.createdAt,
+      members: Array.from(room.members),
+      membersDetails: room.membersDetails,
+      bannedUsers: Array.from(room.bannedUsers),
+      mutedUsers: Array.from(room.mutedUsers),
+      ranking: room.ranking,
+      chatPrivacy: room.chatPrivacy,
+      duration: Math.floor(
+        (new Date().getTime() - room.createdAt.getTime()) / 1000,
+      ),
+      isHostPresent: room.isHostPresent,
+      isLocked: room.isLocked,
+      password: room.password,
+      roomLevel: room.roomLevel,
+      roomPartners: room.roomPartners,
+    };
+    return obj;
   }
 
   public async rewardUsersUponLaunch(
@@ -487,9 +550,9 @@ export default class SocketServer {
     )
       .filter((obj) => obj.isPremium != true)
       .map((obj) => ({ _id: obj._id, name: obj.title })) as {
-        _id: string;
-        name: string;
-      }[];
+      _id: string;
+      name: string;
+    }[];
     const randomCategory: { _id: string; name: string } =
       categories[Math.floor(Math.random() * categories.length)];
     // select a random item
@@ -664,7 +727,6 @@ export default class SocketServer {
       !isPersistRoom &&
       (roomData.hostDetails as IMemberDetails)._id == userId
     ) {
-
       socketResponse(this.io, SocketAudioChannels.RoomDetails, roomId, {
         success: true,
         message: "Room has been closed by the host",
