@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import { Socket } from "socket.io";
-import { ActivityZoneState, LaunchGiftTypes, RoomTypes } from "../../Utils/enums";
+import {
+  ActivityZoneState,
+  LaunchGiftTypes,
+  RoomTypes,
+} from "../../Utils/enums";
 import { IUserDocument } from "../../../models/user/user_model_interface";
 
 export interface ISocketHandler {
@@ -80,8 +84,6 @@ export interface IBannedUser {
   bannedTill: string;
 }
 
-
-
 export interface IAudioRoomData {
   title: string;
   numberOfSeats: number;
@@ -94,7 +96,7 @@ export interface IAudioRoomData {
   adminDetails: string[];
   hostDetails?: IMemberDetails;
   hostGifts: number; // host sent amount (used for ranking)
-  hostBonus: number;  // host recieved amount (used to display the gifts)
+  hostBonus: number; // host recieved amount (used to display the gifts)
   roomTotalTransaction: number; // total amount exchanged in the room
   hostSeat: IAudioSeats;
   premiumSeat: IAudioSeats;
@@ -107,15 +109,14 @@ export interface IAudioRoomData {
   mutedUsers: Set<string>;
   ranking: IMemberDetails[];
   chatPrivacy: string | string[];
-  password: string; // for room entry 
-  isHostPresent: boolean, // to check if the host is present in the room
-  isLocked: boolean; // private or public 
+  password: string; // for room entry
+  isHostPresent: boolean; // to check if the host is present in the room
+  isLocked: boolean; // private or public
   hostId: string; // to track the host
   uniqueUsers: Set<string>; // to track the unique users _id in the room
   roomLevel: number; // to track the room level (used for room support reward)
   roomPartners: IMemberDetails[]; // to track the room partners (used for room support reward)
 }
-
 
 export interface ISearializedAudioRoom {
   title: string;
@@ -151,7 +152,6 @@ export interface ISearializedAudioRoom {
   roomPartners: IMemberDetails[];
 }
 
-
 export interface ILaunchGifts {
   type: LaunchGiftTypes;
   thumbnail: string;
@@ -163,7 +163,7 @@ export interface IRewarededUser extends IMemberDetails {
 }
 
 export interface ILaunchRocketInfo {
-  roomId: string,
+  roomId: string;
   currentIterationIdx: number; // current milestone to launch the rocket
   currentDay: Date; // to keep track of the day (since each day it gets reset)
   cooldownTill: Date;

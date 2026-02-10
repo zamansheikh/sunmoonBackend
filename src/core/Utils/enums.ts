@@ -48,6 +48,7 @@ export enum DatabaseNames {
   BlockedEmails = "blocked_emails",
   UpdateCost = "update_cost",
   DiamondExchange = "diamond_exchanges",
+  AudioRoom = "audio_rooms",
 }
 
 export enum ReelStatus {
@@ -88,6 +89,10 @@ export enum RequestTypes {
 export enum GlobalSocketChannels {
   RocketLaunchBanner = "rocket-launch-banner",
   GiftBanner = "gift-banner",
+}
+
+export enum AudioRoomChannels {
+  NewAudioRoomCreated = "new-audio-room-created",
 }
 
 export enum SocketChannels {

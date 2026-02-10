@@ -13,7 +13,7 @@ interface SaveFileOptions {
 
 export const saveFileToLocal = async (
   file: Express.Multer.File,
-  options: SaveFileOptions
+  options: SaveFileOptions,
 ): Promise<string> => {
   const uploadsRoot = path.join(process.cwd(), "public/uploads");
   const targetDir = path.join(uploadsRoot, options.folder);
@@ -31,7 +31,6 @@ export const saveFileToLocal = async (
   // Public URL
   return `/uploads/${options.folder}/${fileName}`;
 };
-
 
 export const deleteLocalFile = async (fileUrl: string): Promise<boolean> => {
   try {
@@ -59,17 +58,18 @@ export const deleteLocalFile = async (fileUrl: string): Promise<boolean> => {
   }
 };
 
-
-export const saveToLocalFileApiFunction = catchAsync(async (req: Request, res:Response)=> {
-  const file = req.file;
-  if(!file) throw new AppError(StatusCodes.BAD_REQUEST, "File is required");
-  const uploadUrl = await saveFileToLocal(file!, {
-    folder: "room_photo"
-  });
-  sendResponse(res, {
-    success: true,
-    message: "Successfully uploaded file",
-    result: uploadUrl,
-    statusCode: StatusCodes.OK,
-  });
-});
+export const saveToLocalFileApiFunction = catchAsync(
+  async (req: Request, res: Response) => {
+    const file = req.file;
+    if (!file) throw new AppError(StatusCodes.BAD_REQUEST, "File is required");
+    const uploadUrl = await saveFileToLocal(file!, {
+      folder: "room_photo",
+    });
+    sendResponse(res, {
+      success: true,
+      message: "Successfully uploaded file",
+      result: uploadUrl,
+      statusCode: StatusCodes.OK,
+    });
+  },
+);

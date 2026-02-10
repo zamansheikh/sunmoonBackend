@@ -44,6 +44,8 @@ export default class SingletonSocketServer {
     this.io.on("connection", (socket) => {
       const userId = socket.handshake.query.userId as string;
       if (userId) {
+        this.onlineUsers.set(userId, socket.id);
+        console.log(`User ${userId} connected`);
       }
 
       socket.on("disconnect", () => {
@@ -67,5 +69,16 @@ export default class SingletonSocketServer {
 
   public getSocketId(userId: string): string | undefined {
     return this.onlineUsers.get(userId);
+  }
+
+  public joinRoomSocket(userId: string, roomId: string) {
+    const socketId = this.getSocketId(userId);
+    if (socketId) {
+      this.io.sockets.sockets.get(socketId)?.join(roomId);
+    }
+  }
+
+  public emitToRoom(roomId: string, event: string, data: any) {
+    this.io.to(roomId).emit(event, data);
   }
 }
