@@ -13,7 +13,10 @@ import {
 } from "../../models/audio_room/audio_room_model";
 import { QueryBuilder } from "../../core/Utils/query_builder";
 import { DatabaseNames } from "../../core/Utils/enums";
-import { lookupRichUser } from "../../core/Utils/helper_pipelines";
+import {
+  lookupEnrichedUsersArray,
+  lookupRichUser,
+} from "../../core/Utils/helper_pipelines";
 
 export interface IAudioRoomRepository {
   createAudioRoom(audioRoom: IAudioRoom): Promise<IAudioRoomDocument>;
@@ -105,7 +108,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
           preserveNullAndEmptyArrays: true,
         },
       },
-      
+      lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
     ]);
     return await res.exec();
   }

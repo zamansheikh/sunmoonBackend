@@ -153,3 +153,30 @@ export const lookupRichUser = (localField: string, asField?: string) => ({
     as: asField || `${localField}Info`,
   },
 });
+
+/**
+ * Creates a $lookup stage for an **array** of user IDs
+ * (admins, roomPartners, membersArray, bannedUsers[*].user, etc.)
+ */
+export function lookupEnrichedUsersArray(
+  localArrayField: string,
+  outputFieldName?: string,
+) {
+  const asName = outputFieldName || `${localArrayField}Info`;
+
+  return {
+    $lookup: {
+      from: DatabaseNames.User,
+      let: { userIds: `$${localArrayField}` },
+      pipeline: [
+        {
+          $match: {
+            $expr: { $in: ["$_id", "$$userIds"] },
+          },
+        },
+        ...userWithEquippedItemsPipeline("userIds").slice(1),
+      ],
+      as: asName,
+    },
+  };
+}
