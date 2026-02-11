@@ -98,7 +98,14 @@ export class AudioRoomRepository implements IAudioRoomRepository {
       {
         $match: {},
       },
-      lookupRichUser("hostId", "host"),
+      lookupRichUser("hostId", "hostId"),
+      {
+        $unwind: {
+          path: "$hostId",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      
     ]);
     return await res.exec();
   }

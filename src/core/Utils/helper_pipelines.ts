@@ -11,7 +11,7 @@ export const userWithEquippedItemsPipeline = (
 ) => [
   {
     $match: {
-      $expr: { $eq: ["$_id", `$${userIdVarName}`] },
+      $expr: { $eq: ["$_id", `$$${userIdVarName}`] },
     },
   },
 
@@ -82,7 +82,7 @@ export const userWithEquippedItemsPipeline = (
                           then: {
                             $arrayToObject: [
                               {
-                                k: { $ifNull: ["$category.name", "Unknown"] },
+                                k: { $ifNull: ["$category.title", "Unknown"] },
                                 v: "$svgaFile",
                               },
                             ],
@@ -107,14 +107,18 @@ export const userWithEquippedItemsPipeline = (
             preserveNullAndEmptyArrays: true,
           },
         },
+        {
+          $replaceRoot: { newRoot: "$equipedItem" },
+        },
       ],
       as: "equipedStoreItems",
     },
   },
   {
-    $unwind: {
-      path: "$equipedStoreItems",
-      preserveNullAndEmptyArrays: true,
+    $addFields: {
+      equipedStoreItems: {
+        $mergeObjects: "$equipedStoreItems",
+      },
     },
   },
 
@@ -137,7 +141,6 @@ export const userWithEquippedItemsPipeline = (
   },
 ];
 
-
 /**
  * Returns a $lookup stage that enriches a reference field (e.g. hostId, member, admin)
  * with full user data + equipped store items
@@ -146,7 +149,7 @@ export const lookupRichUser = (localField: string, asField?: string) => ({
   $lookup: {
     from: DatabaseNames.User,
     let: { userRefId: `$${localField}` },
-    pipeline: userWithEquippedItemsPipeline('userRefId'),
-    as: asField || `${localField}Info`
-  }
+    pipeline: userWithEquippedItemsPipeline("userRefId"),
+    as: asField || `${localField}Info`,
+  },
 });
