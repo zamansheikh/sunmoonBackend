@@ -13,6 +13,7 @@ import {
 } from "../../models/audio_room/audio_room_model";
 import { QueryBuilder } from "../../core/Utils/query_builder";
 import { DatabaseNames } from "../../core/Utils/enums";
+import { lookupRichUser } from "../../core/Utils/helper_pipelines";
 
 export interface IAudioRoomRepository {
   createAudioRoom(audioRoom: IAudioRoom): Promise<IAudioRoomDocument>;
@@ -97,20 +98,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
       {
         $match: {},
       },
-      {
-        $lookup: {
-          from: DatabaseNames.User,
-          localField: "hostId",
-          foreignField: "_id",
-          as: "hostId",
-        },
-      },
-      { $unwind: "$hostId" },
-      {
-        $project: {
-          hostId: aggregatedUserOmmitedFields(),
-        },
-      },
+      lookupRichUser("hostId", "host"),
     ]);
     return await res.exec();
   }
