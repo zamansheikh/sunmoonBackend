@@ -35,6 +35,7 @@ import { resetRoomXPTrackingSystem } from "./core/corn/jobs/reset_room_xp_tracki
 import { roomSupportRewardSystem } from "./core/corn/jobs/room_support_jobs";
 import { saveToLocalFileApiFunction } from "./core/Utils/save_file_to_local_sys";
 import { upload } from "./core/middlewares/multer";
+import SingletonSocketServer from "./core/sockets/singleton_socket_server";
 
 // Initialize dotenv for environment variables
 dotenv.config();
@@ -74,7 +75,7 @@ app.use(
       "https://admin.zigoliveapp.xyz",
     ],
     credentials: true,
-  })
+  }),
 ); // Enable CORS
 
 app.use(morgan("dev")); // Logging middleware
@@ -87,7 +88,7 @@ app.use(
     secret: process.env.SESSION_SECRET || "default_secret",
     resave: false, // Don’t save the session to the store if it wasn’t modified during the request.
     saveUninitialized: true, // Save a new session even if it hasn't been modified.
-  })
+  }),
 );
 
 // for public access to the url
@@ -111,7 +112,11 @@ app.use("/api/blocked-emails", BlockedEmail);
 app.use("/api/diamond-exchange", DiamondExchangeRouter);
 app.use("/api/audio-room", AudioRoomRouter);
 
-app.post("/api/upload-file-local", upload.single("file"), saveToLocalFileApiFunction);
+app.post(
+  "/api/upload-file-local",
+  upload.single("file"),
+  saveToLocalFileApiFunction,
+);
 
 // app.get("/release/latest", async (req: Request, res: Response) => {
 //   res.send({
@@ -132,7 +137,8 @@ const MONGOURL =
 mongoose.connect(MONGOURL).then(() => {
   console.log("DB Connected");
   // socket connection to the http server
-  SocketServer.initialize(server);
+  // SocketServer.initialize(server);
+  SingletonSocketServer.initialize(server);
   // Start the server
   server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

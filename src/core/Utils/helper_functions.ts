@@ -463,3 +463,27 @@ export function isValidMongooseToken(id: string): boolean {
   const res = regex.test(id);
   return res;
 }
+
+export function aggregatedUserOmmitedFields() {
+  return {
+    userStateInApp: 0,
+    userPermissions: 0,
+    userRole: 0,
+    isViewer: 0,
+    activityZone: 0,
+    createdAt: 0,
+    updatedAt: 0,
+    whoCanTextMe: 0,
+    highLevelRequirements: 0,
+    parentCreator: 0,
+    password: 0,
+    totalEarnedXp: 0,
+    verified: 0,
+    nameUpdateDate: 0,
+    totalEarnedGiftInRoom: 0,
+    countryLanguages: 0,
+    totalBoughtCoins: 0,
+    __v: 0,
+    email: 0,
+  };
+}

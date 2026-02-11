@@ -13,10 +13,15 @@ import StoreCategoryModel from "../models/store/store_category_model";
 
 const router = express.Router();
 
-const audioRoomRepository = new AudioRoomRepository(AudioRoomModel);
 const userRepository = new UserRepository(User);
 const bucketRepository = new MyBucketRepository(MyBucketModel);
 const categoryRepository = new StoreCategoryRepository(StoreCategoryModel);
+
+const audioRoomRepository = new AudioRoomRepository(
+  AudioRoomModel,
+  bucketRepository,
+  categoryRepository,
+);
 const audioRoomService = new AudioRoomService(
   audioRoomRepository,
   userRepository,
@@ -30,10 +35,10 @@ router
   .post(authenticate(), audioRoomController.createAudioRoom)
   .get(audioRoomController.getAllAudioRooms);
 
+router.route("/:roomId").get(audioRoomController.getAudioRoomById);
+
 router
-  .route("/:roomId")
-  .get(audioRoomController.getAudioRoomById)
-  .put(audioRoomController.updateAudioRoom)
-  .delete(audioRoomController.deleteAudioRoom);
+  .route("/:roomId/join")
+  .put(authenticate(), audioRoomController.joinAudioRoom);
 
 export default router;

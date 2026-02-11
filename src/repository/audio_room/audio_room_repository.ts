@@ -1,8 +1,18 @@
+import AppError from "../../core/errors/app_errors";
+import { USER_POPULATED_INFORMATIONS } from "../../core/Utils/constants";
+import {
+  aggregatedUserOmmitedFields,
+  getEquipedItemObjects,
+} from "../../core/Utils/helper_functions";
+import { IMyBucketRepository } from "../store/my_bucket_repository";
+import { IStoreCategoryRepository } from "../store/store_category_repository";
 import {
   IAudioRoom,
   IAudioRoomDocument,
   IAudioRoomModel,
 } from "../../models/audio_room/audio_room_model";
+import { QueryBuilder } from "../../core/Utils/query_builder";
+import { DatabaseNames } from "../../core/Utils/enums";
 
 export interface IAudioRoomRepository {
   createAudioRoom(audioRoom: IAudioRoom): Promise<IAudioRoomDocument>;
@@ -11,17 +21,63 @@ export interface IAudioRoomRepository {
     roomId: string,
     audioRoom: Partial<IAudioRoom>,
   ): Promise<IAudioRoomDocument>;
+  findByIdAndUpdate(
+    id: string,
+    data: Record<string, any>,
+  ): Promise<IAudioRoomDocument>;
   deleteAudioRoom(roomId: string): Promise<IAudioRoomDocument>;
   getAllAudioRooms(): Promise<IAudioRoomDocument[]>;
 }
 
 export class AudioRoomRepository implements IAudioRoomRepository {
   audioRoomModel: IAudioRoomModel;
-  constructor(audioRoomModel: IAudioRoomModel) {
+  bucketRepository: IMyBucketRepository;
+  categoryRepository: IStoreCategoryRepository;
+  constructor(
+    audioRoomModel: IAudioRoomModel,
+    bucketRepository: IMyBucketRepository,
+    categoryRepository: IStoreCategoryRepository,
+  ) {
     this.audioRoomModel = audioRoomModel;
+    this.bucketRepository = bucketRepository;
+    this.categoryRepository = categoryRepository;
   }
   async createAudioRoom(audioRoom: IAudioRoom): Promise<IAudioRoomDocument> {
-    throw new Error("Method not implemented.");
+    const created = await this.audioRoomModel.create(audioRoom);
+    // Populate both hostId and membersArray
+    await created.populate([
+      {
+        path: "hostId",
+        select: USER_POPULATED_INFORMATIONS,
+      },
+      {
+        path: "membersArray",
+        select: USER_POPULATED_INFORMATIONS,
+      },
+    ]);
+    const obj = created.toObject();
+    const host = obj.hostId as any;
+    if (host && host._id) {
+      host.equipedStoreItems = await getEquipedItemObjects(
+        this.bucketRepository,
+        this.categoryRepository,
+        host._id.toString(),
+      );
+    }
+    if (obj.membersArray && obj.membersArray.length > 0) {
+      await Promise.all(
+        obj.membersArray.map(async (member: any) => {
+          if (member && member._id) {
+            member.equipedStoreItems = await getEquipedItemObjects(
+              this.bucketRepository,
+              this.categoryRepository,
+              member._id.toString(),
+            );
+          }
+        }),
+      );
+    }
+    return obj as any;
   }
   async getAudioRoomById(roomId: string): Promise<IAudioRoomDocument | null> {
     return await this.audioRoomModel.findOne({ roomId });
@@ -36,6 +92,117 @@ export class AudioRoomRepository implements IAudioRoomRepository {
     throw new Error("Method not implemented.");
   }
   async getAllAudioRooms(): Promise<IAudioRoomDocument[]> {
-    throw new Error("Method not implemented.");
+    const qb = new QueryBuilder(this.audioRoomModel, {});
+    const res = qb.aggregate([
+      {
+        $match: {},
+      },
+      {
+        $lookup: {
+          from: DatabaseNames.User,
+          localField: "hostId",
+          foreignField: "_id",
+          as: "hostId",
+        },
+      },
+      { $unwind: "$hostId" },
+      {
+        $lookup: {
+          from: DatabaseNames.MyBucketItem,
+          let: { hostId: "$hostId._id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$ownerId", "$$hostId"] },
+                    { $eq: ["$useStatus", true] },
+                  ],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: DatabaseNames.StoreItem,
+                localField: "itemId",
+                foreignField: "_id",
+                as: "item",
+              },
+            },
+            { $unwind: "$item" },
+            {
+              $lookup: {
+                from: DatabaseNames.StoreCategory,
+                localField: "item.categoryId",
+                foreignField: "_id",
+                as: "category",
+              },
+            },
+            {
+              $unwind: {
+                path: "$category",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $project: {
+                items: {
+                  $cond: {
+                    if: {
+                      $gt: [
+                        { $size: { $ifNull: ["$item.bundleFiles", []] } },
+                        0,
+                      ],
+                    },
+                    then: {
+                      $map: {
+                        input: "$item.bundleFiles",
+                        as: "bf",
+                        in: {
+                          k: "$$bf.categoryName",
+                          v: "$$bf.svgaFile",
+                        },
+                      },
+                    },
+                    else: [
+                      {
+                        k: "$category.title",
+                        v: "$item.svgaFile",
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+            { $unwind: "$items" },
+            { $replaceRoot: { newRoot: "$items" } },
+          ],
+          as: "hostId.equipedStoreItemsArray",
+        },
+      },
+      {
+        $addFields: {
+          "hostId.equipedStoreItems": {
+            $arrayToObject: "$hostId.equipedStoreItemsArray",
+          },
+        },
+      },
+      {
+        $project: {
+          hostId: aggregatedUserOmmitedFields(),
+        },
+      },
+    ]);
+    return await res.exec();
+  }
+  async findByIdAndUpdate(
+    id: string,
+    data: Record<string, any>,
+  ): Promise<IAudioRoomDocument> {
+    const result = await this.audioRoomModel.findByIdAndUpdate(id, data, {
+      new: true,
+    });
+    if (!result) throw new AppError(404, "Audio room not found");
+    return result;
   }
 }

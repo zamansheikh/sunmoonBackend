@@ -11,23 +11,23 @@ import mongoose, { ClientSession, UpdateResult } from "mongoose";
 export interface IMyBucketRepository {
   createNewBucket(
     data: IMyBucket,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<IMyBucketDocument>;
   getBucketsById(id: string): Promise<IMyBucketDocument | null>;
   getAllBuckets(
     ownerId: string,
     categoryId: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; buckets: IMyBucketDocument[] }>;
   updateBucket(
     id: string,
-    data: Partial<IMyBucket>
+    data: Partial<IMyBucket>,
   ): Promise<IMyBucketDocument>;
   deleteBucket(id: string): Promise<IMyBucketDocument>;
   updateBucketUseStatus(
     filter: Record<string, any>,
     update: Partial<IMyBucket>,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<UpdateResult>;
   getEquipedBuckets(id: string): Promise<IMyBucketDocument[]>;
   getAllBucketItems(query: Record<string, any>): Promise<{
@@ -44,7 +44,7 @@ export default class MyBucketRepository implements IMyBucketRepository {
 
   async createNewBucket(
     data: IMyBucket,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<IMyBucketDocument> {
     const bucket = new this.Model(data);
     return await bucket.save({ session });
@@ -57,7 +57,7 @@ export default class MyBucketRepository implements IMyBucketRepository {
   async getAllBuckets(
     ownerId: string,
     categoryId: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; buckets: IMyBucketDocument[] }> {
     const qb = new QueryBuilder(this.Model, query);
     const res = qb
@@ -72,13 +72,15 @@ export default class MyBucketRepository implements IMyBucketRepository {
 
   async updateBucket(
     id: string,
-    data: Partial<IMyBucket>
+    data: Partial<IMyBucket>,
   ): Promise<IMyBucketDocument> {
-    const updated = await this.Model.findByIdAndUpdate(id, data, { new: true }).populate("itemId categoryId");
+    const updated = await this.Model.findByIdAndUpdate(id, data, {
+      new: true,
+    }).populate("itemId categoryId");
     if (!updated)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Bucket with id ${id} not found`
+        `Bucket with id ${id} not found`,
       );
     return updated;
   }
@@ -88,7 +90,7 @@ export default class MyBucketRepository implements IMyBucketRepository {
     if (!deleted)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Bucket with id ${id} not found`
+        `Bucket with id ${id} not found`,
       );
     return deleted;
   }
@@ -96,7 +98,7 @@ export default class MyBucketRepository implements IMyBucketRepository {
   async updateBucketUseStatus(
     filter: Record<string, any>,
     update: Partial<IMyBucket>,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<UpdateResult> {
     return await this.Model.updateOne(filter, update, { session });
   }
@@ -106,13 +108,20 @@ export default class MyBucketRepository implements IMyBucketRepository {
       ownerId: id,
       useStatus: true,
     }).populate("itemId categoryId");
-    if(!equipped) throw new AppError(StatusCodes.NOT_FOUND, "buckets not found");
+    if (!equipped)
+      throw new AppError(StatusCodes.NOT_FOUND, "buckets not found");
     return equipped;
   }
 
-  async getAllBucketItems(query: Record<string, any>): Promise<{ pagination: IPagination; items: IMyBucketDocument[]; }> {
+  async getAllBucketItems(
+    query: Record<string, any>,
+  ): Promise<{ pagination: IPagination; items: IMyBucketDocument[] }> {
     const qb = new QueryBuilder(this.Model, query);
-    const res = qb.find({}).populateField("itemId categoryId").sort().paginate();
+    const res = qb
+      .find({})
+      .populateField("itemId categoryId")
+      .sort()
+      .paginate();
     const items = await res.exec();
     const pagination = await res.countTotal();
     return { pagination, items };

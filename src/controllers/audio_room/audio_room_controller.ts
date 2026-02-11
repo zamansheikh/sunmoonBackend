@@ -39,18 +39,37 @@ export class AudioRoomController {
   });
 
   getAudioRoomById = catchAsync(async (req: Request, res: Response) => {
-    throw new AppError(500, "Something went wrong");
-  });
-
-  updateAudioRoom = catchAsync(async (req: Request, res: Response) => {
-    throw new AppError(500, "Something went wrong");
-  });
-
-  deleteAudioRoom = catchAsync(async (req: Request, res: Response) => {
-    throw new AppError(500, "Something went wrong");
+    const roomId = req.params.roomId;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.getAudioRoomById(roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio room fetched successfully",
+      result: result,
+    });
   });
 
   getAllAudioRooms = catchAsync(async (req: Request, res: Response) => {
-    throw new AppError(500, "Something went wrong");
+    const result = await this.Service.getAllAudioRooms();
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio rooms fetched successfully",
+      result: result,
+    });
+  });
+
+  joinAudioRoom = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.joinAudioRoom(roomId, myUserId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio room joined successfully",
+      result: result,
+    });
   });
 }

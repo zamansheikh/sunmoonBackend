@@ -1,5 +1,9 @@
 import { Server, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
+import {
+  IAudioRoom,
+  IAudioRoomDocument,
+} from "../../models/audio_room/audio_room_model";
 
 export default class SingletonSocketServer {
   private static instance: SingletonSocketServer;
@@ -80,5 +84,39 @@ export default class SingletonSocketServer {
 
   public emitToRoom(roomId: string, event: string, data: any) {
     this.io.to(roomId).emit(event, data);
+  }
+
+  public roomSearializer(room: IAudioRoom) {
+    return {
+      title: room.title,
+      numberOfSeats: room.numberOfSeats,
+      announcement: room.announcement,
+      roomId: room.roomId,
+      roomPhoto: room.roomPhoto,
+      currentRocketLevel: room.currentRocketLevel,
+      currentRocketFuel: room.currentRocketFuel,
+      currentRocketMilestone: room.currentRocketMilestone,
+      admins: room.admins,
+      hostTotalSendGift: room.hostTotalSendGift,
+      hostTotalRecievedGift: room.hostTotalRecievedGift,
+      roomTotalTransaction: room.roomTotalTransaction,
+      hostSeat: room.hostSeat,
+      premiumSeat: room.premiumSeat,
+      seats: Object.fromEntries(room.seats),
+      messages: room.messages,
+      members: Object.fromEntries(room.members),
+      membersArray: room.membersArray,
+      bannedUsers: room.bannedUsers,
+      mutedUsers: Object.fromEntries(room.mutedUsers),
+      chatPrivacy: room.chatPrivacy,
+      allowedUsersToChat: Object.fromEntries(room.allowedUsersToChat),
+      password: room.password,
+      isHostPresent: room.isHostPresent,
+      isLocked: room.isLocked,
+      hostId: room.hostId,
+      uniqueUsers: Object.fromEntries(room.uniqueUsers),
+      roomLevel: room.roomLevel,
+      roomPartners: room.roomPartners,
+    };
   }
 }
