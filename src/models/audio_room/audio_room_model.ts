@@ -3,7 +3,7 @@ import { ActivityZoneState, DatabaseNames } from "../../core/Utils/enums";
 import { IAudioRoomService } from "../../services/audio_room/audio_room_service";
 
 export interface IAudioSeat {
-  member?: mongoose.Schema.Types.ObjectId | string;
+  member?: IMemberDetails;
   available: boolean;
 }
 
@@ -18,6 +18,19 @@ export interface IRoomMessage {
   currentTag: string;
   currentLevel: number;
   text: string;
+  equipedStoreItems: Record<string, string>;
+}
+
+export interface IMemberDetails {
+  name: string;
+  avatar: string;
+  uid: string;
+  userId: number;
+  country: string;
+  currentBackground: string;
+  currentTag: string;
+  currentLevel: number;
+  _id: mongoose.Schema.Types.ObjectId | string;
   equipedStoreItems: Record<string, string>;
 }
 
@@ -41,7 +54,6 @@ export interface IAudioRoom {
   hostTotalRecievedGift: number; // host recieved amount (used to display the gifts)
   roomTotalTransaction: number; // total amount exchanged in the room
   hostSeat: IAudioSeat;
-  premiumSeat: IAudioSeat;
   seats: Map<string, IAudioSeat>;
   messages: IRoomMessage[];
   members: Map<string, true>;
@@ -83,8 +95,6 @@ const RoomMessageSchema = new Schema<IRoomMessage>(
   { _id: false },
 );
 
-
-
 const bannedUserSchema = new Schema<IBannedUser>(
   {
     user: {
@@ -101,12 +111,26 @@ const bannedUserSchema = new Schema<IBannedUser>(
   },
   { _id: false },
 );
+const MemberDetialsSchema = new Schema<IMemberDetails>(
+  {
+    name: { type: String, required: true },
+    avatar: { type: String, required: true },
+    uid: { type: String, required: true },
+    userId: { type: Number, required: true },
+    country: { type: String, required: true },
+    currentBackground: { type: String, required: true },
+    currentTag: { type: String, required: true },
+    currentLevel: { type: Number, required: true },
+    _id: { type: Schema.Types.ObjectId, required: true },
+    equipedStoreItems: { type: Map, of: String, required: true },
+  },
+  { _id: false },
+);
 
 const AudioSeatSchema = new Schema<IAudioSeat>(
   {
     member: {
-      type: Schema.Types.ObjectId,
-      ref: DatabaseNames.User,
+      type: MemberDetialsSchema,
     },
     available: { type: Boolean, default: true },
   },
@@ -128,10 +152,6 @@ const AudioRoomSchema = new Schema<IAudioRoomDocument>(
     hostTotalRecievedGift: { type: Number, default: 0 },
     roomTotalTransaction: { type: Number, default: 0 },
     hostSeat: {
-      type: AudioSeatSchema,
-      default: () => ({ available: true }),
-    },
-    premiumSeat: {
       type: AudioSeatSchema,
       default: () => ({ available: true }),
     },

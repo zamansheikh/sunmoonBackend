@@ -72,4 +72,34 @@ export class AudioRoomController {
       result: result,
     });
   });
+
+  joinAudioSeat = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const seatKey = req.params.seatKey;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(seatKey, "seatKey");
+    const result = await this.Service.joinAudioSeat(myUserId, roomId, seatKey);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio seat joined successfully",
+      result: result,
+    });
+  });
+
+  leaveAudioSeat = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const seatKey = req.params.seatKey;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(seatKey, "seatKey");
+    const result = await this.Service.leaveAudioSeat(myUserId, roomId, seatKey);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio seat left successfully",
+      result: result,
+    });
+  });
 }

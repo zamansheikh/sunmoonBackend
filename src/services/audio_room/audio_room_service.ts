@@ -1,12 +1,16 @@
 import AppError from "../../core/errors/app_errors";
 import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
-import { ROCKET_MILESTONES } from "../../core/Utils/constants";
+import {
+  ALLOWED_MESSAGES_COUNT,
+  ROCKET_MILESTONES,
+} from "../../core/Utils/constants";
 import { AudioRoomChannels } from "../../core/Utils/enums";
 import { getEquipedItemObjects } from "../../core/Utils/helper_functions";
 import {
   IAudioRoom,
   IAudioRoomDocument,
   IAudioSeat,
+  IMemberDetails,
   IRoomMessage,
 } from "../../models/audio_room/audio_room_model";
 import { IAudioRoomRepository } from "../../repository/audio_room/audio_room_repository";
@@ -22,6 +26,16 @@ export interface IAudioRoomService {
     roomId: string,
     userId: string,
     password?: string,
+  ): Promise<IAudioRoomDocument>;
+  joinAudioSeat(
+    userId: string,
+    roomId: string,
+    seatKey: string,
+  ): Promise<IAudioRoomDocument>;
+  leaveAudioSeat(
+    userId: string,
+    roomId: string,
+    seatKey: string,
   ): Promise<IAudioRoomDocument>;
 }
 
@@ -47,7 +61,7 @@ export class AudioRoomService implements IAudioRoomService {
   ): Promise<IAudioRoomDocument> {
     const { hostId, title, roomId, numberOfSeats, announcement, roomPhoto } =
       audioRoom;
-    const existingRoom = await this.audioRoomRepository.getAudioRoomById(
+    const existingRoom = await this.audioRoomRepository.checkRoomExisistance(
       roomId!,
     );
     // client side data validation
@@ -80,7 +94,6 @@ export class AudioRoomService implements IAudioRoomService {
       hostTotalRecievedGift: 0,
       roomTotalTransaction: 0,
       hostSeat: { available: true },
-      premiumSeat: { available: true },
       seats: seats,
       messages: [],
       members: new Map([[hostId!.toString(), true]]),
@@ -131,7 +144,7 @@ export class AudioRoomService implements IAudioRoomService {
     password?: string,
   ): Promise<IAudioRoomDocument> {
     // client data validation
-    let audioRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    let audioRoom = await this.audioRoomRepository.checkRoomExisistance(roomId);
     if (!audioRoom) {
       throw new AppError(404, "Audio room not found");
     }
@@ -157,6 +170,19 @@ export class AudioRoomService implements IAudioRoomService {
         throw new AppError(401, "Incorrect password");
       }
     }
+    // prepare user info
+    const userInfo: IMemberDetails = {
+      _id: userObj._id as string,
+      name: userObj.name as string,
+      avatar: userObj.avatar as string,
+      uid: userObj.uid as string,
+      userId: userObj.userId as number,
+      country: userObj.country as string,
+      currentBackground: userObj.currentLevelBackground as string,
+      currentTag: userObj.currentLevelTag as string,
+      currentLevel: userObj.level as number,
+      equipedStoreItems: userObj.equipedStoreItems as Record<string, string>,
+    };
     // prepare join room message
     const joinMessage: IRoomMessage = {
       _id: userObj._id as string,
@@ -178,8 +204,17 @@ export class AudioRoomService implements IAudioRoomService {
       audioRoom = await this.audioRoomRepository.findByIdAndUpdate(
         audioRoom._id as string,
         {
-          $set: { [`members.${userId}`]: true },
-          $push: { membersArray: userId },
+          $set: {
+            [`members.${userId}`]: true,
+            [`uniqueUsers.${userId}`]: true,
+          },
+          $push: {
+            membersArray: userId,
+            messages: {
+              $each: [joinMessage],
+              $slice: -ALLOWED_MESSAGES_COUNT,
+            },
+          },
         },
       );
     }
@@ -189,12 +224,157 @@ export class AudioRoomService implements IAudioRoomService {
 
     // emit join event to the room
     const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.UserJoined, userInfo);
     socketInstance.emitToRoom(
       roomId,
-      AudioRoomChannels.UserJoined,
+      AudioRoomChannels.AudioRoomMessage,
       joinMessage,
     );
 
-    return audioRoom;
+    return await this.audioRoomRepository.getAudioRoomById(roomId);
+  }
+
+  async joinAudioSeat(
+    userId: string,
+    roomId: string,
+    seatKey: string,
+  ): Promise<IAudioRoomDocument> {
+    // client side data validation
+    const user = await this.userRepository.findUserById(userId);
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+    const userObj = user.toObject();
+    userObj.equipedStoreItems = await getEquipedItemObjects(
+      this.bucketRepository,
+      this.categoryRepository,
+      userId!,
+    );
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    if (!audioRoom.members.has(userId)) {
+      throw new AppError(403, "User not in the room");
+    }
+    // seat validation
+    // only host can sit in host seat
+    if (seatKey == "hostSeat" && audioRoom.hostId != userId) {
+      throw new AppError(403, "you are not authorized to sit in host seat");
+    }
+    // for other seats
+    const seat = audioRoom.seats.get(seatKey);
+    if (!seat && seatKey !== "hostSeat") {
+      throw new AppError(404, "Seat not found");
+    }
+    if (seat && (!seat.available || seat.member)) {
+      throw new AppError(403, "Seat is not available");
+    }
+    // check if the user is seated on any other seat
+    const isUserAlreadySeated =
+      audioRoom.hostSeat.member?._id?.toString() === userId ||
+      Array.from(audioRoom.seats.values()).some(
+        (seat) => seat.member?._id?.toString() === userId,
+      );
+
+    if (isUserAlreadySeated) {
+      throw new AppError(403, "User is already seated");
+    }
+
+    // prepare socket data -> userInfo
+    const userInfo: IMemberDetails = {
+      _id: userObj._id as string,
+      name: userObj.name as string,
+      avatar: userObj.avatar as string,
+      uid: userObj.uid as string,
+      userId: userObj.userId as number,
+      country: userObj.country as string,
+      currentBackground: userObj.currentLevelBackground as string,
+      currentTag: userObj.currentLevelTag as string,
+      currentLevel: userObj.level as number,
+      equipedStoreItems: userObj.equipedStoreItems as Record<string, string>,
+    };
+
+    // socket emit to the whole room
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatJoined, {
+      seatKey,
+      userInfo,
+    });
+    // account for host seat
+    // user seated
+
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $set: {
+        [`${seatKey == "hostSeat" ? seatKey : `seats.${seatKey}`}`]: {
+          available: true,
+          member: userInfo,
+        },
+      },
+    });
+
+    return await this.audioRoomRepository.getAudioRoomById(roomId);
+  }
+
+  async leaveAudioSeat(
+    userId: string,
+    roomId: string,
+    seatKey: string,
+  ): Promise<IAudioRoomDocument> {
+    // client side data validation
+    const user = await this.userRepository.findUserById(userId);
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    if (!audioRoom.members.has(userId)) {
+      throw new AppError(403, "User not in the room");
+    }
+
+    // seatKey validation
+    const seat = audioRoom.seats.get(seatKey);
+    if (!seat && seatKey !== "hostSeat") {
+      throw new AppError(404, "Seat not found");
+    }
+    // check if the user is seated
+    const isUserAlreadySeated =
+      audioRoom.hostSeat.member?._id?.toString() === userId ||
+      Array.from(audioRoom.seats.values()).some(
+        (seat) => seat.member?._id?.toString() === userId,
+      );
+    if (!isUserAlreadySeated) {
+      throw new AppError(403, "User not seated");
+    }
+    if (
+      (seatKey == "hostSeat" &&
+        audioRoom.hostSeat.member?._id?.toString() != userId) ||
+      (seat && seat.member?._id?.toString() != userId)
+    ) {
+      throw new AppError(403, `you are not seated in ${seatKey}`);
+    }
+
+    // update the audio room
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $set: {
+        [`${seatKey == "hostSeat" ? seatKey : `seats.${seatKey}`}`]: {
+          available: true,
+          member: null,
+        },
+      },
+    });
+
+    // send leave event to the room
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
+      seatKey,
+      member: {},
+    });
+
+    return await this.audioRoomRepository.getAudioRoomById(roomId);
   }
 }

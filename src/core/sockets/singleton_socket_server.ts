@@ -101,7 +101,6 @@ export default class SingletonSocketServer {
       hostTotalRecievedGift: room.hostTotalRecievedGift,
       roomTotalTransaction: room.roomTotalTransaction,
       hostSeat: room.hostSeat,
-      premiumSeat: room.premiumSeat,
       seats: Object.fromEntries(room.seats),
       messages: room.messages,
       members: Object.fromEntries(room.members),

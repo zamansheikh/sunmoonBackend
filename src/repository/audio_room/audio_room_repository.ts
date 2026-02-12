@@ -1,9 +1,4 @@
 import AppError from "../../core/errors/app_errors";
-import { USER_POPULATED_INFORMATIONS } from "../../core/Utils/constants";
-import {
-  aggregatedUserOmmitedFields,
-  getEquipedItemObjects,
-} from "../../core/Utils/helper_functions";
 import { IMyBucketRepository } from "../store/my_bucket_repository";
 import { IStoreCategoryRepository } from "../store/store_category_repository";
 import {
@@ -17,10 +12,13 @@ import {
   lookupEnrichedUsersArray,
   lookupRichUser,
 } from "../../core/Utils/helper_pipelines";
+import { USER_POPULATED_INFORMATIONS } from "../../core/Utils/constants";
+import { getEquipedItemObjects } from "../../core/Utils/helper_functions";
 
 export interface IAudioRoomRepository {
   createAudioRoom(audioRoom: IAudioRoom): Promise<IAudioRoomDocument>;
-  getAudioRoomById(roomId: string): Promise<IAudioRoomDocument | null>;
+  getAudioRoomById(roomId: string): Promise<IAudioRoomDocument>;
+  checkRoomExisistance(roomId: string): Promise<IAudioRoomDocument | null>;
   updateAudioRoom(
     roomId: string,
     audioRoom: Partial<IAudioRoom>,
@@ -83,8 +81,35 @@ export class AudioRoomRepository implements IAudioRoomRepository {
     }
     return obj as any;
   }
-  async getAudioRoomById(roomId: string): Promise<IAudioRoomDocument | null> {
-    return await this.audioRoomModel.findOne({ roomId });
+  async getAudioRoomById(roomId: string): Promise<IAudioRoomDocument> {
+    const qb = new QueryBuilder(this.audioRoomModel, {});
+    const res = qb.aggregate([
+      {
+        $match: { roomId },
+      },
+      lookupRichUser("hostId", "hostId"),
+      {
+        $unwind: {
+          path: "$hostId",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
+      {
+        $addFields: {
+          membersArray: "$membersArrayInfo", // ← just copy the array reference
+        },
+      },
+      {
+        $project: {
+          membersArrayInfo: 0,
+        },
+      },
+    ]);
+
+    const result = await res.exec();
+    if (result.length === 0) throw new AppError(404, "Audio room not found");
+    return result[0];
   }
   async updateAudioRoom(
     roomId: string,
@@ -109,6 +134,17 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         },
       },
       lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
+
+      {
+        $addFields: {
+          membersArray: "$membersArrayInfo", // ← just copy the array reference
+        },
+      },
+      {
+        $project: {
+          membersArrayInfo: 0,
+        },
+      },
     ]);
     return await res.exec();
   }
@@ -121,5 +157,11 @@ export class AudioRoomRepository implements IAudioRoomRepository {
     });
     if (!result) throw new AppError(404, "Audio room not found");
     return result;
+  }
+
+  async checkRoomExisistance(
+    roomId: string,
+  ): Promise<IAudioRoomDocument | null> {
+    return await this.audioRoomModel.findOne({ roomId });
   }
 }

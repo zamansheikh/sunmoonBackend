@@ -94,6 +94,9 @@ export enum GlobalSocketChannels {
 export enum AudioRoomChannels {
   NewAudioRoomCreated = "new-audio-room-created",
   UserJoined = "user-joined",
+  AudioRoomMessage = "audio-room-message",
+  AudioSeatJoined = "audio-seat-joined",
+  AudioSeatLeft = "audio-seat-left",
 }
 
 export enum SocketChannels {

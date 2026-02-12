@@ -2,9 +2,10 @@
 const MILLION = 1000000;
 const THOUSAND = 1000;
 
-// audio room -> user populated informations
-export const USER_POPULATED_INFORMATIONS = "name avatar uid userId country currentLevelBackground currentLevelTag level"
-
+// audio room
+export const USER_POPULATED_INFORMATIONS =
+  "name avatar uid userId country currentLevelBackground currentLevelTag level";
+export const ALLOWED_MESSAGES_COUNT = 20;
 // Xp features
 export const ROOM_ENTRY_XP = 20;
 export const OWN_ROOM_MAX_XP = 100;

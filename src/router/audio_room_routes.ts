@@ -41,4 +41,12 @@ router
   .route("/:roomId/join")
   .put(authenticate(), audioRoomController.joinAudioRoom);
 
+router
+  .route("/:roomId/join-seat/:seatKey")
+  .put(authenticate(), audioRoomController.joinAudioSeat);
+
+router
+  .route("/:roomId/leave-seat/:seatKey")
+  .put(authenticate(), audioRoomController.leaveAudioSeat);
+
 export default router;
