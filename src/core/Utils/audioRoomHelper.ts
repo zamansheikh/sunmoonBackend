@@ -31,10 +31,11 @@ export class AudioRoomHelper {
     if (room.hostId.toString() === myId) return;
     if (
       authorityLevel === 1 &&
-      room.admins.some((admin) => admin.toString() === myId)
+      room.admins.some((admin) => admin.toString() === myId) &&
+      targetId &&
+      targetId != room.hostId.toString() &&
+      !room.admins.some((admin) => admin.toString() === targetId)
     )
-      return;
-    if (targetId && room.admins.some((admin) => admin.toString() !== targetId))
       return;
     throw new AppError(
       StatusCodes.FORBIDDEN,
@@ -43,7 +44,6 @@ export class AudioRoomHelper {
   }
 
   public checkUserOnSeat(targetId: string, room: IAudioRoomDocument): void {
-    if (room.hostId == targetId) return;
 
     // Check host seat
     if (room.hostSeat?.member?._id?.toString() === targetId) return;

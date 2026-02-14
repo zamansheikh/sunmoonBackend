@@ -54,4 +54,8 @@ router
   .put(authenticate(), audioRoomController.createAdmin)
   .delete(authenticate(), audioRoomController.removeAdmin);
 
+router
+  .route("/remove-from-seat")
+  .put(authenticate(), audioRoomController.removeFromSeat);
+
 export default router;

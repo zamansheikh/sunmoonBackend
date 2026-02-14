@@ -140,4 +140,24 @@ export class AudioRoomController {
       result: result,
     });
   });
+
+  removeFromSeat = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const { roomId, targetId, seatKey } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(targetId, "targetId");
+    validateFieldExistance(seatKey, "seatKey");
+    const result = await this.Service.removeFromSeat(
+      myUserId,
+      targetId,
+      roomId,
+      seatKey,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio seat removed successfully",
+      result: result,
+    });
+  });
 }

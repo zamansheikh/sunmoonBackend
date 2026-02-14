@@ -98,6 +98,7 @@ export enum AudioRoomChannels {
   AudioSeatJoined = "audio-seat-joined",
   AudioSeatLeft = "audio-seat-left",
   audioAdminUpdates = "audio-admin-updates",
+  muteUnmuteUser = "mute-unmute-user",
 }
 
 export enum SocketChannels {
