@@ -160,4 +160,22 @@ export class AudioRoomController {
       result: result,
     });
   });
+
+  muteUnmuteUser = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const { roomId, targetId } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(targetId, "targetId");
+    const result = await this.Service.muteUnmuteUser(
+      myUserId,
+      targetId,
+      roomId,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "User mute status updated successfully",
+      result: result,
+    });
+  });
 }

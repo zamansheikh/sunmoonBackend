@@ -58,4 +58,8 @@ router
   .route("/remove-from-seat")
   .put(authenticate(), audioRoomController.removeFromSeat);
 
+router
+  .route("/:roomId/mute-unmute-user/:targetId")
+  .put(authenticate(), audioRoomController.muteUnmuteUser);
+
 export default router;

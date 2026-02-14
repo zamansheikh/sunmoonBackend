@@ -553,7 +553,11 @@ export class AudioRoomService implements IAudioRoomService {
     return await this.audioRoomRepository.getAudioRoomById(roomId);
   }
 
-  async muteUnmuteUser(myId: string, targetId: string, roomId: string): Promise<IAudioRoomDocument> {
+  async muteUnmuteUser(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument> {
     //client side data validation
     const audioRoom =
       await this.audioRoomRepository.checkRoomExisistance(roomId);
@@ -569,37 +573,30 @@ export class AudioRoomService implements IAudioRoomService {
     audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1, targetId); // 0 -> host level authority
     audioHelper.checkUserOnSeat(targetId, audioRoom);
 
-
-    if(audioRoom.mutedUsers.has(targetId)){
-      await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
-        $pull: {
-          mutedUsers: targetId,
+    if (!audioRoom.mutedUsers.has(targetId)) {
+      await this.audioRoomRepository.findByIdAndUpdate(
+        audioRoom._id as string,
+        {
+          $set: {
+            [`mutedUsers.${targetId}`]: true,
+          },
         },
-      });
-    }else{
-      await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
-        $push: {
-          mutedUsers: targetId,
+      );
+    } else {
+      await this.audioRoomRepository.findByIdAndUpdate(
+        audioRoom._id as string,
+        {
+          $unset: {
+            [`mutedUsers.${targetId}`]: "",
+          },
         },
-      });
+      );
     }
-
-
-    // update audio room seats
-    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
-      $set: {
-        [`seats.${seatKey}`]: {
-          available: true,
-          member: null,
-        },
-      },
-    });
 
     // send event to the room
     const socketInstance = SingletonSocketServer.getInstance();
-    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
-      seatKey: seatKey,
-      member: {},
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.muteUnmuteUser, {
+      mutedUsers: Array.from(audioRoom.mutedUsers.keys()).push(targetId),
     });
     return await this.audioRoomRepository.getAudioRoomById(roomId);
   }
