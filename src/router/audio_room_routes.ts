@@ -49,4 +49,9 @@ router
   .route("/:roomId/leave-seat/:seatKey")
   .put(authenticate(), audioRoomController.leaveAudioSeat);
 
+router
+  .route("/:roomId/admins/:targetId")
+  .put(authenticate(), audioRoomController.createAdmin)
+  .delete(authenticate(), audioRoomController.removeAdmin);
+
 export default router;

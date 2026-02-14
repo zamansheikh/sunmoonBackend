@@ -102,4 +102,42 @@ export class AudioRoomController {
       result: result,
     });
   });
+
+  createAdmin = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const targetId = req.params.targetId;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(targetId, "targetId");
+    const result = await this.Service.makeAudioAdmin(
+      myUserId,
+      targetId,
+      roomId,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio admin created successfully",
+      result: result,
+    });
+  });
+
+  removeAdmin = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const targetId = req.params.targetId;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(targetId, "targetId");
+    const result = await this.Service.removeAudioAdmin(
+      myUserId,
+      targetId,
+      roomId,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio admin removed successfully",
+      result: result,
+    });
+  });
 }

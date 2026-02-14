@@ -27,6 +27,10 @@ import {
 } from "../sockets/interface/socket_interface";
 import { IUserRepository } from "../../repository/users/user_repository";
 import SocketServer from "../sockets/socket_server";
+import {
+  IAudioRoom,
+  IAudioRoomDocument,
+} from "../../models/audio_room/audio_room_model";
 
 export const generateFileHash = (buffer: Buffer): string => {
   return crypto.createHash("sha256").update(buffer).digest("hex");

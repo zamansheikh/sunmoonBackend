@@ -97,6 +97,7 @@ export enum AudioRoomChannels {
   AudioRoomMessage = "audio-room-message",
   AudioSeatJoined = "audio-seat-joined",
   AudioSeatLeft = "audio-seat-left",
+  audioAdminUpdates = "audio-admin-updates",
 }
 
 export enum SocketChannels {

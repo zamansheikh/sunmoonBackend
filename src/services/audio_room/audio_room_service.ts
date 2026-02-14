@@ -1,5 +1,6 @@
 import AppError from "../../core/errors/app_errors";
 import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
+import { AudioRoomHelper } from "../../core/Utils/audioRoomHelper";
 import {
   ALLOWED_MESSAGES_COUNT,
   ROCKET_MILESTONES,
@@ -36,6 +37,16 @@ export interface IAudioRoomService {
     userId: string,
     roomId: string,
     seatKey: string,
+  ): Promise<IAudioRoomDocument>;
+  makeAudioAdmin(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument>;
+  removeAudioAdmin(
+    myId: string,
+    targetId: string,
+    roomId: string,
   ): Promise<IAudioRoomDocument>;
 }
 
@@ -375,6 +386,103 @@ export class AudioRoomService implements IAudioRoomService {
       member: {},
     });
 
+    return await this.audioRoomRepository.getAudioRoomById(roomId);
+  }
+
+  async makeAudioAdmin(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument> {
+    // host cant be admin
+    if (myId == targetId) {
+      throw new AppError(403, "You are the host");
+    }
+    // client side data validation
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    const user = await this.userRepository.findUserById(myId);
+    const targetUser = await this.userRepository.findUserById(targetId);
+    if (!user || !targetUser) {
+      throw new AppError(404, "User not found");
+    }
+    // check authority validation for host only
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 0); // 0 -> host level authorrity
+    audioHelper.checkUserOnSeat(targetId, audioRoom); // user must be on a seat to be made admin
+    // update audio room admins
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $push: {
+        admins: targetId,
+      },
+    });
+    // new admin profile info
+    const targetUserObj = targetUser.toObject();
+    targetUserObj.equipedStoreItems = await getEquipedItemObjects(
+      this.bucketRepository,
+      this.categoryRepository,
+      targetId,
+    );
+    const adminInfo: IMemberDetails = {
+      _id: targetUserObj._id as string,
+      name: targetUserObj.name as string,
+      avatar: targetUserObj.avatar as string,
+      uid: targetUserObj.uid as string,
+      userId: targetUserObj.userId as number,
+      country: targetUserObj.country as string,
+      currentBackground: targetUserObj.currentLevelBackground as string,
+      currentTag: targetUserObj.currentLevelTag as string,
+      currentLevel: targetUserObj.level as number,
+      equipedStoreItems: targetUserObj.equipedStoreItems as Record<
+        string,
+        string
+      >,
+    };
+    // send event to the room
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.audioAdminUpdates, {
+      isAdded: true,
+      admins: adminInfo,
+    });
+    return await this.audioRoomRepository.getAudioRoomById(roomId);
+  }
+
+  async removeAudioAdmin(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument> {
+    // client side data validation
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    const user = await this.userRepository.findUserById(myId);
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+    // check authority validation for host only
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 0); // 0 -> host level authorrity
+    if (!audioRoom.admins.includes(targetId)) {
+      throw new AppError(404, "User is not an admin");
+    }
+    // update audio room admins
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $pull: {
+        admins: targetId,
+      },
+    });
+    // send event to the room
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.audioAdminUpdates, {
+      isAdded: false,
+      admins: targetId,
+    });
     return await this.audioRoomRepository.getAudioRoomById(roomId);
   }
 }
