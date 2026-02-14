@@ -16,19 +16,26 @@ export class AudioRoomHelper {
   }
 
   public checkAuthorityInAudioRoom(
-    targetId: string,
+    myId: string,
     room: IAudioRoomDocument,
     authorityLevel: number,
+    targetId?: string,
   ): void {
     /**
-     * targetId -> who is taking action, usually taken from token
-     * authorityLevel -> authority level of the targetId
+     * myId -> who is taking action, usually taken from token
+     * authorityLevel -> authority level of the myId
      * 0 -> host
      * 1 -> admin
      * room -> the current Audio room, where the action is taking place
      */
-    if (room.hostId == targetId) return;
-    if (authorityLevel == 1 && room.admins.includes(targetId)) return;
+    if (room.hostId.toString() === myId) return;
+    if (
+      authorityLevel === 1 &&
+      room.admins.some((admin) => admin.toString() === myId)
+    )
+      return;
+    if (targetId && room.admins.some((admin) => admin.toString() !== targetId))
+      return;
     throw new AppError(
       StatusCodes.FORBIDDEN,
       "You are not authorized to take this action",
@@ -37,11 +44,15 @@ export class AudioRoomHelper {
 
   public checkUserOnSeat(targetId: string, room: IAudioRoomDocument): void {
     if (room.hostId == targetId) return;
-    for (const [seatKey, seat] of Object.entries(room.seats)) {
-      console.log(seatKey, seat);
 
-      if (seat.member == targetId) return;
+    // Check host seat
+    if (room.hostSeat?.member?._id?.toString() === targetId) return;
+
+    // Check other seats
+    for (const seat of room.seats.values()) {
+      if (seat.member?._id?.toString() === targetId) return;
     }
+
     throw new AppError(StatusCodes.FORBIDDEN, "You are not on a seat");
   }
 }

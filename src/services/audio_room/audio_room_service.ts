@@ -48,6 +48,12 @@ export interface IAudioRoomService {
     targetId: string,
     roomId: string,
   ): Promise<IAudioRoomDocument>;
+  removeFromSeat(
+    myId: string,
+    targetId: string,
+    roomId: string,
+    seatKey: string,
+  ): Promise<IAudioRoomDocument>;
 }
 
 export class AudioRoomService implements IAudioRoomService {
@@ -482,6 +488,50 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.audioAdminUpdates, {
       isAdded: false,
       admins: targetId,
+    });
+    return await this.audioRoomRepository.getAudioRoomById(roomId);
+  }
+
+  async removeFromSeat(
+    myId: string,
+    targetId: string,
+    roomId: string,
+    seatKey: string,
+  ): Promise<IAudioRoomDocument> {
+    // client side data validation
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    const user = await this.userRepository.findUserById(myId);
+    if (!user) {
+      throw new AppError(404, "User not found");
+    }
+    // check authority validation for host only
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1, targetId); // 0 -> host level authority
+    if (!audioRoom.seats.has(seatKey)) {
+      throw new AppError(404, "Seat not found");
+    }
+    const seat = audioRoom.seats.get(seatKey);
+    if (!seat) {
+      throw new AppError(404, "Seat not found");
+    }
+    if (seat.member?._id?.toString() !== targetId) {
+      throw new AppError(404, "User is not on this seat");
+    }
+    // update audio room seats
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $pull: {
+        seats: seatKey,
+      },
+    });
+    // send event to the room
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.audioSeatUpdates, {
+      isAdded: false,
+      seatKey: seatKey,
     });
     return await this.audioRoomRepository.getAudioRoomById(roomId);
   }
