@@ -3,10 +3,17 @@ import { Server as HttpServer } from "http";
 import {
   IAudioRoom,
   IAudioRoomDocument,
+  IRoomMessage,
 } from "../../models/audio_room/audio_room_model";
 import { AudioRoomRepository } from "../../repository/audio_room/audio_room_repository";
-import UserRepository from "../../repository/users/user_repository";
+import UserRepository, {
+  IUserRepository,
+} from "../../repository/users/user_repository";
 import { AudioRoomChannels } from "../Utils/enums";
+import { IMyBucketRepository } from "../../repository/store/my_bucket_repository";
+import { IStoreCategoryRepository } from "../../repository/store/store_category_repository";
+import { getEquippedItemObjects } from "../Utils/helper_functions";
+import { ALLOWED_MESSAGES_COUNT } from "../Utils/constants";
 
 export default class SingletonSocketServer {
   private static instance: SingletonSocketServer;
@@ -125,11 +132,37 @@ export default class SingletonSocketServer {
   public async handleAudioRoomDisconnection(
     userId: string,
     room: IAudioRoomDocument,
+    userRepository: IUserRepository,
+    bucketRepository: IMyBucketRepository,
+    categoryRepository: IStoreCategoryRepository,
   ) {
     const isHost = room.hostId?.toString() === userId;
+    const user = await userRepository.findUserById(userId);
+    if (!user) {
+      return room;
+    }
+    const userObj = user.toObject();
+    userObj.equippedStoreItems = await getEquippedItemObjects(
+      bucketRepository,
+      categoryRepository,
+      userId,
+    );
+    //leave message
+    const leaveMessage: IRoomMessage = {
+      _id: userObj._id,
+      name: userObj.name,
+      avatar: userObj.avatar,
+      uid: userObj.uid,
+      userId: userObj.userId,
+      country: userObj.country,
+      currentBackground: userObj.currentLevelBackground,
+      currentTag: userObj.currentLevelTag,
+      currentLevel: userObj.level,
+      text: "left the room",
+      equippedStoreItems: userObj.equippedStoreItems,
+    };
     if (isHost) {
       // remove from seat if seated
-
       // Check host seat
       if (room.hostSeat?.member?._id?.toString() === userId) {
         room.hostSeat.member = undefined;
@@ -155,6 +188,12 @@ export default class SingletonSocketServer {
         (member) => member.toString() !== userId,
       );
 
+      // send room wide leave message
+      if (room.messages.length > ALLOWED_MESSAGES_COUNT) room.messages.shift();
+      room.messages.push(leaveMessage);
+      this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
+        leaveMessage,
+      });
       // leave the audio room -> send roomwide message
       room.isHostPresent = false;
       this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
@@ -186,6 +225,12 @@ export default class SingletonSocketServer {
       );
       // remove from muted users
       if (room.mutedUsers.has(userId)) room.mutedUsers.delete(userId);
+      // send room wide leave message
+      if (room.messages.length > ALLOWED_MESSAGES_COUNT) room.messages.shift();
+      room.messages.push(leaveMessage);
+      this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
+        leaveMessage,
+      });
       // leave the audio room -> send roomwide message
       this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
         userId: userId,
@@ -197,6 +242,6 @@ export default class SingletonSocketServer {
       }
     }
 
-    await room.save();
+    return await room.save();
   }
 }

@@ -53,7 +53,7 @@ import { IStoreItem } from "../../models/store/store_item_model";
 import {
   checkPremiumItem,
   determineUserLevelFromXp,
-  getEquipedItemObjects,
+  getEquippedItemObjects,
   getNextSalaryDate,
   isTheDateFromThisMonth,
   updateUserXpFunc,
@@ -116,7 +116,7 @@ export default class AuthService implements IAuthService {
     BucketRepository: IMyBucketRepository,
     CategoryRepository: IStoreCategoryRepository,
     RoomBonusRecords: IRoomBonusRecordsRepository,
-    UpdateCostRepository: IUpdateCostRepository
+    UpdateCostRepository: IUpdateCostRepository,
   ) {
     this.UserRepository = UserRepository;
     this.UserStatsRepository = UserStatsRepository;
@@ -150,7 +150,7 @@ export default class AuthService implements IAuthService {
       const newUser = await this.UserRepository.create(UserData);
       // if a instance exists with this new _id that is a false data and is being purged.
       const stats = await this.UserStatsRepository.getUserStats(
-        newUser._id as string
+        newUser._id as string,
       );
       if (stats)
         await this.UserStatsRepository.deleteStats(newUser._id as string);
@@ -161,12 +161,12 @@ export default class AuthService implements IAuthService {
       if (!newStats)
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          "creating the user stats failed"
+          "creating the user stats failed",
         );
       if (!newUser)
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          "creating the user failed"
+          "creating the user failed",
         );
       const userWithStats = newUser.toObject();
       userWithStats.stats = newStats;
@@ -174,13 +174,13 @@ export default class AuthService implements IAuthService {
       // console.log("new user modified", newUser);
       const token = jwt.sign(
         { id: newUser._id, role: newUser.userRole },
-        SECRET
+        SECRET,
       );
       return { user: userWithStats, token };
     }
 
     let userStats = await this.UserStatsRepository.getUserStats(
-      existingUser._id as string
+      existingUser._id as string,
     );
     // every user should have their respective stats created
 
@@ -197,14 +197,14 @@ export default class AuthService implements IAuthService {
         role: existingUser.userRole,
         permissions: existingUser.userPermissions,
       },
-      SECRET
+      SECRET,
     );
     return { user: userWithStats, token };
   }
 
   async loginWithEmailPassword(
     email: string,
-    password: string
+    password: string,
   ): Promise<{ user: IUserDocument; token: string }> {
     const existingUser = await this.UserRepository.findUserByEmail(email);
     if (!existingUser)
@@ -212,17 +212,17 @@ export default class AuthService implements IAuthService {
     if (!existingUser.password || existingUser.password == "")
       throw new AppError(
         StatusCodes.CONFLICT,
-        "You have not set a password yet"
+        "You have not set a password yet",
       );
     const isPasswordValid = await bcrypt.compare(
       password,
-      existingUser.password
+      existingUser.password,
     );
     if (!isPasswordValid)
       throw new AppError(StatusCodes.BAD_REQUEST, "incorrect password");
     const SECRET = process.env.JWT_SECRET || "jwt_secret";
     let userStats = await this.UserStatsRepository.getUserStats(
-      existingUser._id as string
+      existingUser._id as string,
     );
     // every user should have their respective stats created
 
@@ -239,7 +239,7 @@ export default class AuthService implements IAuthService {
         role: existingUser.userRole,
         permissions: existingUser.userPermissions,
       },
-      SECRET
+      SECRET,
     );
     return { user: userWithStats, token };
   }
@@ -247,7 +247,7 @@ export default class AuthService implements IAuthService {
   async verifyAccount(
     userId: string,
     phoneNumber: string,
-    password: string
+    password: string,
   ): Promise<IUserDocument> {
     const existingUser = await this.UserRepository.findUserById(userId);
     if (!existingUser)
@@ -258,7 +258,7 @@ export default class AuthService implements IAuthService {
     if (!uniquePhone)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "phone number already in use"
+        "phone number already in use",
       );
     const hashedPassword = await bcrypt.hash(password, 10);
     existingUser.phone = phoneNumber;
@@ -274,10 +274,10 @@ export default class AuthService implements IAuthService {
     const userStats = await this.UserStatsRepository.getUserStats(id);
     const userWithStats = user.toObject();
     userWithStats.stats = userStats;
-    userWithStats.equippedStoreItems = await getEquipedItemObjects(
+    userWithStats.equippedStoreItems = await getEquippedItemObjects(
       this.BucketRepository,
       this.CategoryRepository,
-      id
+      id,
     );
     return userWithStats;
   }
@@ -315,13 +315,13 @@ export default class AuthService implements IAuthService {
     )
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "failed to delete user and associated data"
+        "failed to delete user and associated data",
       );
     const deletedUser = await this.UserRepository.deleteUserById(id);
     if (!deletedUser)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "failed to delete user, please try again later"
+        "failed to delete user, please try again later",
       );
     return deletedUser;
   }
@@ -333,10 +333,10 @@ export default class AuthService implements IAuthService {
       throw new AppError(StatusCodes.NOT_FOUND, "Invalid user Id");
     let user = await this.UserRepository.getUserDetails({ Id: id, myId });
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "user not found");
-    (user as any).equippedStoreItems = await getEquipedItemObjects(
+    (user as any).equippedStoreItems = await getEquippedItemObjects(
       this.BucketRepository,
       this.CategoryRepository,
-      id
+      id,
     );
     return user;
   }
@@ -357,7 +357,7 @@ export default class AuthService implements IAuthService {
     if (profileData["name"])
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "name cannot be changed from here!"
+        "name cannot be changed from here!",
       );
     const updatePayload: Record<string, any> = {};
     let profilePicUrl;
@@ -411,7 +411,7 @@ export default class AuthService implements IAuthService {
       if (exisitngUserStats.coins! < costToUpdate)
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "not enough coins to change name"
+          "not enough coins to change name",
         );
       if (costToUpdate != 0)
         await this.UserStatsRepository.updateCoins(id, -costToUpdate);
@@ -425,7 +425,7 @@ export default class AuthService implements IAuthService {
   async setMyPassword(
     id: string,
     password: string,
-    newPassword: string
+    newPassword: string,
   ): Promise<IUserDocument> {
     const existingUser = await this.UserRepository.findUserById(id);
     if (!existingUser)
@@ -477,7 +477,7 @@ export default class AuthService implements IAuthService {
     if (!mystats)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "my stats not found"
+        "my stats not found",
       );
 
     // starting a new session for safe rollback
@@ -507,16 +507,21 @@ export default class AuthService implements IAuthService {
       if (!updateCostDocument)
         throw new AppError(
           StatusCodes.NOT_FOUND,
-          "update cost document is not created yet"
+          "update cost document is not created yet",
         );
       const coinEquivalent = updateCostDocument.expEquivalentCoin;
       if (!coinEquivalent || isNaN(coinEquivalent))
         throw new AppError(
           StatusCodes.BAD_GATEWAY,
-          "either xpCoinEquivalent is missing or not a number"
+          "either xpCoinEquivalent is missing or not a number",
         );
       const totalNewXpGained = totalPrice / coinEquivalent;
-      await updateUserXpFunc(this.UserRepository, myId, totalNewXpGained, ioInstance);
+      await updateUserXpFunc(
+        this.UserRepository,
+        myId,
+        totalNewXpGained,
+        ioInstance,
+      );
     }
 
     mystats.coins! -= totalPrice;
@@ -526,7 +531,7 @@ export default class AuthService implements IAuthService {
     if (otherIds)
       updateStats = await this.UserStatsRepository.updateGiftDiamond(
         otherIds,
-        exisitngGift.diamonds * qty
+        exisitngGift.diamonds * qty,
       );
 
     await session.commitTransaction();
@@ -537,14 +542,14 @@ export default class AuthService implements IAuthService {
     SocketServer.getInstance().updateRoomCoin(
       roomId,
       exisitngGift.diamonds * qty,
-      targetUserIds
+      targetUserIds,
     );
 
     SocketServer.getInstance().updateRoomRanking(
       roomId,
       myId,
       exisitngGift.diamonds * qty,
-      targetUserIds
+      targetUserIds,
     );
 
     ioInstance.to(roomId).emit(SocketChannels.sendGift, {
@@ -566,7 +571,7 @@ export default class AuthService implements IAuthService {
     });
 
     const firstRecievedUser = await this.UserRepository.findUserById(
-      targetUserIds[0]
+      targetUserIds[0],
     );
     if (!firstRecievedUser)
       throw new AppError(StatusCodes.NOT_FOUND, "reciever not found");
@@ -588,10 +593,10 @@ export default class AuthService implements IAuthService {
       currentBackground: myUser.currentLevelBackground as string,
       currentTag: myUser.currentLevelTag as string,
       currentLevel: myUser.level as number,
-      equipedStoreItems: await getEquipedItemObjects(
+      equippedStoreItems: await getEquippedItemObjects(
         this.BucketRepository,
         this.CategoryRepository,
-        myId
+        myId,
       ),
     };
 
@@ -605,7 +610,7 @@ export default class AuthService implements IAuthService {
     if (!updateStats)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "updating user stats failed"
+        "updating user stats failed",
       );
 
     if (hasMyId.length > 0 && otherIds.length > 0) {
@@ -620,7 +625,7 @@ export default class AuthService implements IAuthService {
   async getDailyBonus(
     id: string,
     totalTime: number,
-    type: StreamType
+    type: StreamType,
   ): Promise<{ bonus: number }> {
     // erasing all the previous data from yesterday
     await this.RoomHistoryRepository.resetRoomHistory();
@@ -642,13 +647,13 @@ export default class AuthService implements IAuthService {
     if (!withdrawHistory)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Creating Withdraw History failed"
+        "Creating Withdraw History failed",
       );
 
     if (isDone)
       throw new AppError(
         StatusCodes.CONFLICT,
-        "You have reached the maximum bonus for today"
+        "You have reached the maximum bonus for today",
       );
     const record: IRoomBonusRecords = {
       bonusDiamonds: 0,
@@ -662,7 +667,7 @@ export default class AuthService implements IAuthService {
     if (isFrist) {
       const totalLiveSum = await this.RoomHistoryRepository.getNextEligible(
         id,
-        isFrist.createdAt
+        isFrist.createdAt,
       );
       if (totalLiveSum + totalTime < 50) {
         const newHistory = await this.RoomHistoryRepository.createRoomHistory({
@@ -674,7 +679,7 @@ export default class AuthService implements IAuthService {
         if (!newHistory)
           throw new AppError(
             StatusCodes.INTERNAL_SERVER_ERROR,
-            "Creating History failed"
+            "Creating History failed",
           );
 
         return { bonus: 0 };
@@ -689,7 +694,7 @@ export default class AuthService implements IAuthService {
         if (!newHistory)
           throw new AppError(
             StatusCodes.INTERNAL_SERVER_ERROR,
-            "Creating History failed"
+            "Creating History failed",
           );
         record.bonusDiamonds = 3000;
         await this.RoomBonusRecordsRepository.createRecord(record);
@@ -706,7 +711,7 @@ export default class AuthService implements IAuthService {
       if (!newHistory)
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          "Creating History failed"
+          "Creating History failed",
         );
       if (totalTime >= 50) {
         record.bonusDiamonds = 2000;
@@ -740,29 +745,26 @@ export default class AuthService implements IAuthService {
     if (bonus && bonus.createdAt.getDate() == date)
       throw new AppError(
         StatusCodes.CONFLICT,
-        "You have already applied for bonus today"
+        "You have already applied for bonus today",
       );
     const userstats = await this.UserStatsRepository.getUserStats(hostId);
     if (!userstats)
       throw new AppError(StatusCodes.NOT_FOUND, "user stats not found");
-    const bonusDiamonds = await this.RoomBonusRecordsRepository.readTotalBonus(
-      hostId
-    );
+    const bonusDiamonds =
+      await this.RoomBonusRecordsRepository.readTotalBonus(hostId);
 
     if (userstats.diamonds! + bonusDiamonds < totalSalary)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "not enough diamonds to withdraw"
+        "not enough diamonds to withdraw",
       );
 
     const dayCount = await this.WithDrawHistoryRepository.getDayCount(hostId);
     const hourCount = await this.WithDrawHistoryRepository.getTimeCount(hostId);
-    const audioTimeCount = await this.WithDrawHistoryRepository.getAudioHour(
-      hostId
-    );
-    const videoTimeCount = await this.WithDrawHistoryRepository.getVideoHour(
-      hostId
-    );
+    const audioTimeCount =
+      await this.WithDrawHistoryRepository.getAudioHour(hostId);
+    const videoTimeCount =
+      await this.WithDrawHistoryRepository.getVideoHour(hostId);
 
     let salary = await this.SalaryRepository.getSalaryByAmount(totalSalary);
 
@@ -775,7 +777,7 @@ export default class AuthService implements IAuthService {
     if (salary.length == 0)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        `${totalSalary} does not have both video and audio type`
+        `${totalSalary} does not have both video and audio type`,
       );
 
     const session = await mongoose.startSession();
@@ -784,7 +786,7 @@ export default class AuthService implements IAuthService {
     await this.UserStatsRepository.updateDiamonds(
       hostId,
       -(totalSalary - bonusDiamonds),
-      session
+      session,
     );
 
     const bonusObj: IWithdrawBonus = {
@@ -805,7 +807,7 @@ export default class AuthService implements IAuthService {
 
     const newWithdraw = await this.BonusRepository.createWithdrawBonus(
       bonusObj,
-      session
+      session,
     );
 
     await session.commitTransaction();
@@ -814,7 +816,7 @@ export default class AuthService implements IAuthService {
     if (!newWithdraw)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "creating withdraw bonus failed"
+        "creating withdraw bonus failed",
       );
     return newWithdraw;
   }
@@ -822,7 +824,7 @@ export default class AuthService implements IAuthService {
   async getMyBonus(userId: string): Promise<number> {
     const myBonus =
       await this.RoomBonusRecordsRepository.readTotalBonusWithoutStatusSeen(
-        userId
+        userId,
       );
     return myBonus;
   }
@@ -868,20 +870,20 @@ export default class AuthService implements IAuthService {
       uid,
       RtcRole.PUBLISHER, // Role: PUBLISHER or SUBSCRIBER
       tokenExpire,
-      privilegeExpiredTs
+      privilegeExpiredTs,
     );
     return { token: token };
   }
 
   async agencyJoinRequest(
-    data: IAgencyJoinRequest
+    data: IAgencyJoinRequest,
   ): Promise<IAgencyJoinRequestDocument> {
     const user = await this.UserRepository.findUserById(data.userId as string);
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, `user not found`);
     if (user.userRole != UserRoles.User)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Agency applications and cancellations are restricted to users."
+        "Agency applications and cancellations are restricted to users.",
       );
     const prevRequest =
       await this.AgencyJoinRequestRepository.getRequestCondiionally({
@@ -891,12 +893,11 @@ export default class AuthService implements IAuthService {
     if (prevRequest)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `you have already applied for an agency`
+        `you have already applied for an agency`,
       );
 
-    const newRequest = await this.AgencyJoinRequestRepository.createRequest(
-      data
-    );
+    const newRequest =
+      await this.AgencyJoinRequestRepository.createRequest(data);
     return newRequest;
   }
 
@@ -913,12 +914,12 @@ export default class AuthService implements IAuthService {
 
     if (request) {
       const agency = await this.PortalUserRepository.getPortalUserById(
-        request.agencyId as string
+        request.agencyId as string,
       );
       if (!agency)
         throw new AppError(StatusCodes.NOT_FOUND, "agency not found");
       const hostCount = await this.UserRepository.getHostCounts(
-        request.agencyId as string
+        request.agencyId as string,
       );
       agencyDetails = { name: agency!.name, hostCount: hostCount };
     }
@@ -939,19 +940,19 @@ export default class AuthService implements IAuthService {
       request.status == StatusTypes.accepted
     ) {
       await this.AgencyJoinRequestRepository.deleteRequest(
-        request._id as string
+        request._id as string,
       );
       return { status: AgencyJoinStatus.Congrats, agencyDetails };
     }
 
     if (user.userRole == UserRoles.Host && !request) {
       const agency = await this.PortalUserRepository.getPortalUserById(
-        user.parentCreator as string
+        user.parentCreator as string,
       );
       if (!agency)
         throw new AppError(StatusCodes.NOT_FOUND, "agency not found");
       const hostCount = await this.UserRepository.getHostCounts(
-        user.parentCreator as string
+        user.parentCreator as string,
       );
       agencyDetails = { name: agency!.name, hostCount: hostCount };
       return { status: AgencyJoinStatus.member, agencyDetails };
@@ -961,14 +962,14 @@ export default class AuthService implements IAuthService {
   }
 
   async agencyCancelRequest(
-    userId: string
+    userId: string,
   ): Promise<IAgencyJoinRequestDocument> {
     const user = await this.UserRepository.findUserById(userId);
     if (!user) throw new AppError(StatusCodes.BAD_REQUEST, `user not found`);
     if (user.userRole != UserRoles.User)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Agency applications and cancellations are restricted to users."
+        "Agency applications and cancellations are restricted to users.",
       );
     const request =
       await this.AgencyJoinRequestRepository.getRequestCondiionally({
@@ -976,7 +977,7 @@ export default class AuthService implements IAuthService {
       });
     if (request) {
       const deleted = await this.AgencyJoinRequestRepository.deleteRequest(
-        request._id as string
+        request._id as string,
       );
       return deleted;
     }
@@ -992,12 +993,10 @@ export default class AuthService implements IAuthService {
   }> {
     const dayCount = await this.WithDrawHistoryRepository.getDayCount(hostId);
     const hourCount = await this.WithDrawHistoryRepository.getTimeCount(hostId);
-    const audioTimeCount = await this.WithDrawHistoryRepository.getAudioHour(
-      hostId
-    );
-    const videoTimeCount = await this.WithDrawHistoryRepository.getVideoHour(
-      hostId
-    );
+    const audioTimeCount =
+      await this.WithDrawHistoryRepository.getAudioHour(hostId);
+    const videoTimeCount =
+      await this.WithDrawHistoryRepository.getVideoHour(hostId);
 
     return {
       dayCount,
@@ -1013,7 +1012,7 @@ export default class AuthService implements IAuthService {
     return await checkPremiumItem(this.BucketRepository, userId);
   }
 
-  async updateMyXp(userId: string, isMyRoom: boolean): Promise<{XP: number}> {
+  async updateMyXp(userId: string, isMyRoom: boolean): Promise<{ XP: number }> {
     const existingUser = await this.UserRepository.findUserById(userId);
     if (!existingUser) {
       throw new AppError(StatusCodes.NOT_FOUND, "user not found");
@@ -1058,13 +1057,15 @@ export default class AuthService implements IAuthService {
       this.UserRepository,
       userId,
       config.increment,
-      socketInstance.getIO()
+      socketInstance.getIO(),
     );
 
-    return {XP: config.increment}
+    return { XP: config.increment };
   }
 
-  async getAllBucketItems(query: Record<string, any>): Promise<{ pagination: IPagination; items: IMyBucketDocument[]; }> {
+  async getAllBucketItems(
+    query: Record<string, any>,
+  ): Promise<{ pagination: IPagination; items: IMyBucketDocument[] }> {
     const items = await this.BucketRepository.getAllBucketItems(query);
     return items;
   }

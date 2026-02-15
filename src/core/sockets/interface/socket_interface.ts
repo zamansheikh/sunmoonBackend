@@ -21,7 +21,7 @@ export interface IMemberDetails {
   currentTag: string;
   currentLevel: number;
   _id: mongoose.Schema.Types.ObjectId | string;
-  equipedStoreItems: Record<string, string>;
+  equippedStoreItems: Record<string, string>;
   totalGiftSent: number;
   isMuted?: boolean;
 }
@@ -46,7 +46,7 @@ export interface RoomData {
     currentTag: string;
     currentLevel: number;
     text: string;
-    equipedStoreItems: Record<string, string>;
+    equippedStoreItems: Record<string, string>;
   }[];
   broadcastersDetails: IMemberDetails[];
   bannedUsers: Set<string>;
@@ -70,7 +70,7 @@ export interface IRoomMessage {
   currentTag: string;
   currentLevel: number;
   text: string;
-  equipedStoreItems: Record<string, string>;
+  equippedStoreItems: Record<string, string>;
 }
 
 export interface IAudioSeats {

@@ -29,7 +29,7 @@ export interface IMyBucketRepository {
     update: Partial<IMyBucket>,
     session?: ClientSession,
   ): Promise<UpdateResult>;
-  getEquipedBuckets(id: string): Promise<IMyBucketDocument[]>;
+  getEquippedBuckets(id: string): Promise<IMyBucketDocument[]>;
   getAllBucketItems(query: Record<string, any>): Promise<{
     pagination: IPagination;
     items: IMyBucketDocument[];
@@ -103,7 +103,7 @@ export default class MyBucketRepository implements IMyBucketRepository {
     return await this.Model.updateOne(filter, update, { session });
   }
 
-  async getEquipedBuckets(id: string): Promise<IMyBucketDocument[]> {
+  async getEquippedBuckets(id: string): Promise<IMyBucketDocument[]> {
     const equipped = await this.Model.find({
       ownerId: id,
       useStatus: true,

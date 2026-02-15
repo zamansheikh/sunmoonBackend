@@ -13,12 +13,13 @@ import {
   lookupRichUser,
 } from "../../core/Utils/helper_pipelines";
 import { USER_POPULATED_INFORMATIONS } from "../../core/Utils/constants";
-import { getEquipedItemObjects } from "../../core/Utils/helper_functions";
+import { getEquippedItemObjects } from "../../core/Utils/helper_functions";
 
 export interface IAudioRoomRepository {
   createAudioRoom(audioRoom: IAudioRoom): Promise<IAudioRoomDocument>;
   getAudioRoomById(roomId: string): Promise<IAudioRoomDocument>;
   checkRoomExisistance(roomId: string): Promise<IAudioRoomDocument | null>;
+  getAudioRoomByHostId(hostId: string): Promise<string | null>;
   updateAudioRoom(
     roomId: string,
     audioRoom: Partial<IAudioRoom>,
@@ -60,7 +61,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
     const obj = created.toObject();
     const host = obj.hostId as any;
     if (host && host._id) {
-      host.equipedStoreItems = await getEquipedItemObjects(
+      host.equippedStoreItems = await getEquippedItemObjects(
         this.bucketRepository,
         this.categoryRepository,
         host._id.toString(),
@@ -70,7 +71,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
       await Promise.all(
         obj.membersArray.map(async (member: any) => {
           if (member && member._id) {
-            member.equipedStoreItems = await getEquipedItemObjects(
+            member.equippedStoreItems = await getEquippedItemObjects(
               this.bucketRepository,
               this.categoryRepository,
               member._id.toString(),
@@ -163,5 +164,11 @@ export class AudioRoomRepository implements IAudioRoomRepository {
     roomId: string,
   ): Promise<IAudioRoomDocument | null> {
     return await this.audioRoomModel.findOne({ roomId });
+  }
+
+  async getAudioRoomByHostId(
+    hostId: string,
+  ): Promise<IAudioRoomDocument | null> {
+    return await this.audioRoomModel.findOne({ hostId }).select("roomId");
   }
 }

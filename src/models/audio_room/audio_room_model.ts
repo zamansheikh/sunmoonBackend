@@ -18,7 +18,7 @@ export interface IRoomMessage {
   currentTag: string;
   currentLevel: number;
   text: string;
-  equipedStoreItems: Record<string, string>;
+  equippedStoreItems: Record<string, string>;
 }
 
 export interface IMemberDetails {
@@ -31,7 +31,7 @@ export interface IMemberDetails {
   currentTag: string;
   currentLevel: number;
   _id: mongoose.Schema.Types.ObjectId | string;
-  equipedStoreItems: Record<string, string>;
+  equippedStoreItems: Record<string, string>;
 }
 
 export interface IBannedUser {
@@ -84,13 +84,13 @@ const RoomMessageSchema = new Schema<IRoomMessage>(
     avatar: { type: String, required: true },
     uid: { type: String, required: true },
     userId: { type: Number, required: true },
-    country: { type: String, required: true },
+    country: { type: String },
     _id: { type: Schema.Types.ObjectId, required: true },
     currentBackground: { type: String, required: true },
     currentTag: { type: String, required: true },
     currentLevel: { type: Number, required: true },
     text: { type: String, required: true },
-    equipedStoreItems: { type: Map, of: String, required: true },
+    equippedStoreItems: { type: Map, of: String },
   },
   { _id: false },
 );
@@ -111,7 +111,7 @@ const bannedUserSchema = new Schema<IBannedUser>(
   },
   { _id: false },
 );
-const MemberDetialsSchema = new Schema<IMemberDetails>(
+const MemberDetailsSchema = new Schema<IMemberDetails>(
   {
     name: { type: String, required: true },
     avatar: { type: String, required: true },
@@ -122,7 +122,7 @@ const MemberDetialsSchema = new Schema<IMemberDetails>(
     currentTag: { type: String, required: true },
     currentLevel: { type: Number, required: true },
     _id: { type: Schema.Types.ObjectId, required: true },
-    equipedStoreItems: { type: Map, of: String, required: true },
+    equippedStoreItems: { type: Map, of: String, required: true },
   },
   { _id: false },
 );
@@ -130,7 +130,7 @@ const MemberDetialsSchema = new Schema<IMemberDetails>(
 const AudioSeatSchema = new Schema<IAudioSeat>(
   {
     member: {
-      type: MemberDetialsSchema,
+      type: MemberDetailsSchema,
     },
     available: { type: Boolean, default: true },
   },

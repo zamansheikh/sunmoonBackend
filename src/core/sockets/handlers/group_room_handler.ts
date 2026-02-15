@@ -12,7 +12,7 @@ import mongoose from "mongoose";
 import { IMyBucketRepository } from "../../../repository/store/my_bucket_repository";
 import { IStoreCategoryRepository } from "../../../repository/store/store_category_repository";
 import {
-  getEquipedItemObjects,
+  getEquippedItemObjects,
   socketResponse,
 } from "../../Utils/helper_functions";
 import {
@@ -46,7 +46,7 @@ export interface ISerializedRoomData {
     currentTag: string;
     currentLevel: number;
     text: string;
-    equipedStoreItems: Record<string, string>;
+    equippedStoreItems: Record<string, string>;
   }[];
   broadcastersDetails: IMemberDetails[];
   adminDetails: IMemberDetails | null;
@@ -121,7 +121,7 @@ export async function registerGroupRoomHandler(
   }
 
   const userObj = userDetails!.toObject();
-  userObj.equipedStoreItems = await getEquipedItemObjects(
+  userObj.equippedStoreItems = await getEquippedItemObjects(
     bucketRepository,
     categoryRepository,
     userId,
@@ -155,7 +155,7 @@ export async function registerGroupRoomHandler(
       currentBackground: userDetails.currentLevelBackground as string,
       currentTag: userDetails.currentLevelTag as string,
       currentLevel: userDetails.level as number,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
     };
     if (room.messages.length >= 100) room.messages.shift();
     room.messages.push(message);
@@ -219,7 +219,7 @@ export async function registerGroupRoomHandler(
         currentBackground: userDetails.currentLevelBackground as string,
         currentTag: userDetails.currentLevelTag as string,
         currentLevel: userDetails.level as number,
-        equipedStoreItems: userObj.equipedStoreItems,
+        equippedStoreItems: userObj.equippedStoreItems,
         totalGiftSent: 0,
       },
       hostCoins: 0,
@@ -237,7 +237,7 @@ export async function registerGroupRoomHandler(
           currentBackground: userDetails.currentLevelBackground as string,
           currentTag: userDetails.currentLevelTag as string,
           currentLevel: userDetails.level as number,
-          equipedStoreItems: userObj.equipedStoreItems,
+          equippedStoreItems: userObj.equippedStoreItems,
           totalGiftSent: 0,
         },
       ],
@@ -260,7 +260,7 @@ export async function registerGroupRoomHandler(
           currentBackground: userDetails.currentLevelBackground as string,
           currentTag: userDetails.currentLevelTag as string,
           currentLevel: userDetails.level as number,
-          equipedStoreItems: userObj.equipedStoreItems,
+          equippedStoreItems: userObj.equippedStoreItems,
           totalGiftSent: 0,
         },
       ],
@@ -394,7 +394,7 @@ export async function registerGroupRoomHandler(
       country: broadcaster.country as string,
       _id: broadcaster._id as string,
       text: `Has been made an admin`,
-      equipedStoreItems: broadcaster.equipedStoreItems,
+      equippedStoreItems: broadcaster.equippedStoreItems,
     };
     io.to(roomId).emit(SocketChannels.sendMessage, message);
     io.to(roomId).emit(SocketChannels.makeAdmin, {
@@ -440,7 +440,7 @@ export async function registerGroupRoomHandler(
       });
       return;
     }
-    const targetEquipedStoreItems = await getEquipedItemObjects(
+    const targetEquippedStoreItems = await getEquippedItemObjects(
       bucketRepository,
       categoryRepository,
       targetId,
@@ -457,7 +457,7 @@ export async function registerGroupRoomHandler(
       country: targetIdDetails.country as string,
       _id: targetIdDetails._id as string,
       text: `left the room`,
-      equipedStoreItems: targetEquipedStoreItems,
+      equippedStoreItems: targetEquippedStoreItems,
     };
 
     if (room.mutedUsers.has(targetId)) {
@@ -540,7 +540,7 @@ export async function registerGroupRoomHandler(
       country: userDetails.country as string,
       _id: userDetails._id as string,
       text: `Has requested to join the call`,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
     };
     io.to(roomId).emit(SocketChannels.sendMessage, message);
 
@@ -551,7 +551,7 @@ export async function registerGroupRoomHandler(
       userId: userDetails.userId as number,
       country: userDetails.country as string,
       _id: userDetails._id as string,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
       currentBackground: userDetails.currentLevelBackground as string,
       currentLevel: userDetails.level as number,
       currentTag: userDetails.currentLevelTag as string,
@@ -672,7 +672,7 @@ export async function registerGroupRoomHandler(
       return;
     }
 
-    const targetEquipedStoreItems = await getEquipedItemObjects(
+    const targetEquippedStoreItems = await getEquippedItemObjects(
       bucketRepository,
       categoryRepository,
       targetId,
@@ -685,7 +685,7 @@ export async function registerGroupRoomHandler(
       userId: targetUser.userId as number,
       country: targetUser.country as string,
       _id: targetUser._id as string,
-      equipedStoreItems: targetEquipedStoreItems,
+      equippedStoreItems: targetEquippedStoreItems,
       currentBackground: targetUser.currentLevelBackground as string,
       currentLevel: targetUser.level as number,
       currentTag: targetUser.currentLevelTag as string,
@@ -725,7 +725,7 @@ export async function registerGroupRoomHandler(
       country: targetIdDetails.country as string,
       _id: targetIdDetails._id as string,
       text: `Has joined the call`,
-      equipedStoreItems: targetEquipedStoreItems,
+      equippedStoreItems: targetEquippedStoreItems,
     };
     io.to(roomId).emit(SocketChannels.sendMessage, message);
 
@@ -851,7 +851,7 @@ export async function registerGroupRoomHandler(
       });
       return;
     }
-    const targetEquipedStoreItems = await getEquipedItemObjects(
+    const targetEquippedStoreItems = await getEquippedItemObjects(
       bucketRepository,
       categoryRepository,
       targetId,
@@ -867,7 +867,7 @@ export async function registerGroupRoomHandler(
       country: targetIdDetails.country as string,
       _id: targetIdDetails._id as string,
       text: `Has been removed from call`,
-      equipedStoreItems: targetEquipedStoreItems,
+      equippedStoreItems: targetEquippedStoreItems,
     };
 
     io.to(roomId).emit(SocketChannels.sendMessage, message);
@@ -920,7 +920,7 @@ export async function registerGroupRoomHandler(
       userId: userDetails.userId as number,
       country: userDetails.country as string,
       _id: userDetails._id as string,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
       currentBackground: userDetails.currentLevelBackground as string,
       currentLevel: userDetails.level as number,
       currentTag: userDetails.currentLevelTag as string,
@@ -933,7 +933,7 @@ export async function registerGroupRoomHandler(
       userId: userDetails.userId as number,
       country: userDetails.country as string,
       _id: userDetails._id as string,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
       currentBackground: userDetails.currentLevelBackground as string,
       currentLevel: userDetails.level as number,
       currentTag: userDetails.currentLevelTag as string,
@@ -951,7 +951,7 @@ export async function registerGroupRoomHandler(
       currentBackground: userDetails.currentLevelBackground as string,
       currentTag: userDetails.currentLevelTag as string,
       currentLevel: userDetails.level as number,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
     };
     const details: IMemberDetails = {
       name: userDetails.name as string,
@@ -960,7 +960,7 @@ export async function registerGroupRoomHandler(
       userId: userDetails.userId as number,
       country: userDetails.country as string,
       _id: userDetails._id as string,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
       currentBackground: userDetails.currentLevelBackground as string,
       currentLevel: userDetails.level as number,
       currentTag: userDetails.currentLevelTag as string,
@@ -1025,7 +1025,7 @@ export async function registerGroupRoomHandler(
       country: userDetails.country as string,
       _id: userDetails._id as string,
       text: `left the room`,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
     };
     io.to(roomId).emit(SocketChannels.sendMessage, message);
 
@@ -1142,7 +1142,7 @@ export async function registerGroupRoomHandler(
       return;
     }
 
-    const targetEquipedStoreItems = await getEquipedItemObjects(
+    const targetEquippedStoreItems = await getEquippedItemObjects(
       bucketRepository,
       categoryRepository,
       targetId,
@@ -1159,7 +1159,7 @@ export async function registerGroupRoomHandler(
       country: targetIdDetails.country as string,
       _id: targetIdDetails._id as string,
       text: `Has been banned from this room`,
-      equipedStoreItems: targetEquipedStoreItems,
+      equippedStoreItems: targetEquippedStoreItems,
     };
 
     io.to(roomId).emit(SocketChannels.sendMessage, message);

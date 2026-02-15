@@ -179,5 +179,16 @@ export class AudioRoomController {
     });
   });
 
-  
+  leaveAudioRoom = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.leaveAudioRoom(myUserId, roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio room left successfully",
+      result: result,
+    });
+  });
 }

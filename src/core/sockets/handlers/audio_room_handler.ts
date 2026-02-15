@@ -9,7 +9,7 @@ import { IUserRepository } from "../../../repository/users/user_repository";
 import { IMyBucketRepository } from "../../../repository/store/my_bucket_repository";
 import { IStoreCategoryRepository } from "../../../repository/store/store_category_repository";
 import {
-  getEquipedItemObjects,
+  getEquippedItemObjects,
   isEmptyObject,
   socketResponse,
   updateUserXpFunc,
@@ -103,9 +103,9 @@ export const registerAudioRoomHandler = async (
     return;
   }
 
-  // attaching the equiped items from the store.
+  // attaching the equipped items from the store.
   const userObj = userDetails.toObject();
-  userObj.equipedStoreItems = await getEquipedItemObjects(
+  userObj.equippedStoreItems = await getEquippedItemObjects(
     bucketRepository,
     categoryRepository,
     userId,
@@ -144,7 +144,7 @@ export const registerAudioRoomHandler = async (
         currentBackground: userDetails.currentLevelBackground as string,
         currentTag: userDetails.currentLevelTag as string,
         currentLevel: userDetails.level as number,
-        equipedStoreItems: userObj.equipedStoreItems,
+        equippedStoreItems: userObj.equippedStoreItems,
         totalGiftSent: 0,
         isMuted: false,
       };
@@ -451,7 +451,7 @@ export const registerAudioRoomHandler = async (
       currentBackground: userDetails.currentLevelBackground as string,
       currentTag: userDetails.currentLevelTag as string,
       currentLevel: userDetails.level as number,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
       totalGiftSent: 0,
       isMuted: false,
     };
@@ -527,7 +527,7 @@ export const registerAudioRoomHandler = async (
       currentBackground: userDetails.currentLevelBackground as string,
       currentTag: userDetails.currentLevelTag as string,
       currentLevel: userDetails.level as number,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
     };
     if (room.messages.length >= 100) room.messages.shift();
     room.messages.push(message);
@@ -569,7 +569,7 @@ export const registerAudioRoomHandler = async (
       currentBackground: userDetails.currentLevelBackground as string,
       currentTag: userDetails.currentLevelTag as string,
       currentLevel: userDetails.level as number,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
       totalGiftSent: 0,
       isMuted: false,
     };
@@ -883,7 +883,7 @@ export const registerAudioRoomHandler = async (
       currentBackground: userDetails.currentLevelBackground as string,
       currentTag: userDetails.currentLevelTag as string,
       currentLevel: userDetails.level as number,
-      equipedStoreItems: userObj.equipedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems,
     };
     if (room.messages.length >= 100) room.messages.shift();
     room.messages.push(message);
@@ -1098,7 +1098,7 @@ export const registerAudioRoomHandler = async (
             currentBackground: leftUserDetails[0].currentBackground as string,
             currentTag: leftUserDetails[0].currentTag as string,
             currentLevel: leftUserDetails[0].currentLevel as number,
-            equipedStoreItems: leftUserDetails[0].equipedStoreItems,
+            equippedStoreItems: leftUserDetails[0].equippedStoreItems,
           };
           message.text = `left seat-${i}`;
 
@@ -1709,9 +1709,9 @@ export const registerAudioRoomHandler = async (
         "activityZone",
       ]);
 
-      // attaching the equiped items from the store.
+      // attaching the equipped items from the store.
       const userObj = partner!.toObject();
-      userObj.equipedStoreItems = await getEquipedItemObjects(
+      userObj.equippedStoreItems = await getEquippedItemObjects(
         bucketRepository,
         categoryRepository,
         userId,
@@ -1728,7 +1728,7 @@ export const registerAudioRoomHandler = async (
         currentBackground: partner!.currentLevelBackground as string,
         currentTag: partner!.currentLevelTag as string,
         currentLevel: partner!.level as number,
-        equipedStoreItems: userObj.equipedStoreItems,
+        equippedStoreItems: userObj.equippedStoreItems,
         totalGiftSent: 0,
         isMuted: false,
       };

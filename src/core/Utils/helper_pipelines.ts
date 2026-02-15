@@ -4,7 +4,7 @@ import { DatabaseNames } from "./enums";
  * - Matches a user by _id (using let variable)
  * - Looks up equipped store items
  * - Transforms them into the desired { categoryName: svgaFile } object
- * - Returns a clean user object with equipedStoreItems field
+ * - Returns a clean user object with equippedStoreItems field
  */
 export const userWithEquippedItemsPipeline = (
   userIdVarName: string = "userId",
@@ -98,26 +98,26 @@ export const userWithEquippedItemsPipeline = (
                 $replaceRoot: { newRoot: "$transformedItem" },
               },
             ],
-            as: "equipedItem",
+            as: "equippedItem",
           },
         },
         {
           $unwind: {
-            path: "$equipedItem",
+            path: "$equippedItem",
             preserveNullAndEmptyArrays: true,
           },
         },
         {
-          $replaceRoot: { newRoot: "$equipedItem" },
+          $replaceRoot: { newRoot: "$equippedItem" },
         },
       ],
-      as: "equipedStoreItems",
+      as: "equippedStoreItems",
     },
   },
   {
     $addFields: {
-      equipedStoreItems: {
-        $mergeObjects: "$equipedStoreItems",
+      equippedStoreItems: {
+        $mergeObjects: "$equippedStoreItems",
       },
     },
   },
@@ -134,7 +134,7 @@ export const userWithEquippedItemsPipeline = (
       currentLevelTag: 1,
       currentLevelBackground: 1,
       userId: 1,
-      equipedStoreItems: 1,
+      equippedStoreItems: 1,
       createdAt: 1,
       // exclude: password, email, etc.
     },

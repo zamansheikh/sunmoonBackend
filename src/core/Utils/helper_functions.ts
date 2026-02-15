@@ -226,24 +226,24 @@ export function validateNumber(number: any, fieldName: string) {
     );
 }
 
-export async function getEquipedItemObjects(
+export async function getEquippedItemObjects(
   repository: IMyBucketRepository,
   catRepository: IStoreCategoryRepository,
   userId: string,
 ): Promise<Record<string, any>> {
-  const equipedBuccket = await repository.getEquipedBuckets(userId);
-  let equipedFeatures: Record<string, any> = {};
-  for (let i = 0; i < equipedBuccket.length; i++) {
+  const equippedBucket = await repository.getEquippedBuckets(userId);
+  let equippedFeatures: Record<string, any> = {};
+  for (let i = 0; i < equippedBucket.length; i++) {
     if (
-      typeof equipedBuccket[i].itemId == "string" ||
-      equipedBuccket[i].itemId instanceof Types.ObjectId
+      typeof equippedBucket[i].itemId == "string" ||
+      equippedBucket[i].itemId instanceof Types.ObjectId
     )
       throw new AppError(StatusCodes.CONFLICT, "itemId is not populated");
-    const item = equipedBuccket[i].itemId as IStoreItem;
+    const item = equippedBucket[i].itemId as IStoreItem;
     if (!item) continue;
     if (item.bundleFiles && item.bundleFiles.length > 0) {
       for (let j = 0; j < item.bundleFiles.length; j++) {
-        equipedFeatures[item.bundleFiles[j].categoryName] =
+        equippedFeatures[item.bundleFiles[j].categoryName] =
           item.bundleFiles[j].svgaFile;
       }
     } else {
@@ -252,26 +252,26 @@ export async function getEquipedItemObjects(
       );
       if (!category)
         throw new AppError(StatusCodes.NOT_FOUND, "category not found");
-      equipedFeatures[category.title] = item.svgaFile;
+      equippedFeatures[category.title] = item.svgaFile;
     }
   }
-  return equipedFeatures;
+  return equippedFeatures;
 }
 
 export async function checkPremiumItem(
   repository: IMyBucketRepository,
   userId: string,
 ): Promise<boolean> {
-  const equipedBuccket = await repository.getEquipedBuckets(userId);
+  const equippedBucket = await repository.getEquippedBuckets(userId);
 
-  if (equipedBuccket.length != 1) return false;
+  if (equippedBucket.length != 1) return false;
 
   if (
-    typeof equipedBuccket[0].itemId == "string" ||
-    equipedBuccket[0].itemId instanceof Types.ObjectId
+    typeof equippedBucket[0].itemId == "string" ||
+    equippedBucket[0].itemId instanceof Types.ObjectId
   )
     throw new AppError(StatusCodes.CONFLICT, "itemId is not populated");
-  const item = equipedBuccket[0].itemId as IStoreItem;
+  const item = equippedBucket[0].itemId as IStoreItem;
   if (item.isPremium && item.name == "SVIP") return true;
   return false;
 }

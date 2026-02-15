@@ -805,7 +805,7 @@ export default class SocketServer {
         currentBackground: roomData.hostDetails!.currentBackground as string,
         currentTag: roomData.hostDetails!.currentTag as string,
         currentLevel: roomData.hostDetails!.currentLevel as number,
-        equipedStoreItems: roomData.hostDetails!.equipedStoreItems,
+        equippedStoreItems: roomData.hostDetails!.equippedStoreItems,
       };
       audioRoom.messages.push(message);
       socketResponse(this.io, SocketAudioChannels.SendMessage, roomId, {
@@ -854,7 +854,7 @@ export default class SocketServer {
         currentBackground: leftUserDetails[0].currentBackground as string,
         currentTag: leftUserDetails[0].currentTag as string,
         currentLevel: leftUserDetails[0].currentLevel as number,
-        equipedStoreItems: leftUserDetails[0].equipedStoreItems,
+        equippedStoreItems: leftUserDetails[0].equippedStoreItems,
       };
       // remove from seats
       if (
