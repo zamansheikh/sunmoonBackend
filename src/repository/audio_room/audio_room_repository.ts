@@ -166,9 +166,8 @@ export class AudioRoomRepository implements IAudioRoomRepository {
     return await this.audioRoomModel.findOne({ roomId });
   }
 
-  async getAudioRoomByHostId(
-    hostId: string,
-  ): Promise<IAudioRoomDocument | null> {
-    return await this.audioRoomModel.findOne({ hostId }).select("roomId");
+  async getAudioRoomByHostId(hostId: string): Promise<string | null> {
+    const room = await this.audioRoomModel.findOne({ hostId }).select("roomId");
+    return room ? room.roomId : null;
   }
 }

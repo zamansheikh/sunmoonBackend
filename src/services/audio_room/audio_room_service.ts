@@ -684,6 +684,6 @@ export class AudioRoomService implements IAudioRoomService {
     if (!audioRoom) {
       throw new AppError(404, "Audio room not found");
     }
-    return audioRoom;
+    return await this.audioRoomRepository.getAudioRoomById(audioRoom);
   }
 }
