@@ -4,6 +4,9 @@ import {
   IAudioRoom,
   IAudioRoomDocument,
 } from "../../models/audio_room/audio_room_model";
+import { AudioRoomRepository } from "../../repository/audio_room/audio_room_repository";
+import UserRepository from "../../repository/users/user_repository";
+import { AudioRoomChannels } from "../Utils/enums";
 
 export default class SingletonSocketServer {
   private static instance: SingletonSocketServer;
@@ -117,5 +120,49 @@ export default class SingletonSocketServer {
       roomLevel: room.roomLevel,
       roomPartners: room.roomPartners,
     };
+  }
+
+  public handleAudioRoomDisconnection(
+    userId: string,
+    room: IAudioRoomDocument,
+    roomRepository: AudioRoomRepository,
+    userRepository: UserRepository,
+  ) {
+    const isHost = room.hostId === userId;
+    if (isHost) {
+      // remove from seat if seated
+
+      // Check host seat
+      if (room.hostSeat?.member?._id?.toString() === userId) {
+        room.hostSeat.member = undefined;
+        this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
+          seatKey: "hostSeat",
+          member: {},
+        });
+      }
+
+      // Check other seats
+      for (const seat of room.seats.values()) {
+        if (seat.member?._id?.toString() === userId) {
+          seat.member = undefined;
+          this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
+            seatKey: seat.seatKey,
+            member: {},
+          });
+        }
+      }
+      // leave the audio room -> send roomwide message
+
+      // disconnect from socket room
+    }
+
+    const isMember = room.members.has(userId);
+    if (isMember) {
+      // remove from seat if seated
+      // leave the audio room -> send roomwide message
+      // remove from members and member details
+      // remove from muted users
+      // disconnect from socket room
+    }
   }
 }
