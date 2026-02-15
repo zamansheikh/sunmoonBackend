@@ -686,4 +686,21 @@ export class AudioRoomService implements IAudioRoomService {
     }
     return await this.audioRoomRepository.getAudioRoomById(audioRoom);
   }
+
+  async searchAudioRoom(
+    myId: string,
+    userId: number,
+  ): Promise<IAudioRoomDocument> {
+    const targetUser = await this.userRepository.findUserByShortId(userId);
+    if (!targetUser) {
+      throw new AppError(404, "User not found");
+    }
+    const audioRoomId = await this.audioRoomRepository.getAudioRoomByHostId(
+      targetUser._id as string,
+    );
+    if (!audioRoomId) {
+      throw new AppError(404, "Audio room not found");
+    }
+    return await this.audioRoomRepository.getAudioRoomById(audioRoomId);
+  }
 }
