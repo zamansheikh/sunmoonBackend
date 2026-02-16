@@ -194,7 +194,8 @@ export class AudioRoomController {
 
   updateRoomTitle = catchAsync(async (req: Request, res: Response) => {
     const myUserId = req.user!.id;
-    const { roomId, title } = req.body;
+    const { title } = req.body;
+    const roomId = req.params.roomId;
     validateFieldExistance(roomId, "roomId");
     validateFieldExistance(title, "title");
     const result = await this.Service.updateRoomTitle(myUserId, roomId, title);
@@ -208,7 +209,8 @@ export class AudioRoomController {
 
   updateRoomAnnouncement = catchAsync(async (req: Request, res: Response) => {
     const myUserId = req.user!.id;
-    const { roomId, announcement } = req.body;
+    const { announcement } = req.body;
+    const roomId = req.params.roomId;
     validateFieldExistance(roomId, "roomId");
     validateFieldExistance(announcement, "announcement");
     const result = await this.Service.updateRoomAnnouncement(
@@ -257,8 +259,6 @@ export class AudioRoomController {
   });
 
   getMyAudioRoom = catchAsync(async (req: Request, res: Response) => {
-    console.log(" i am alled");
-
     const myUserId = req.user!.id;
     const result = await this.Service.getMyAudioRoom(myUserId);
     sendResponse(res, {

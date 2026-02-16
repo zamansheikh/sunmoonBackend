@@ -35,6 +35,14 @@ router
   .post(authenticate(), audioRoomController.createAudioRoom)
   .get(audioRoomController.getAllAudioRooms);
 
+router
+  .route("/remove-from-seat")
+  .put(authenticate(), audioRoomController.removeFromSeat);
+
+router
+  .route("/my-room")
+  .get(authenticate(), audioRoomController.getMyAudioRoom);
+
 router.route("/:roomId").get(audioRoomController.getAudioRoomById);
 
 router
@@ -55,10 +63,6 @@ router
   .delete(authenticate(), audioRoomController.removeAdmin);
 
 router
-  .route("/remove-from-seat")
-  .put(authenticate(), audioRoomController.removeFromSeat);
-
-router
   .route("/:roomId/mute-unmute-user/:targetId")
   .put(authenticate(), audioRoomController.muteUnmuteUser);
 
@@ -72,10 +76,6 @@ router
   .post(authenticate(), audioRoomController.sendRoomMessage);
 
 router.route("/search/:shortId").get(audioRoomController.searchAudioRoom);
-
-router
-  .route("/my-room")
-  .get(authenticate(), audioRoomController.getMyAudioRoom);
 
 router
   .route("/:roomId/update-title")

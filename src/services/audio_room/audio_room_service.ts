@@ -726,7 +726,6 @@ export class AudioRoomService implements IAudioRoomService {
   }
 
   async getMyAudioRoom(myId: string): Promise<IAudioRoomDocument> {
-    console.log("audio room", myId);
     const user = await this.userRepository.findUserById(myId);
     if (!user) {
       throw new AppError(404, "User not found");
