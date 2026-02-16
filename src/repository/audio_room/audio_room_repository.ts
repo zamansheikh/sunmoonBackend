@@ -27,6 +27,7 @@ export interface IAudioRoomRepository {
   findByIdAndUpdate(
     id: string,
     data: Record<string, any>,
+    options?: Record<string, any>,
   ): Promise<IAudioRoomDocument>;
   deleteAudioRoom(roomId: string): Promise<IAudioRoomDocument>;
   getAllAudioRooms(): Promise<IAudioRoomDocument[]>;
@@ -152,9 +153,11 @@ export class AudioRoomRepository implements IAudioRoomRepository {
   async findByIdAndUpdate(
     id: string,
     data: Record<string, any>,
+    options?: Record<string, any>,
   ): Promise<IAudioRoomDocument> {
     const result = await this.audioRoomModel.findByIdAndUpdate(id, data, {
       new: true,
+      ...options,
     });
     if (!result) throw new AppError(404, "Audio room not found");
     return result;

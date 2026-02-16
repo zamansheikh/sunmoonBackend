@@ -65,8 +65,9 @@ export class AudioRoomController {
   joinAudioRoom = catchAsync(async (req: Request, res: Response) => {
     const myUserId = req.user!.id;
     const roomId = req.params.roomId;
+    const { password } = req.body;
     validateFieldExistance(roomId, "roomId");
-    const result = await this.Service.joinAudioRoom(roomId, myUserId);
+    const result = await this.Service.joinAudioRoom(roomId, myUserId, password);
     sendResponse(res, {
       success: true,
       statusCode: 200,

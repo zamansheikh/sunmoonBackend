@@ -705,6 +705,17 @@ export class AudioRoomService implements IAudioRoomService {
     if (!audioRoom.members.has(myId)) {
       throw new AppError(403, "You are not a member of this audio room");
     }
+    if (audioRoom.chatPrivacy == "none") {
+      throw new AppError(403, "Chat is disabled");
+    }
+    if (
+      audioRoom.chatPrivacy == "custom" &&
+      audioRoom.allowedUsersToChat &&
+      !audioRoom.allowedUsersToChat.has(myId)
+    ) {
+      throw new AppError(403, "You are not allowed to chat");
+    }
+
     const user = await this.userRepository.findUserById(myId);
     if (!user) {
       throw new AppError(404, "User not found");
@@ -1032,6 +1043,9 @@ export class AudioRoomService implements IAudioRoomService {
     // check if bannedTill is a valid date
     if (banType === ActivityZoneState.temporaryBlock && bannedTill) {
       const bannedTillDate = new Date(bannedTill);
+      if (isNaN(bannedTillDate.getTime())) {
+        throw new AppError(400, "Invalid date format for bannedTill");
+      }
       if (bannedTillDate < new Date()) {
         throw new AppError(400, "bannedTill cannot be in the past");
       }
@@ -1073,6 +1087,9 @@ export class AudioRoomService implements IAudioRoomService {
             "bannedUsers.$[elem].banType": banType,
             "bannedUsers.$[elem].bannedTill": bannedTill || "",
           },
+        },
+        {
+          arrayFilters: [{ "elem.user._id": targetId }],
         },
       );
     } else {
@@ -1252,6 +1269,7 @@ export class AudioRoomService implements IAudioRoomService {
         const seat = audioRoom.seats.get(seatKey);
         if (seat && seat.member && seat.member._id) {
           // someone is sitting here, emit leave event
+          console.log("emit leave event");
           socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
             seatKey: seatKey,
             member: {},
@@ -1262,11 +1280,8 @@ export class AudioRoomService implements IAudioRoomService {
 
     // update the seat count. The pre-save hook in the model will handle
     // adding/removing the actual seat entries in the map
-    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
-      $set: {
-        numberOfSeats: seatCount,
-      },
-    });
+    audioRoom.numberOfSeats = seatCount;
+    await (audioRoom as any).save();
 
     const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
     const socketInstance = SingletonSocketServer.getInstance();
