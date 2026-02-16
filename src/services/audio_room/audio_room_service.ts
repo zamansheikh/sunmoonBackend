@@ -5,7 +5,7 @@ import {
   ALLOWED_MESSAGES_COUNT,
   ROCKET_MILESTONES,
 } from "../../core/Utils/constants";
-import { AudioRoomChannels } from "../../core/Utils/enums";
+import { ActivityZoneState, AudioRoomChannels } from "../../core/Utils/enums";
 import { getEquippedItemObjects } from "../../core/Utils/helper_functions";
 import {
   IAudioRoom,
@@ -90,6 +90,28 @@ export interface IAudioRoomService {
   getMyAudioRoom(myId: string): Promise<IAudioRoomDocument>;
   lockAllSeats(myId: string, roomId: string): Promise<IAudioRoomDocument>;
   unlockAllSeats(myId: string, roomId: string): Promise<IAudioRoomDocument>;
+  banUser(
+    myId: string,
+    targetId: string,
+    roomId: string,
+    banType: ActivityZoneState,
+    bannedTill?: string,
+  ): Promise<IAudioRoomDocument>;
+  unbanUser(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument>;
+  updateRoomPassword({
+    myId,
+    roomId,
+    password,
+  }: {
+    myId: string;
+    roomId: string;
+    password: string;
+  }): Promise<IAudioRoomDocument>;
+  updateSeatCount(myId: string, roomId: string, seatCount: number): Promise<IAudioRoomDocument>;
 }
 
 export class AudioRoomService implements IAudioRoomService {
@@ -951,5 +973,233 @@ export class AudioRoomService implements IAudioRoomService {
       audioRoom: updatedRoom,
     });
     return updatedRoom;
+  }
+
+  async banUser(
+    myId: string,
+    targetId: string,
+    roomId: string,
+    banType: ActivityZoneState,
+    bannedTill?: string,
+  ): Promise<IAudioRoomDocument> {
+    // can't ban yourself
+    if (myId === targetId) {
+      throw new AppError(403, "You cannot ban yourself");
+    }
+    // validate room
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    // authority check (host or admin)
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1, targetId);
+
+    // validate target user
+    const targetUser = await this.userRepository.findUserById(targetId);
+    if (!targetUser) {
+      throw new AppError(404, "User not found");
+    }
+
+    // validate banType
+    if (!Object.values(ActivityZoneState).includes(banType)) {
+      throw new AppError(400, "Invalid ban type");
+    }
+    if (banType === ActivityZoneState.temporaryBlock && !bannedTill) {
+      throw new AppError(400, "bannedTill is required for temporary ban");
+    }
+
+    // build member details for the banned user entry
+    const targetUserObj = targetUser.toObject();
+    targetUserObj.equippedStoreItems = await getEquippedItemObjects(
+      this.bucketRepository,
+      this.categoryRepository,
+      targetId,
+    );
+    const memberDetails: IMemberDetails = {
+      _id: targetUserObj._id as string,
+      name: targetUserObj.name as string,
+      avatar: targetUserObj.avatar as string,
+      uid: targetUserObj.uid as string,
+      userId: targetUserObj.userId as number,
+      country: targetUserObj.country as string,
+      currentBackground: targetUserObj.currentLevelBackground as string,
+      currentTag: targetUserObj.currentLevelTag as string,
+      currentLevel: targetUserObj.level as number,
+      equippedStoreItems: targetUserObj.equippedStoreItems as Record<
+        string,
+        string
+      >,
+    };
+
+    // check if already banned → update, otherwise push
+    const existingBan = audioRoom.bannedUsers.find(
+      (b) => b.user._id?.toString() === targetId,
+    );
+    if (existingBan) {
+      // update existing ban entry
+      await this.audioRoomRepository.findByIdAndUpdate(
+        audioRoom._id as string,
+        {
+          $set: {
+            "bannedUsers.$[elem].banType": banType,
+            "bannedUsers.$[elem].bannedTill": bannedTill || "",
+          },
+        },
+      );
+    } else {
+      // push new ban entry
+      await this.audioRoomRepository.findByIdAndUpdate(
+        audioRoom._id as string,
+        {
+          $push: {
+            bannedUsers: {
+              user: memberDetails,
+              banType,
+              bannedTill: bannedTill || "",
+            },
+          },
+        },
+      );
+    }
+
+    // emit instance
+    const socketInstance = SingletonSocketServer.getInstance();
+
+    // remove target from seats
+    const updateQuery: any = { $unset: {} };
+    let seatRemoved = false;
+    // check host seat
+    if (audioRoom.hostSeat.member?._id?.toString() === targetId) {
+      updateQuery.$set = { hostSeat: { available: true, member: null } };
+      seatRemoved = true;
+      socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
+        seatKey: "hostSeat",
+        member: {},
+      });
+    }
+    // check regular seats
+    for (const [key, seat] of audioRoom.seats.entries()) {
+      if (seat.member?._id?.toString() === targetId) {
+        if (!updateQuery.$set) updateQuery.$set = {};
+        updateQuery.$set[`seats.${key}`] = { available: true, member: null };
+        socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
+          seatKey: `seats.${key}`,
+          member: {},
+        });
+      }
+    }
+
+    // remove from members
+    if (!updateQuery.$unset) updateQuery.$unset = {};
+    updateQuery.$unset[`members.${targetId}`] = "";
+
+    // also pull from membersArray
+    if (!updateQuery.$pull) updateQuery.$pull = {};
+    updateQuery.$pull["membersArray"] = targetId;
+
+    // clean up empty $unset / $set
+    if (Object.keys(updateQuery.$unset).length === 0) delete updateQuery.$unset;
+
+    await this.audioRoomRepository.findByIdAndUpdate(
+      audioRoom._id as string,
+      updateQuery,
+    );
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.BanUser, {
+      bannedUsers: updatedRoom.bannedUsers,
+    });
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomDetails, {
+      audioRoom: updatedRoom,
+    });
+    return updatedRoom;
+  }
+
+  async unbanUser(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument> {
+    // can't unban yourself
+    if (myId === targetId) {
+      throw new AppError(403, "You cannot unban yourself");
+    }
+    // validate room
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    // authority check (host or admin)
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1, targetId);
+
+    // check if target is actually banned
+    const isBanned = audioRoom.bannedUsers.some(
+      (b) => b.user._id?.toString() === targetId,
+    );
+    if (!isBanned) {
+      throw new AppError(404, "User is not banned");
+    }
+
+    // remove from bannedUsers
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $pull: {
+        bannedUsers: { "user._id": targetId },
+      },
+    });
+
+    // emit socket events
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.UnBanUser, {
+      bannedUsers: updatedRoom.bannedUsers,
+    });
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomDetails, {
+      audioRoom: updatedRoom,
+    });
+    return updatedRoom;
+  }
+
+  async updateRoomPassword({
+    myId,
+    roomId,
+    password,
+  }: {
+    myId: string;
+    roomId: string;
+    password: string;
+  }): Promise<IAudioRoomDocument> {
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    const helperInstance = AudioRoomHelper.getInstance();
+    helperInstance.checkAuthorityInAudioRoom(myId, audioRoom, 1);
+
+    // if password is empty string → unlock the room
+    // if password has a value → lock the room with the password
+    const isLocked = password !== "";
+
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $set: {
+        password: password,
+        isLocked: isLocked,
+      },
+    });
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomDetails, {
+      audioRoom: updatedRoom,
+    });
+    return updatedRoom;
+  }
+
+  async updateSeatCount(myId: string, roomId: string, seatCount: number): Promise<IAudioRoomDocument> {
+    
   }
 }

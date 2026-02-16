@@ -7,6 +7,7 @@ import {
   validateNumber,
 } from "../../core/Utils/helper_functions";
 import sendResponse from "../../core/Utils/send_response";
+import { ActivityZoneState } from "../../core/Utils/enums";
 
 export class AudioRoomController {
   Service: IAudioRoomService;
@@ -337,6 +338,65 @@ export class AudioRoomController {
       success: true,
       statusCode: 200,
       message: "Audio room photo updated successfully",
+      result: result,
+    });
+  });
+
+  banUser = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const { roomId, targetId } = req.params;
+    const { banType, bannedTill } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(targetId, "targetId");
+    validateFieldExistance(banType, "banType");
+    const result = await this.Service.banUser(
+      myUserId,
+      targetId,
+      roomId,
+      banType as ActivityZoneState,
+      bannedTill,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "User banned successfully",
+      result: result,
+    });
+  });
+
+  unbanUser = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const { roomId, targetId } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(targetId, "targetId");
+    const result = await this.Service.unbanUser(myUserId, targetId, roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "User unbanned successfully",
+      result: result,
+    });
+  });
+
+  updateRoomPassword = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const { password } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    if (password === undefined || password === null) {
+      throw new AppError(400, "password is required");
+    }
+    const result = await this.Service.updateRoomPassword({
+      myId: myUserId,
+      roomId,
+      password,
+    });
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: password
+        ? "Room locked successfully"
+        : "Room unlocked successfully",
       result: result,
     });
   });

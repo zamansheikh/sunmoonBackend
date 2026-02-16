@@ -26,16 +26,16 @@ export interface IMemberDetails {
   avatar: string;
   uid: string;
   userId: number;
-  country: string;
+  country?: string;
   currentBackground: string;
   currentTag: string;
   currentLevel: number;
   _id: mongoose.Schema.Types.ObjectId | string;
-  equippedStoreItems: Record<string, string>;
+  equippedStoreItems?: Record<string, string>;
 }
 
 export interface IBannedUser {
-  user: mongoose.Schema.Types.ObjectId | string;
+  user: IMemberDetails;
   banType: ActivityZoneState;
   bannedTill: string;
 }
@@ -95,22 +95,6 @@ const RoomMessageSchema = new Schema<IRoomMessage>(
   { _id: false },
 );
 
-const bannedUserSchema = new Schema<IBannedUser>(
-  {
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: DatabaseNames.User,
-      required: true,
-    },
-    banType: {
-      type: String,
-      enum: Object.values(ActivityZoneState),
-      required: true,
-    },
-    bannedTill: { type: String },
-  },
-  { _id: false },
-);
 const MemberDetailsSchema = new Schema<IMemberDetails>(
   {
     name: { type: String, required: true },
@@ -123,6 +107,18 @@ const MemberDetailsSchema = new Schema<IMemberDetails>(
     currentLevel: { type: Number, required: true },
     _id: { type: Schema.Types.ObjectId, required: true },
     equippedStoreItems: { type: Map, of: String, required: true },
+  },
+  { _id: false },
+);
+const bannedUserSchema = new Schema<IBannedUser>(
+  {
+    user: MemberDetailsSchema,
+    banType: {
+      type: String,
+      enum: Object.values(ActivityZoneState),
+      required: true,
+    },
+    bannedTill: { type: String },
   },
   { _id: false },
 );

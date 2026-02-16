@@ -100,4 +100,16 @@ router
   .route("/:roomId/update-room-photo")
   .put(authenticate(), audioRoomController.updateRoomPhoto);
 
+router
+  .route("/:roomId/ban-user/:targetId")
+  .put(authenticate(), audioRoomController.banUser);
+
+router
+  .route("/:roomId/unban-user/:targetId")
+  .put(authenticate(), audioRoomController.unbanUser);
+
+router
+  .route("/:roomId/update-password")
+  .put(authenticate(), audioRoomController.updateRoomPassword);
+
 export default router;
