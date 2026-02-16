@@ -238,6 +238,14 @@ export class AudioRoomService implements IAudioRoomService {
       throw new AppError(404, "User not found");
     }
 
+    // check if user is banned
+    const isBanned = audioRoom.bannedUsers.some(
+      (b) => b.user._id?.toString() === userId,
+    );
+    if (isBanned) {
+      throw new AppError(403, "User is banned");
+    }
+
     // prepare user data
     const userObj = user.toObject();
     userObj.equippedStoreItems = await getEquippedItemObjects(
@@ -255,6 +263,7 @@ export class AudioRoomService implements IAudioRoomService {
         throw new AppError(401, "Incorrect password");
       }
     }
+
     // prepare user info
     const userInfo: IMemberDetails = {
       _id: userObj._id as string,
@@ -1018,6 +1027,14 @@ export class AudioRoomService implements IAudioRoomService {
     }
     if (banType === ActivityZoneState.temporaryBlock && !bannedTill) {
       throw new AppError(400, "bannedTill is required for temporary ban");
+    }
+
+    // check if bannedTill is a valid date
+    if (banType === ActivityZoneState.temporaryBlock && bannedTill) {
+      const bannedTillDate = new Date(bannedTill);
+      if (bannedTillDate < new Date()) {
+        throw new AppError(400, "bannedTill cannot be in the past");
+      }
     }
 
     // build member details for the banned user entry
