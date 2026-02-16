@@ -66,4 +66,22 @@ router
   .route("/:roomId/leave")
   .put(authenticate(), audioRoomController.leaveAudioRoom);
 
+router
+  .route("/:roomId/messages")
+  .delete(authenticate(), audioRoomController.clearChatHistory)
+  .post(authenticate(), audioRoomController.sendRoomMessage);
+
+router.route("/search/:shortId").get(audioRoomController.searchAudioRoom);
+
+router
+  .route("/my-room")
+  .get(authenticate(), audioRoomController.getMyAudioRoom);
+
+router
+  .route("/:roomId/update-title")
+  .put(authenticate(), audioRoomController.updateRoomTitle);
+router
+  .route("/:roomId/update-announcement")
+  .put(authenticate(), audioRoomController.updateRoomAnnouncement);
+
 export default router;

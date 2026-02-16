@@ -191,4 +191,93 @@ export class AudioRoomController {
       result: result,
     });
   });
+
+  updateRoomTitle = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const { roomId, title } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(title, "title");
+    const result = await this.Service.updateRoomTitle(myUserId, roomId, title);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio room title updated successfully",
+      result: result,
+    });
+  });
+
+  updateRoomAnnouncement = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const { roomId, announcement } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(announcement, "announcement");
+    const result = await this.Service.updateRoomAnnouncement(
+      myUserId,
+      roomId,
+      announcement,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio room announcement updated successfully",
+      result: result,
+    });
+  });
+
+  sendRoomMessage = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const { message } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(message, "message");
+    const result = await this.Service.sendRoomWideMessage(
+      myUserId,
+      roomId,
+      message,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio room message sent successfully",
+      result: result,
+    });
+  });
+
+  clearChatHistory = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.clearChat(myUserId, roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio room chat history cleared successfully",
+      result: result,
+    });
+  });
+
+  getMyAudioRoom = catchAsync(async (req: Request, res: Response) => {
+    console.log(" i am alled");
+
+    const myUserId = req.user!.id;
+    const result = await this.Service.getMyAudioRoom(myUserId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio rooms fetched successfully",
+      result: result,
+    });
+  });
+
+  searchAudioRoom = catchAsync(async (req: Request, res: Response) => {
+    const search = req.params.shortId;
+    validateNumber(search, "search");
+    const result = await this.Service.searchAudioRoom(Number(search));
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio rooms fetched successfully",
+      result: result,
+    });
+  });
 }

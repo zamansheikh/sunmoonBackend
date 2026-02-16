@@ -192,7 +192,7 @@ export default class SingletonSocketServer {
       if (room.messages.length > ALLOWED_MESSAGES_COUNT) room.messages.shift();
       room.messages.push(leaveMessage);
       this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
-        leaveMessage,
+        message: leaveMessage,
       });
       // leave the audio room -> send roomwide message
       room.isHostPresent = false;
@@ -229,7 +229,7 @@ export default class SingletonSocketServer {
       if (room.messages.length > ALLOWED_MESSAGES_COUNT) room.messages.shift();
       room.messages.push(leaveMessage);
       this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
-        leaveMessage,
+        message: leaveMessage,
       });
       // leave the audio room -> send roomwide message
       this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
