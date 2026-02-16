@@ -77,7 +77,7 @@ export default class SingletonSocketServer {
           const room = this.io.sockets.adapter.rooms.get(roomId);
           console.log(room);
           if (!room) return;
-          this.emitToRoom(roomId, SocketAudioChannels.SendAudioEmoji, {
+          this.emitToRoom(roomId, AudioRoomChannels.SendEmoji, {
             seatKey,
             emoji,
             sender: userId,
