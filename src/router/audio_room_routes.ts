@@ -84,4 +84,20 @@ router
   .route("/:roomId/update-announcement")
   .put(authenticate(), audioRoomController.updateRoomAnnouncement);
 
+router
+  .route("/:roomId/lock-unlock-seat/:seatKey")
+  .put(authenticate(), audioRoomController.lockUnlockSeat);
+
+router
+  .route("/:roomId/lock-all-seats")
+  .put(authenticate(), audioRoomController.lockAllSeats);
+
+router
+  .route("/:roomId/unlock-all-seats")
+  .put(authenticate(), audioRoomController.unlockAllSeats);
+
+router
+  .route("/:roomId/update-room-photo")
+  .put(authenticate(), audioRoomController.updateRoomPhoto);
+
 export default router;

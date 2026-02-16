@@ -61,6 +61,7 @@ export default class SingletonSocketServer {
         this.onlineUsers.set(userId, socket.id);
         console.log(`User ${userId} connected`);
       }
+      
 
       socket.on("disconnect", () => {
         // remove the users when disconnected from online users

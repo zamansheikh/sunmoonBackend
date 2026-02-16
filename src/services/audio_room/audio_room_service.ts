@@ -803,4 +803,153 @@ export class AudioRoomService implements IAudioRoomService {
     });
     return updatedRoom;
   }
+
+  async lockUnlockSeat(
+    myId: string,
+    roomId: string,
+    seatKey: string,
+  ): Promise<IAudioRoomDocument> {
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) throw new AppError(404, "Audio Room Not Found");
+
+    // only host or admin can lock/unlock seats
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1);
+
+    // host seat cannot be locked
+    if (seatKey === "hostSeat") {
+      throw new AppError(403, "Cannot lock/unlock the host seat");
+    }
+
+    const seat = audioRoom.seats.get(seatKey);
+    if (!seat) {
+      throw new AppError(404, "Seat not found");
+    }
+
+    // toggle: if currently available -> lock it (available: false), if locked -> unlock it (available: true)
+    const newAvailability = !seat.available;
+
+    // if locking a seat that has a member, remove the member first
+    const updateQuery: any = {
+      $set: {
+        [`seats.${seatKey}.available`]: newAvailability,
+      },
+    };
+    if (!newAvailability && seat.member) {
+      updateQuery.$set[`seats.${seatKey}.member`] = null;
+      // notify the room that the user left the seat
+      const socketInstance = SingletonSocketServer.getInstance();
+      socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
+        seatKey,
+        member: {},
+      });
+    }
+
+    await this.audioRoomRepository.findByIdAndUpdate(
+      audioRoom._id as string,
+      updateQuery,
+    );
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomDetails, {
+      audioRoom: updatedRoom,
+    });
+    return updatedRoom;
+  }
+
+  async lockAllSeats(
+    myId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument> {
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) throw new AppError(404, "Audio Room Not Found");
+
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1);
+
+    const updateQuery: any = { $set: {} };
+    const socketInstance = SingletonSocketServer.getInstance();
+
+    for (const [key, seat] of audioRoom.seats.entries()) {
+      updateQuery.$set[`seats.${key}.available`] = false;
+      // remove seated members
+      if (seat.member) {
+        updateQuery.$set[`seats.${key}.member`] = null;
+        socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
+          seatKey: key,
+          member: {},
+        });
+      }
+    }
+
+    await this.audioRoomRepository.findByIdAndUpdate(
+      audioRoom._id as string,
+      updateQuery,
+    );
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomDetails, {
+      audioRoom: updatedRoom,
+    });
+    return updatedRoom;
+  }
+
+  async unlockAllSeats(
+    myId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument> {
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) throw new AppError(404, "Audio Room Not Found");
+
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1);
+
+    const updateQuery: any = { $set: {} };
+
+    for (const key of audioRoom.seats.keys()) {
+      updateQuery.$set[`seats.${key}.available`] = true;
+    }
+
+    await this.audioRoomRepository.findByIdAndUpdate(
+      audioRoom._id as string,
+      updateQuery,
+    );
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomDetails, {
+      audioRoom: updatedRoom,
+    });
+    return updatedRoom;
+  }
+
+  async updateRoomPhoto(
+    myId: string,
+    roomId: string,
+    roomPhoto: string,
+  ): Promise<IAudioRoomDocument> {
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) throw new AppError(404, "Audio Room Not Found");
+
+    const helperInstance = AudioRoomHelper.getInstance();
+    helperInstance.checkAuthorityInAudioRoom(myId, audioRoom, 1);
+
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $set: {
+        roomPhoto: roomPhoto,
+      },
+    });
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomDetails, {
+      audioRoom: updatedRoom,
+    });
+    return updatedRoom;
+  }
 }

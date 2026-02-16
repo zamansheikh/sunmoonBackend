@@ -280,4 +280,64 @@ export class AudioRoomController {
       result: result,
     });
   });
+
+  lockUnlockSeat = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const seatKey = req.params.seatKey;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(seatKey, "seatKey");
+    const result = await this.Service.lockUnlockSeat(myUserId, roomId, seatKey);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Seat lock status updated successfully",
+      result: result,
+    });
+  });
+
+  lockAllSeats = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.lockAllSeats(myUserId, roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "All seats locked successfully",
+      result: result,
+    });
+  });
+
+  unlockAllSeats = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.unlockAllSeats(myUserId, roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "All seats unlocked successfully",
+      result: result,
+    });
+  });
+
+  updateRoomPhoto = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const { roomPhoto } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(roomPhoto, "roomPhoto");
+    const result = await this.Service.updateRoomPhoto(
+      myUserId,
+      roomId,
+      roomPhoto,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Audio room photo updated successfully",
+      result: result,
+    });
+  });
 }
