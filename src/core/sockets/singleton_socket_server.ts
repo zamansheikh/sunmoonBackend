@@ -9,7 +9,7 @@ import { AudioRoomRepository } from "../../repository/audio_room/audio_room_repo
 import UserRepository, {
   IUserRepository,
 } from "../../repository/users/user_repository";
-import { AudioRoomChannels } from "../Utils/enums";
+import { AudioRoomChannels, SocketAudioChannels } from "../Utils/enums";
 import { IMyBucketRepository } from "../../repository/store/my_bucket_repository";
 import { IStoreCategoryRepository } from "../../repository/store/store_category_repository";
 import { getEquippedItemObjects } from "../Utils/helper_functions";
@@ -61,7 +61,29 @@ export default class SingletonSocketServer {
         this.onlineUsers.set(userId, socket.id);
         console.log(`User ${userId} connected`);
       }
-      
+
+      // Send Audio Emoji
+      socket.on(
+        AudioRoomChannels.SendEmoji,
+        ({
+          roomId,
+          seatKey,
+          emoji,
+        }: {
+          roomId: string;
+          seatKey: string;
+          emoji: string;
+        }) => {
+          const room = this.io.sockets.adapter.rooms.get(roomId);
+          console.log(room);
+          if (!room) return;
+          this.emitToRoom(roomId, SocketAudioChannels.SendAudioEmoji, {
+            seatKey,
+            emoji,
+            sender: userId,
+          });
+        },
+      );
 
       socket.on("disconnect", () => {
         // remove the users when disconnected from online users

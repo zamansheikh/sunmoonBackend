@@ -101,6 +101,7 @@ export enum AudioRoomChannels {
   audioAdminUpdates = "audio-admin-updates",
   muteUnmuteUser = "mute-unmute-user",
   AudioRoomDetails = "room-details",
+  SendEmoji = "send-emoji",
 }
 
 export enum SocketChannels {
