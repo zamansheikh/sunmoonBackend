@@ -8,6 +8,7 @@ import {
 } from "../../core/Utils/helper_functions";
 import sendResponse from "../../core/Utils/send_response";
 import { ActivityZoneState } from "../../core/Utils/enums";
+import { isValidObjectId } from "mongoose";
 
 export class AudioRoomController {
   Service: IAudioRoomService;
@@ -397,6 +398,61 @@ export class AudioRoomController {
       message: password
         ? "Room locked successfully"
         : "Room unlocked successfully",
+      result: result,
+    });
+  });
+
+  updateSeatCount = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const { seatCount } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    validateNumber(seatCount, "seatCount");
+
+    if (seatCount != 6 && seatCount != 8 && seatCount != 12) {
+      throw new AppError(400, "Number of seats must be 6, 8 or 12");
+    }
+
+    const result = await this.Service.updateSeatCount(
+      myUserId,
+      roomId,
+      seatCount,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Seat count updated successfully",
+      result: result,
+    });
+  });
+
+  setChatPrivacy = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const roomId = req.params.roomId;
+    const { chatPrivacy } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    if (!chatPrivacy) {
+      throw new AppError(400, "chatPrivacy is required");
+    }
+    if (Array.isArray(chatPrivacy)) {
+      const isValid = chatPrivacy.every((id) => isValidObjectId(id));
+      if (!isValid) {
+        throw new AppError(400, "Invalid user ids");
+      }
+    } else {
+      if (chatPrivacy !== "any" && chatPrivacy !== "none") {
+        throw new AppError(400, "Invalid chat privacy");
+      }
+    }
+    const result = await this.Service.setChatPrivacy(
+      myUserId,
+      roomId,
+      chatPrivacy,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Chat privacy updated successfully",
       result: result,
     });
   });

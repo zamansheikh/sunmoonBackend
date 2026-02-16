@@ -112,4 +112,12 @@ router
   .route("/:roomId/update-password")
   .put(authenticate(), audioRoomController.updateRoomPassword);
 
+router
+  .route("/:roomId/update-seat-count")
+  .put(authenticate(), audioRoomController.updateSeatCount);
+
+router
+  .route("/:roomId/chat-privacy")
+  .put(authenticate(), audioRoomController.setChatPrivacy);
+
 export default router;

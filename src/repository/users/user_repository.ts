@@ -89,6 +89,7 @@ export interface IUserRepository {
     users: IUserDocument[];
   }>;
   updateUserXp(id: string, xp: number): Promise<IUserDocument | null>;
+  findUsersByIds(ids: string[]): Promise<IUserDocument[]>;
 }
 
 export default class UserRepository implements IUserRepository {
@@ -505,5 +506,9 @@ export default class UserRepository implements IUserRepository {
     );
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
     return user;
+  }
+
+  async findUsersByIds(ids: string[]): Promise<IUserDocument[]> {
+    return await this.UserModel.find({ _id: { $in: ids } });
   }
 }

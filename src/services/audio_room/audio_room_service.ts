@@ -1,4 +1,5 @@
 import AppError from "../../core/errors/app_errors";
+import { isValidObjectId } from "mongoose";
 import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
 import { AudioRoomHelper } from "../../core/Utils/audioRoomHelper";
 import {
@@ -111,7 +112,16 @@ export interface IAudioRoomService {
     roomId: string;
     password: string;
   }): Promise<IAudioRoomDocument>;
-  updateSeatCount(myId: string, roomId: string, seatCount: number): Promise<IAudioRoomDocument>;
+  updateSeatCount(
+    myId: string,
+    roomId: string,
+    seatCount: number,
+  ): Promise<IAudioRoomDocument>;
+  setChatPrivacy(
+    myId: string,
+    roomId: string,
+    chatPrivacy: "any" | "none" | string[],
+  ): Promise<IAudioRoomDocument>;
 }
 
 export class AudioRoomService implements IAudioRoomService {
@@ -1199,7 +1209,99 @@ export class AudioRoomService implements IAudioRoomService {
     return updatedRoom;
   }
 
-  async updateSeatCount(myId: string, roomId: string, seatCount: number): Promise<IAudioRoomDocument> {
-    
+  async updateSeatCount(
+    myId: string,
+    roomId: string,
+    seatCount: number,
+  ): Promise<IAudioRoomDocument> {
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    const helperInstance = AudioRoomHelper.getInstance();
+    helperInstance.checkAuthorityInAudioRoom(myId, audioRoom, 1);
+
+    if (audioRoom.numberOfSeats === seatCount) {
+      throw new AppError(400, "Seat count is already updated");
+    }
+
+    if (audioRoom.numberOfSeats > seatCount) {
+      const socketInstance = SingletonSocketServer.getInstance();
+      // we are reducing seats, check if anyone is sitting in the seats to be removed
+      // e.g. 12 -> 8. seats 9, 10, 11, 12 need to be checked
+      for (let i = seatCount + 1; i <= audioRoom.numberOfSeats; i++) {
+        const seatKey = `seat-${i}`;
+        const seat = audioRoom.seats.get(seatKey);
+        if (seat && seat.member && seat.member._id) {
+          // someone is sitting here, emit leave event
+          socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
+            seatKey: seatKey,
+            member: {},
+          });
+        }
+      }
+    }
+
+    // update the seat count. The pre-save hook in the model will handle
+    // adding/removing the actual seat entries in the map
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $set: {
+        numberOfSeats: seatCount,
+      },
+    });
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomDetails, {
+      audioRoom: updatedRoom,
+    });
+    return updatedRoom;
+  }
+
+  async setChatPrivacy(
+    myId: string,
+    roomId: string,
+    chatPrivacy: "any" | "none" | string[],
+  ): Promise<IAudioRoomDocument> {
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+    const helperInstance = AudioRoomHelper.getInstance();
+    helperInstance.checkAuthorityInAudioRoom(myId, audioRoom, 1);
+
+    if (Array.isArray(chatPrivacy)) {
+      // check if all users exist
+      const users = await this.userRepository.findUsersByIds(chatPrivacy);
+      if (users.length !== chatPrivacy.length) {
+        throw new AppError(404, "Some users not found");
+      }
+    }
+
+    const allowedUsersToChat = Array.isArray(chatPrivacy)
+      ? chatPrivacy.reduce(
+          (acc, userId) => {
+            acc[userId] = true;
+            return acc;
+          },
+          {} as Record<string, boolean>,
+        )
+      : {};
+
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $set: {
+        chatPrivacy: Array.isArray(chatPrivacy) ? "custom" : chatPrivacy,
+        allowedUsersToChat: allowedUsersToChat,
+      },
+    });
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomDetails, {
+      audioRoom: updatedRoom,
+    });
+    return updatedRoom;
   }
 }
