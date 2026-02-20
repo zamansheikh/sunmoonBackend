@@ -95,6 +95,8 @@ export enum AudioRoomChannels {
   NewAudioRoomCreated = "new-audio-room-created",
   UserJoined = "user-joined",
   UserLeft = "user-left",
+  hostLeft = "host-left",
+  hostJoined = "host-joined",
   AudioRoomMessage = "audio-room-message",
   AudioSeatJoined = "audio-seat-joined",
   AudioSeatLeft = "audio-seat-left",

@@ -31,20 +31,13 @@ export interface IAudioRoomRepository {
   ): Promise<IAudioRoomDocument>;
   deleteAudioRoom(roomId: string): Promise<IAudioRoomDocument>;
   getAllAudioRooms(): Promise<IAudioRoomDocument[]>;
+  isMemberInAnyRoom(userId: string): Promise<IAudioRoomDocument | null>;
 }
 
 export class AudioRoomRepository implements IAudioRoomRepository {
   audioRoomModel: IAudioRoomModel;
-  bucketRepository: IMyBucketRepository;
-  categoryRepository: IStoreCategoryRepository;
-  constructor(
-    audioRoomModel: IAudioRoomModel,
-    bucketRepository: IMyBucketRepository,
-    categoryRepository: IStoreCategoryRepository,
-  ) {
+  constructor(audioRoomModel: IAudioRoomModel) {
     this.audioRoomModel = audioRoomModel;
-    this.bucketRepository = bucketRepository;
-    this.categoryRepository = categoryRepository;
   }
   async createAudioRoom(audioRoom: IAudioRoom): Promise<IAudioRoomDocument> {
     const created = await this.audioRoomModel.create(audioRoom);
@@ -146,5 +139,9 @@ export class AudioRoomRepository implements IAudioRoomRepository {
   async getAudioRoomByHostId(hostId: string): Promise<string | null> {
     const room = await this.audioRoomModel.findOne({ hostId }).select("roomId");
     return room ? room.roomId : null;
+  }
+
+  async isMemberInAnyRoom(userId: string): Promise<IAudioRoomDocument | null> {
+    return await this.audioRoomModel.findOne({ [`members.${userId}`]: true });
   }
 }

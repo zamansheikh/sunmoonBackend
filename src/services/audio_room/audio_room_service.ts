@@ -303,6 +303,10 @@ export class AudioRoomService implements IAudioRoomService {
           $set: {
             [`members.${userId}`]: true,
             [`uniqueUsers.${userId}`]: true,
+            isHostPresent:
+              audioRoom.hostId.toString() === userId
+                ? true
+                : audioRoom.isHostPresent,
           },
           $push: {
             membersArray: userId,
@@ -687,9 +691,6 @@ export class AudioRoomService implements IAudioRoomService {
     const updatedRoom = await socketInstance.handleAudioRoomDisconnection(
       userId,
       audioRoom,
-      this.userRepository,
-      this.bucketRepository,
-      this.categoryRepository,
     );
     return updatedRoom;
   }

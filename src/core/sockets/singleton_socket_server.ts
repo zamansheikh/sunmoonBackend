@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
-import {
+import AudioRoomModel, {
   IAudioRoom,
   IAudioRoomDocument,
   IRoomMessage,
@@ -10,10 +10,20 @@ import UserRepository, {
   IUserRepository,
 } from "../../repository/users/user_repository";
 import { AudioRoomChannels, SocketAudioChannels } from "../Utils/enums";
-import { IMyBucketRepository } from "../../repository/store/my_bucket_repository";
-import { IStoreCategoryRepository } from "../../repository/store/store_category_repository";
+import MyBucketRepository, {
+  IMyBucketRepository,
+} from "../../repository/store/my_bucket_repository";
+import StoreCategoryRepository, {
+  IStoreCategoryRepository,
+} from "../../repository/store/store_category_repository";
 import { getEquippedItemObjects } from "../Utils/helper_functions";
-import { ALLOWED_MESSAGES_COUNT } from "../Utils/constants";
+import {
+  ALLOWED_MESSAGES_COUNT,
+  PERSISTENT_CONNECTION_TIMEOUT,
+} from "../Utils/constants";
+import User from "../../models/user/user_model";
+import MyBucketModel from "../../models/store/my_bucket_model";
+import StoreCategoryModel from "../../models/store/store_category_model";
 
 export default class SingletonSocketServer {
   private static instance: SingletonSocketServer;
@@ -24,6 +34,12 @@ export default class SingletonSocketServer {
     string,
     { timeOut: NodeJS.Timeout; roomId?: string }
   >(); // Map<userId, socketId>
+
+  // repositories
+  private audioRoomRepository = new AudioRoomRepository(AudioRoomModel);
+  private userRepository = new UserRepository(User);
+  private bucketRepository = new MyBucketRepository(MyBucketModel);
+  private categoryRepository = new StoreCategoryRepository(StoreCategoryModel);
 
   // Private constructor: enforce singleton usage
   private constructor(server: HttpServer) {
@@ -58,8 +74,7 @@ export default class SingletonSocketServer {
     this.io.on("connection", (socket) => {
       const userId = socket.handshake.query.userId as string;
       if (userId) {
-        this.onlineUsers.set(userId, socket.id);
-        console.log(`User ${userId} connected`);
+        this.handleUserConnect(userId, socket);
       }
 
       // Send Audio Emoji
@@ -85,13 +100,21 @@ export default class SingletonSocketServer {
         },
       );
 
-      socket.on("disconnect", () => {
+      socket.on("disconnect", async () => {
         // remove the users when disconnected from online users
         if (userId) {
           this.onlineUsers.delete(userId);
           console.log(`User ${userId} disconnected`);
         }
         // * persist audio room connection
+        const room = await this.audioRoomRepository.isMemberInAnyRoom(userId);
+        if (room) {
+          const timeOut = setTimeout(() => {
+            this.disconnectedUsers.delete(userId);
+            this.handleAudioRoomDisconnection(userId, room);
+          }, PERSISTENT_CONNECTION_TIMEOUT);
+          this.disconnectedUsers.set(userId, { timeOut, roomId: room.roomId });
+        }
       });
     });
   }
@@ -152,37 +175,47 @@ export default class SingletonSocketServer {
     };
   }
 
+  private handleUserConnect(userId: string, socket: Socket) {
+    if (this.disconnectedUsers.has(userId)) {
+      const { timeOut, roomId } = this.disconnectedUsers.get(userId)!;
+      clearTimeout(timeOut);
+      this.disconnectedUsers.delete(userId);
+      if (roomId) {
+        socket.join(roomId);
+      }
+      this.onlineUsers.set(userId, socket.id);
+      console.log(`User ${userId} connected with socket ID: ${socket.id}`);
+    }
+  }
+
   public async handleAudioRoomDisconnection(
     userId: string,
     room: IAudioRoomDocument,
-    userRepository: IUserRepository,
-    bucketRepository: IMyBucketRepository,
-    categoryRepository: IStoreCategoryRepository,
   ) {
     const isHost = room.hostId?.toString() === userId;
-    const user = await userRepository.findUserById(userId);
+    const user = await this.userRepository.findUserById(userId);
     if (!user) {
       return room;
     }
     const userObj = user.toObject();
     userObj.equippedStoreItems = await getEquippedItemObjects(
-      bucketRepository,
-      categoryRepository,
+      this.bucketRepository,
+      this.categoryRepository,
       userId,
     );
     //leave message
     const leaveMessage: IRoomMessage = {
-      _id: userObj._id,
-      name: userObj.name,
-      avatar: userObj.avatar,
-      uid: userObj.uid,
-      userId: userObj.userId,
-      country: userObj.country,
-      currentBackground: userObj.currentLevelBackground,
-      currentTag: userObj.currentLevelTag,
-      currentLevel: userObj.level,
+      _id: userObj._id as string,
+      name: userObj.name as string,
+      avatar: userObj.avatar as string,
+      uid: userObj.uid as string,
+      userId: userObj.userId as number,
+      country: userObj.country as string,
+      currentBackground: userObj.currentLevelBackground as string,
+      currentTag: userObj.currentLevelTag as string,
+      currentLevel: userObj.level as number,
       text: "left the room",
-      equippedStoreItems: userObj.equippedStoreItems,
+      equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
     };
     if (isHost) {
       // remove from seat if seated
@@ -221,6 +254,7 @@ export default class SingletonSocketServer {
       room.isHostPresent = false;
       this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
         userId: userId,
+        isHostPresent: false,
       });
       // disconnect from socket room
       const socketId = this.getSocketId(userId);
@@ -247,7 +281,12 @@ export default class SingletonSocketServer {
         (member) => member.toString() !== userId,
       );
       // remove from muted users
-      if (room.mutedUsers.has(userId)) room.mutedUsers.delete(userId);
+      if (room.mutedUsers.has(userId)) {
+        room.mutedUsers.delete(userId);
+        this.emitToRoom(room.roomId, AudioRoomChannels.muteUnmuteUser, {
+          mutedUsers: Array.from(room.mutedUsers.keys()),
+        });
+      }
       // send room wide leave message
       if (room.messages.length > ALLOWED_MESSAGES_COUNT) room.messages.shift();
       room.messages.push(leaveMessage);

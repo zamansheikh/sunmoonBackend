@@ -17,11 +17,7 @@ const userRepository = new UserRepository(User);
 const bucketRepository = new MyBucketRepository(MyBucketModel);
 const categoryRepository = new StoreCategoryRepository(StoreCategoryModel);
 
-const audioRoomRepository = new AudioRoomRepository(
-  AudioRoomModel,
-  bucketRepository,
-  categoryRepository,
-);
+const audioRoomRepository = new AudioRoomRepository(AudioRoomModel);
 const audioRoomService = new AudioRoomService(
   audioRoomRepository,
   userRepository,
