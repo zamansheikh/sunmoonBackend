@@ -71,10 +71,10 @@ export default class SingletonSocketServer {
   }
 
   private initialize() {
-    this.io.on("connection", (socket) => {
+    this.io.on("connection", async (socket) => {
       const userId = socket.handshake.query.userId as string;
       if (userId) {
-        this.handleUserConnect(userId, socket);
+        await this.handleUserConnect(userId, socket);
       }
 
       // Send Audio Emoji
@@ -175,7 +175,7 @@ export default class SingletonSocketServer {
     };
   }
 
-  private handleUserConnect(userId: string, socket: Socket) {
+  private async handleUserConnect(userId: string, socket: Socket) {
     if (this.disconnectedUsers.has(userId)) {
       const { timeOut, roomId } = this.disconnectedUsers.get(userId)!;
       clearTimeout(timeOut);
@@ -183,9 +183,14 @@ export default class SingletonSocketServer {
       if (roomId) {
         socket.join(roomId);
       }
-      this.onlineUsers.set(userId, socket.id);
-      console.log(`User ${userId} connected with socket ID: ${socket.id}`);
+    } else {
+      const room = await this.audioRoomRepository.isMemberInAnyRoom(userId);
+      if (room) {
+        socket.join(room.roomId);
+      }
     }
+    this.onlineUsers.set(userId, socket.id);
+    console.log(`User ${userId} connected with socket ID: ${socket.id}`);
   }
 
   public async handleAudioRoomDisconnection(

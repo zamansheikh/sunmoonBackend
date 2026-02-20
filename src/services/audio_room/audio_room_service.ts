@@ -325,6 +325,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.joinRoomSocket(userId, roomId);
     socketInstance.emitToRoom(roomId, AudioRoomChannels.UserJoined, {
       user: userInfo,
+      ...(audioRoom.hostId.toString() === userId && { isHostPresent: true }),
     });
     socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomMessage, {
       message: joinMessage,
@@ -636,8 +637,7 @@ export class AudioRoomService implements IAudioRoomService {
     roomId: string,
   ): Promise<IAudioRoomDocument> {
     //client side data validation
-    const audioRoom =
-      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    let audioRoom = await this.audioRoomRepository.checkRoomExisistance(roomId);
     if (!audioRoom) {
       throw new AppError(404, "Audio room not found");
     }
@@ -651,7 +651,7 @@ export class AudioRoomService implements IAudioRoomService {
     audioHelper.checkUserOnSeat(targetId, audioRoom);
 
     if (!audioRoom.mutedUsers.has(targetId)) {
-      await this.audioRoomRepository.findByIdAndUpdate(
+      audioRoom = await this.audioRoomRepository.findByIdAndUpdate(
         audioRoom._id as string,
         {
           $set: {
@@ -660,7 +660,7 @@ export class AudioRoomService implements IAudioRoomService {
         },
       );
     } else {
-      await this.audioRoomRepository.findByIdAndUpdate(
+      audioRoom = await this.audioRoomRepository.findByIdAndUpdate(
         audioRoom._id as string,
         {
           $unset: {
@@ -673,7 +673,7 @@ export class AudioRoomService implements IAudioRoomService {
     // send event to the room
     const socketInstance = SingletonSocketServer.getInstance();
     socketInstance.emitToRoom(roomId, AudioRoomChannels.muteUnmuteUser, {
-      mutedUsers: Array.from(audioRoom.mutedUsers.keys()).push(targetId),
+      mutedUsers: Object.fromEntries(audioRoom.mutedUsers),
     });
     return await this.audioRoomRepository.getAudioRoomById(roomId);
   }
