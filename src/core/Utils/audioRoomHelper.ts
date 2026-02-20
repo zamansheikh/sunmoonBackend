@@ -31,12 +31,16 @@ export class AudioRoomHelper {
     if (room.hostId.toString() === myId) return;
     if (
       authorityLevel === 1 &&
-      room.admins.some((admin) => admin.toString() === myId) &&
-      targetId &&
-      targetId != room.hostId.toString() &&
-      !room.admins.some((admin) => admin.toString() === targetId)
-    )
-      return;
+      room.admins.some((admin) => admin.toString() === myId)
+    ) {
+      if (!targetId) return;
+      if (
+        targetId !== room.hostId.toString() &&
+        !room.admins.some((admin) => admin.toString() === targetId)
+      ) {
+        return;
+      }
+    }
     throw new AppError(
       StatusCodes.FORBIDDEN,
       "You are not authorized to take this action",
@@ -44,7 +48,6 @@ export class AudioRoomHelper {
   }
 
   public checkUserOnSeat(targetId: string, room: IAudioRoomDocument): void {
-
     // Check host seat
     if (room.hostSeat?.member?._id?.toString() === targetId) return;
 
