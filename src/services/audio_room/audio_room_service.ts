@@ -208,7 +208,9 @@ export class AudioRoomService implements IAudioRoomService {
     );
 
     // save audio room
-    return await this.audioRoomRepository.createAudioRoom(audioRoomDocument);
+    const created =
+      await this.audioRoomRepository.createAudioRoom(audioRoomDocument);
+    return await this.audioRoomRepository.getAudioRoomById(created.roomId);
   }
   async getAudioRoomById(roomId: string): Promise<IAudioRoomDocument | null> {
     const result = await this.audioRoomRepository.getAudioRoomById(roomId);
@@ -313,12 +315,13 @@ export class AudioRoomService implements IAudioRoomService {
       );
     }
 
-    // unique users tracking
-    audioRoom.uniqueUsers.set(userId, true);
-
     // emit join event to the room
     const socketInstance = SingletonSocketServer.getInstance();
-    socketInstance.emitToRoom(roomId, AudioRoomChannels.UserJoined, userInfo);
+    // make the user join the socket room
+    socketInstance.joinRoomSocket(userId, roomId);
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.UserJoined, {
+      user: userInfo,
+    });
     socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomMessage, {
       message: joinMessage,
     });

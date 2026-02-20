@@ -48,40 +48,8 @@ export class AudioRoomRepository implements IAudioRoomRepository {
   }
   async createAudioRoom(audioRoom: IAudioRoom): Promise<IAudioRoomDocument> {
     const created = await this.audioRoomModel.create(audioRoom);
-    // Populate both hostId and membersArray
-    await created.populate([
-      {
-        path: "hostId",
-        select: USER_POPULATED_INFORMATIONS,
-      },
-      {
-        path: "membersArray",
-        select: USER_POPULATED_INFORMATIONS,
-      },
-    ]);
-    const obj = created.toObject();
-    const host = obj.hostId as any;
-    if (host && host._id) {
-      host.equippedStoreItems = await getEquippedItemObjects(
-        this.bucketRepository,
-        this.categoryRepository,
-        host._id.toString(),
-      );
-    }
-    if (obj.membersArray && obj.membersArray.length > 0) {
-      await Promise.all(
-        obj.membersArray.map(async (member: any) => {
-          if (member && member._id) {
-            member.equippedStoreItems = await getEquippedItemObjects(
-              this.bucketRepository,
-              this.categoryRepository,
-              member._id.toString(),
-            );
-          }
-        }),
-      );
-    }
-    return obj as any;
+    if (!created) throw new AppError(500, "Failed to create audio room");
+    return created;
   }
   async getAudioRoomById(roomId: string): Promise<IAudioRoomDocument> {
     const qb = new QueryBuilder(this.audioRoomModel, {});
