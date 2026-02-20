@@ -143,7 +143,7 @@ const AudioRoomSchema = new Schema<IAudioRoomDocument>(
     currentRocketLevel: { type: Number, default: 1 },
     currentRocketFuel: { type: Number, default: 0 },
     currentRocketMilestone: { type: Number, required: true },
-    admins: [{ type: String }],
+    admins: [{ type: Schema.Types.ObjectId, ref: DatabaseNames.User }],
     hostTotalSendGift: { type: Number, default: 0 },
     hostTotalRecievedGift: { type: Number, default: 0 },
     roomTotalTransaction: { type: Number, default: 0 },

@@ -97,14 +97,17 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         },
       },
       lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
+      lookupEnrichedUsersArray("admins", "adminsInfo"),
       {
         $addFields: {
           membersArray: "$membersArrayInfo", // ← just copy the array reference
+          admins: "$adminsInfo",
         },
       },
       {
         $project: {
           membersArrayInfo: 0,
+          adminsInfo: 0,
         },
       },
     ]);
@@ -136,15 +139,18 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         },
       },
       lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
+      lookupEnrichedUsersArray("admins", "adminsInfo"),
 
       {
         $addFields: {
           membersArray: "$membersArrayInfo", // ← just copy the array reference
+          admins: "$adminsInfo",
         },
       },
       {
         $project: {
           membersArrayInfo: 0,
+          adminsInfo: 0,
         },
       },
     ]);

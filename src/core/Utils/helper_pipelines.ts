@@ -171,7 +171,18 @@ export function lookupEnrichedUsersArray(
       pipeline: [
         {
           $match: {
-            $expr: { $in: ["$_id", "$$userIds"] },
+            $expr: {
+              $in: [
+                "$_id",
+                {
+                  $map: {
+                    input: { $ifNull: ["$$userIds", []] },
+                    as: "id",
+                    in: { $toObjectId: "$$id" },
+                  },
+                },
+              ],
+            },
           },
         },
         ...userWithEquippedItemsPipeline("userIds").slice(1),
