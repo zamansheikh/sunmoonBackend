@@ -6,7 +6,7 @@ const THOUSAND = 1000;
 export const USER_POPULATED_INFORMATIONS =
   "name avatar uid userId country currentLevelBackground currentLevelTag level";
 export const ALLOWED_MESSAGES_COUNT = 20;
-export const PERSISTENT_CONNECTION_TIMEOUT = 30 * 1000;
+export const PERSISTENT_CONNECTION_TIMEOUT = 300 * 1000;
 // Xp features
 export const ROOM_ENTRY_XP = 20;
 export const OWN_ROOM_MAX_XP = 100;

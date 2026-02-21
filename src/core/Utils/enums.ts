@@ -107,6 +107,7 @@ export enum AudioRoomChannels {
   BanUser = "ban-audio-user",
   UnBanUser = "unban-audio-user",
   chatPrivacy = "chat-privacy",
+  BasicRoomUpdate = "basic-room-update",
 }
 
 export enum SocketChannels {
