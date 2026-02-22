@@ -9,11 +9,8 @@ export interface ICurrentRoomMemberRepository {
   create(
     data: Partial<ICurrentRoomMember>,
   ): Promise<ICurrentRoomMemberDocument>;
-  update(
-    id: string,
-    data: Partial<ICurrentRoomMember>,
-  ): Promise<ICurrentRoomMemberDocument>;
-  delete(id: string): Promise<ICurrentRoomMemberDocument>;
+  update(userId: string, roomId: string): Promise<ICurrentRoomMemberDocument>;
+  delete(userId: string): Promise<ICurrentRoomMemberDocument>;
   getByUserId(userId: string): Promise<ICurrentRoomMemberDocument | null>;
   getByRoomId(roomId: string): Promise<ICurrentRoomMemberDocument | null>;
 }
@@ -29,15 +26,23 @@ export class CurrentRoomMemberRepository implements ICurrentRoomMemberRepository
     return await this.Model.create(data);
   }
   async update(
-    id: string,
-    data: Partial<ICurrentRoomMember>,
+    userId: string,
+    roomId: string,
   ): Promise<ICurrentRoomMemberDocument> {
-    const res = await this.Model.findByIdAndUpdate(id, data, { new: true });
+    const res = await this.Model.findOneAndUpdate(
+      { userId }, // filter
+      { $set: { roomId } }, // always set new room
+      {
+        upsert: true,
+        returnDocument: "before", // or true in some drivers
+        projection: { roomId: 1 }, // we only need old roomId
+      },
+    );
     if (!res) throw new AppError(404, "Current room member not found");
     return res;
   }
-  async delete(id: string): Promise<ICurrentRoomMemberDocument> {
-    const res = await this.Model.findByIdAndDelete(id);
+  async delete(userId: string): Promise<ICurrentRoomMemberDocument> {
+    const res = await this.Model.findOneAndDelete({ userId });
     if (!res) throw new AppError(404, "Current room member not found");
     return res;
   }

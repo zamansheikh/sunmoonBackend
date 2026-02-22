@@ -138,6 +138,13 @@ export default class SingletonSocketServer {
     }
   }
 
+  public leaveRoomSocket(userId: string, roomId: string) {
+    const socketId = this.getSocketId(userId);
+    if (socketId) {
+      this.io.sockets.sockets.get(socketId)?.leave(roomId);
+    }
+  }
+
   public emitToRoom(roomId: string, event: string, data: any) {
     this.io.to(roomId).emit(event, data);
   }
@@ -193,6 +200,13 @@ export default class SingletonSocketServer {
     console.log(`User ${userId} connected with socket ID: ${socket.id}`);
   }
 
+  // this function here instead of being in the audio helper
+  //  because its more convinent to handle the room logic here`
+  // and when i wrote it here, i didnt have the audio helper
+  // its a drag to move it there, if you think I am lazy, then I am
+  // you can move it there if you want, but I dont think its necessary
+  //  at least for me
+  //  Also because this function extensivly uses the socket server
   public async handleAudioRoomDisconnection(
     userId: string,
     room: IAudioRoomDocument,

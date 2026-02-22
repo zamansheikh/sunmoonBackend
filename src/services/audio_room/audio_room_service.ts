@@ -215,11 +215,16 @@ export class AudioRoomService implements IAudioRoomService {
     const created =
       await this.audioRoomRepository.createAudioRoom(audioRoomDocument);
 
-    // to keep track of recent visits
-    await this.recentVisitedRoomRepository.create({
+    // to keep track of recent visits, no await -> nothing depends on it
+    this.recentVisitedRoomRepository.create({
       userId: hostId! as string,
       roomId: roomId!,
     });
+
+    AudioRoomHelper.getInstance().handleRoomPresence(
+      hostId! as string,
+      roomId!,
+    );
 
     return await this.audioRoomRepository.getAudioRoomById(created.roomId);
   }
@@ -304,6 +309,8 @@ export class AudioRoomService implements IAudioRoomService {
       text: "joined the room",
       equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
     };
+
+    AudioRoomHelper.getInstance().handleRoomPresence(userId, roomId);
 
     // handle if the user already in the room
     const userAlreadyInRoom = audioRoom.members.has(userId);
