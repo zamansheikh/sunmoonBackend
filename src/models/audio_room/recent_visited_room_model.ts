@@ -26,6 +26,12 @@ const recentVisitedRoomSchema = new Schema<
   { timestamps: true },
 );
 
+// create index on userId and roomId for fast lookup
+recentVisitedRoomSchema.index({ userId: 1, roomId: 1 }, { unique: true });
+
+// create index on expireAt for automatic deletion after 1 month
+recentVisitedRoomSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
+
 const RecentVisitedRoomModel = model<
   IRecentVisitedRoomDocument,
   IRecentVisitedRoomModel
