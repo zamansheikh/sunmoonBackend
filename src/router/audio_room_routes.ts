@@ -10,6 +10,8 @@ import MyBucketRepository from "../repository/store/my_bucket_repository";
 import MyBucketModel from "../models/store/my_bucket_model";
 import StoreCategoryRepository from "../repository/store/store_category_repository";
 import StoreCategoryModel from "../models/store/store_category_model";
+import { RecentVisitedRoomRepository } from "../repository/audio_room/recent_visited_room_reposiory";
+import RecentVisitedRoomModel from "../models/audio_room/recent_visited_room_model";
 
 const router = express.Router();
 
@@ -18,11 +20,13 @@ const bucketRepository = new MyBucketRepository(MyBucketModel);
 const categoryRepository = new StoreCategoryRepository(StoreCategoryModel);
 
 const audioRoomRepository = new AudioRoomRepository(AudioRoomModel);
+const recentVisitedRoomRepository = new RecentVisitedRoomRepository(RecentVisitedRoomModel);
 const audioRoomService = new AudioRoomService(
   audioRoomRepository,
   userRepository,
   bucketRepository,
   categoryRepository,
+  recentVisitedRoomRepository,
 );
 const audioRoomController = new AudioRoomController(audioRoomService);
 

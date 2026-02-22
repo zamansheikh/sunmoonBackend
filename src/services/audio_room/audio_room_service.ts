@@ -19,6 +19,7 @@ import { IAudioRoomRepository } from "../../repository/audio_room/audio_room_rep
 import { IMyBucketRepository } from "../../repository/store/my_bucket_repository";
 import { IStoreCategoryRepository } from "../../repository/store/store_category_repository";
 import { IUserRepository } from "../../repository/users/user_repository";
+import { IRecentVisitedRoomRepository } from "../../repository/audio_room/recent_visited_room_reposiory";
 
 export interface IAudioRoomService {
   createAudioRoom(audioRoom: Partial<IAudioRoom>): Promise<IAudioRoomDocument>;
@@ -129,16 +130,19 @@ export class AudioRoomService implements IAudioRoomService {
   userRepository: IUserRepository;
   bucketRepository: IMyBucketRepository;
   categoryRepository: IStoreCategoryRepository;
+  recentVisitedRoomRepository: IRecentVisitedRoomRepository;
   constructor(
     audioRoomRepository: IAudioRoomRepository,
     userRepository: IUserRepository,
     bucketRepository: IMyBucketRepository,
     categoryRepository: IStoreCategoryRepository,
+    recentVisitedRoomRepository: IRecentVisitedRoomRepository,
   ) {
     this.audioRoomRepository = audioRoomRepository;
     this.userRepository = userRepository;
     this.bucketRepository = bucketRepository;
     this.categoryRepository = categoryRepository;
+    this.recentVisitedRoomRepository = recentVisitedRoomRepository;
   }
 
   async createAudioRoom(
@@ -210,6 +214,13 @@ export class AudioRoomService implements IAudioRoomService {
     // save audio room
     const created =
       await this.audioRoomRepository.createAudioRoom(audioRoomDocument);
+
+    // to keep track of recent visits
+    await this.recentVisitedRoomRepository.create({
+      userId: hostId! as string,
+      roomId: roomId!,
+    });
+
     return await this.audioRoomRepository.getAudioRoomById(created.roomId);
   }
   async getAudioRoomById(roomId: string): Promise<IAudioRoomDocument | null> {
@@ -331,6 +342,11 @@ export class AudioRoomService implements IAudioRoomService {
       message: joinMessage,
     });
 
+    // to keep track of recent visits
+    await this.recentVisitedRoomRepository.create({
+      userId: userId,
+      roomId: roomId,
+    });
     return await this.audioRoomRepository.getAudioRoomById(roomId);
   }
 
