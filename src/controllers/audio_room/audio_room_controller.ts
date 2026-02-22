@@ -457,4 +457,15 @@ export class AudioRoomController {
       result: result,
     });
   });
+
+  getMyRecentVisitedRooms = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const result = await this.Service.getMyRecentVisitedRooms(myUserId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Recent visited rooms fetched successfully",
+      result: result,
+    });
+  });
 }

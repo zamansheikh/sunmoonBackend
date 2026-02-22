@@ -49,6 +49,10 @@ router
   .route("/my-room")
   .get(authenticate(), audioRoomController.getMyAudioRoom);
 
+router
+  .route("/recent-visits")
+  .get(authenticate(), audioRoomController.getMyRecentVisitedRooms);
+
 router.route("/:roomId").get(audioRoomController.getAudioRoomById);
 
 router

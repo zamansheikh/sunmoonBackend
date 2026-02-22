@@ -17,6 +17,7 @@ export interface IRecentVisitedRoomRepository {
     userId: string,
     roomId: string,
   ): Promise<IRecentVisitedRoomDocument | null>;
+  getByUserId(userId: string): Promise<IRecentVisitedRoomDocument[]>;
 }
 
 export class RecentVisitedRoomRepository implements IRecentVisitedRoomRepository {
@@ -24,6 +25,10 @@ export class RecentVisitedRoomRepository implements IRecentVisitedRoomRepository
 
   constructor(model: IRecentVisitedRoomModel) {
     this.Model = model;
+  }
+
+  async getByUserId(userId: string): Promise<IRecentVisitedRoomDocument[]> {
+    return await this.Model.find({ userId }).sort({ visitedAt: -1 });
   }
 
   async create(

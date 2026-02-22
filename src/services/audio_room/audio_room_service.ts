@@ -123,6 +123,7 @@ export interface IAudioRoomService {
     roomId: string,
     chatPrivacy: "any" | "none" | string[],
   ): Promise<IAudioRoomDocument>;
+  getMyRecentVisitedRooms(myId: string): Promise<IAudioRoomDocument[]>;
 }
 
 export class AudioRoomService implements IAudioRoomService {
@@ -1358,5 +1359,27 @@ export class AudioRoomService implements IAudioRoomService {
       allowedUsersToChat: updatedRoom?.allowedUsersToChat,
     });
     return updatedRoom;
+  }
+
+  async getMyRecentVisitedRooms(myId: string): Promise<IAudioRoomDocument[]> {
+    const recentVisits =
+      await this.recentVisitedRoomRepository.getByUserId(myId);
+    if (!recentVisits || recentVisits.length === 0) return [];
+
+    const roomIds = recentVisits.map((v) => v.roomId);
+    const rooms: IAudioRoomDocument[] = [];
+
+    // Fetch rooms one by one to preserve the order and handle potentially deleted rooms
+    for (const roomId of roomIds) {
+      try {
+        const room = await this.audioRoomRepository.getAudioRoomById(roomId);
+        if (room) rooms.push(room);
+      } catch (error) {
+        // Room might have been deleted, skip it
+        continue;
+      }
+    }
+
+    return rooms;
   }
 }
