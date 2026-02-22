@@ -49,6 +49,7 @@ export enum DatabaseNames {
   UpdateCost = "update_cost",
   DiamondExchange = "diamond_exchanges",
   AudioRoom = "audio_rooms",
+  RecentVisitedRoom = "recent_visited_rooms",
 }
 
 export enum ReelStatus {
