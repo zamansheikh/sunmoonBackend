@@ -110,7 +110,7 @@ export class AudioRoomHelper {
     const oldRoomExists =
       await this.audioRoomRepository.checkRoomExisistance(previousRoomId);
 
-    if (oldRoomExists) {
+    if (oldRoomExists && oldRoomExists.members.has(userId)) {
       socketInstance.handleAudioRoomDisconnection(userId, oldRoomExists);
     } else {
       socketInstance.leaveRoomSocket(userId, previousRoomId);

@@ -24,6 +24,8 @@ import {
 import User from "../../models/user/user_model";
 import MyBucketModel from "../../models/store/my_bucket_model";
 import StoreCategoryModel from "../../models/store/store_category_model";
+import { CurrentRoomMemberRepository } from "../../repository/audio_room/current_room_member_repository";
+import CurrentRoomMemberModel from "../../models/audio_room/current_room_member";
 
 export default class SingletonSocketServer {
   private static instance: SingletonSocketServer;
@@ -40,6 +42,9 @@ export default class SingletonSocketServer {
   private userRepository = new UserRepository(User);
   private bucketRepository = new MyBucketRepository(MyBucketModel);
   private categoryRepository = new StoreCategoryRepository(StoreCategoryModel);
+  private currentRoomMemberRepository = new CurrentRoomMemberRepository(
+    CurrentRoomMemberModel,
+  );
 
   // Private constructor: enforce singleton usage
   private constructor(server: HttpServer) {
@@ -211,118 +216,127 @@ export default class SingletonSocketServer {
     userId: string,
     room: IAudioRoomDocument,
   ) {
-    const isHost = room.hostId?.toString() === userId;
-    const user = await this.userRepository.findUserById(userId);
-    if (!user) {
+    try {
+      const isHost = room.hostId?.toString() === userId;
+      const user = await this.userRepository.findUserById(userId);
+      if (!user) {
+        return room;
+      }
+      const userObj = user.toObject();
+      userObj.equippedStoreItems = await getEquippedItemObjects(
+        this.bucketRepository,
+        this.categoryRepository,
+        userId,
+      );
+      //leave message
+      const leaveMessage: IRoomMessage = {
+        _id: userObj._id as string,
+        name: userObj.name as string,
+        avatar: userObj.avatar as string,
+        uid: userObj.uid as string,
+        userId: userObj.userId as number,
+        country: userObj.country as string,
+        currentBackground: userObj.currentLevelBackground as string,
+        currentTag: userObj.currentLevelTag as string,
+        currentLevel: userObj.level as number,
+        text: "left the room",
+        equippedStoreItems: userObj.equippedStoreItems as Record<
+          string,
+          string
+        >,
+      };
+      if (isHost) {
+        // remove from seat if seated
+        // Check host seat
+        if (room.hostSeat?.member?._id?.toString() === userId) {
+          room.hostSeat.member = undefined;
+          this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
+            seatKey: "hostSeat",
+            member: {},
+          });
+        }
+
+        // Check other seats
+        for (const [seatKey, seat] of room.seats.entries()) {
+          if (seat.member?._id?.toString() === userId) {
+            seat.member = undefined;
+            this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
+              seatKey: seatKey,
+              member: {},
+            });
+          }
+        }
+        // remove from members and member details
+        room.members.delete(userId);
+        room.membersArray = room.membersArray.filter(
+          (member) => member.toString() !== userId,
+        );
+
+        // send room wide leave message
+        if (room.messages.length > ALLOWED_MESSAGES_COUNT)
+          room.messages.shift();
+        room.messages.push(leaveMessage);
+        this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
+          message: leaveMessage,
+        });
+        // leave the audio room -> send roomwide message
+        room.isHostPresent = false;
+        this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
+          userId: userId,
+          isHostPresent: false,
+        });
+        // disconnect from socket room
+        const socketId = this.getSocketId(userId);
+        if (socketId) {
+          this.io.sockets.sockets.get(socketId)?.leave(room.roomId);
+        }
+      }
+
+      const isMember = room.members.has(userId);
+      if (isMember) {
+        // remove from seat if seated
+        for (const [seatKey, seat] of room.seats.entries()) {
+          if (seat.member?._id?.toString() === userId) {
+            seat.member = undefined;
+            this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
+              seatKey: seatKey,
+              member: {},
+            });
+          }
+        }
+        // remove from members and member details
+        room.members.delete(userId);
+        room.membersArray = room.membersArray.filter(
+          (member) => member.toString() !== userId,
+        );
+        // remove from muted users
+        if (room.mutedUsers.has(userId)) {
+          room.mutedUsers.delete(userId);
+          this.emitToRoom(room.roomId, AudioRoomChannels.muteUnmuteUser, {
+            mutedUsers: Array.from(room.mutedUsers.keys()),
+          });
+        }
+        // send room wide leave message
+        if (room.messages.length > ALLOWED_MESSAGES_COUNT)
+          room.messages.shift();
+        room.messages.push(leaveMessage);
+        this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
+          message: leaveMessage,
+        });
+        // leave the audio room -> send roomwide message
+        this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
+          userId: userId,
+        });
+        // disconnect from socket room
+        const socketId = this.getSocketId(userId);
+        if (socketId) {
+          this.io.sockets.sockets.get(socketId)?.leave(room.roomId);
+        }
+      }
+      return await room.save();
+    } catch (error) {
+      console.log("Error in handleAudioRoomDisconnection", error);
       return room;
     }
-    const userObj = user.toObject();
-    userObj.equippedStoreItems = await getEquippedItemObjects(
-      this.bucketRepository,
-      this.categoryRepository,
-      userId,
-    );
-    //leave message
-    const leaveMessage: IRoomMessage = {
-      _id: userObj._id as string,
-      name: userObj.name as string,
-      avatar: userObj.avatar as string,
-      uid: userObj.uid as string,
-      userId: userObj.userId as number,
-      country: userObj.country as string,
-      currentBackground: userObj.currentLevelBackground as string,
-      currentTag: userObj.currentLevelTag as string,
-      currentLevel: userObj.level as number,
-      text: "left the room",
-      equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
-    };
-    if (isHost) {
-      // remove from seat if seated
-      // Check host seat
-      if (room.hostSeat?.member?._id?.toString() === userId) {
-        room.hostSeat.member = undefined;
-        this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
-          seatKey: "hostSeat",
-          member: {},
-        });
-      }
-
-      // Check other seats
-      for (const [seatKey, seat] of room.seats.entries()) {
-        if (seat.member?._id?.toString() === userId) {
-          seat.member = undefined;
-          this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
-            seatKey: seatKey,
-            member: {},
-          });
-        }
-      }
-      // remove from members and member details
-      room.members.delete(userId);
-      room.membersArray = room.membersArray.filter(
-        (member) => member.toString() !== userId,
-      );
-
-      // send room wide leave message
-      if (room.messages.length > ALLOWED_MESSAGES_COUNT) room.messages.shift();
-      room.messages.push(leaveMessage);
-      this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
-        message: leaveMessage,
-      });
-      // leave the audio room -> send roomwide message
-      room.isHostPresent = false;
-      this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
-        userId: userId,
-        isHostPresent: false,
-      });
-      // disconnect from socket room
-      const socketId = this.getSocketId(userId);
-      if (socketId) {
-        this.io.sockets.sockets.get(socketId)?.leave(room.roomId);
-      }
-    }
-
-    const isMember = room.members.has(userId);
-    if (isMember) {
-      // remove from seat if seated
-      for (const [seatKey, seat] of room.seats.entries()) {
-        if (seat.member?._id?.toString() === userId) {
-          seat.member = undefined;
-          this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
-            seatKey: seatKey,
-            member: {},
-          });
-        }
-      }
-      // remove from members and member details
-      room.members.delete(userId);
-      room.membersArray = room.membersArray.filter(
-        (member) => member.toString() !== userId,
-      );
-      // remove from muted users
-      if (room.mutedUsers.has(userId)) {
-        room.mutedUsers.delete(userId);
-        this.emitToRoom(room.roomId, AudioRoomChannels.muteUnmuteUser, {
-          mutedUsers: Array.from(room.mutedUsers.keys()),
-        });
-      }
-      // send room wide leave message
-      if (room.messages.length > ALLOWED_MESSAGES_COUNT) room.messages.shift();
-      room.messages.push(leaveMessage);
-      this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
-        message: leaveMessage,
-      });
-      // leave the audio room -> send roomwide message
-      this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
-        userId: userId,
-      });
-      // disconnect from socket room
-      const socketId = this.getSocketId(userId);
-      if (socketId) {
-        this.io.sockets.sockets.get(socketId)?.leave(room.roomId);
-      }
-    }
-
-    return await room.save();
   }
 }
