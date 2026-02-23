@@ -283,33 +283,14 @@ export class AudioRoomService implements IAudioRoomService {
       }
     }
 
+    const audioHelper = AudioRoomHelper.getInstance();
     // prepare user info
-    const userInfo: IMemberDetails = {
-      _id: userObj._id as string,
-      name: userObj.name as string,
-      avatar: userObj.avatar as string,
-      uid: userObj.uid as string,
-      userId: userObj.userId as number,
-      country: userObj.country as string,
-      currentBackground: userObj.currentLevelBackground as string,
-      currentTag: userObj.currentLevelTag as string,
-      currentLevel: userObj.level as number,
-      equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
-    };
+    const userInfo: IMemberDetails = audioHelper.generateMemberDetails(userObj);
     // prepare join room message
-    const joinMessage: IRoomMessage = {
-      _id: userObj._id as string,
-      name: userObj.name as string,
-      avatar: userObj.avatar as string,
-      uid: userObj.uid as string,
-      userId: userObj.userId as number,
-      country: userObj.country as string,
-      currentBackground: userObj.currentLevelBackground as string,
-      currentTag: userObj.currentLevelTag as string,
-      currentLevel: userObj.level as number,
-      text: "joined the room",
-      equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
-    };
+    const joinMessage: IRoomMessage = audioHelper.generateRoomMessage(
+      userObj,
+      "joined the room",
+    );
 
     await AudioRoomHelper.getInstance().handleRoomPresence(userId, roomId);
 
@@ -407,18 +388,8 @@ export class AudioRoomService implements IAudioRoomService {
     }
 
     // prepare socket data -> userInfo
-    const userInfo: IMemberDetails = {
-      _id: userObj._id as string,
-      name: userObj.name as string,
-      avatar: userObj.avatar as string,
-      uid: userObj.uid as string,
-      userId: userObj.userId as number,
-      country: userObj.country as string,
-      currentBackground: userObj.currentLevelBackground as string,
-      currentTag: userObj.currentLevelTag as string,
-      currentLevel: userObj.level as number,
-      equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
-    };
+    const userInfo: IMemberDetails =
+      AudioRoomHelper.getInstance().generateMemberDetails(userObj);
 
     // socket emit to the whole room
     const socketInstance = SingletonSocketServer.getInstance();
@@ -539,21 +510,8 @@ export class AudioRoomService implements IAudioRoomService {
       this.categoryRepository,
       targetId,
     );
-    const adminInfo: IMemberDetails = {
-      _id: targetUserObj._id as string,
-      name: targetUserObj.name as string,
-      avatar: targetUserObj.avatar as string,
-      uid: targetUserObj.uid as string,
-      userId: targetUserObj.userId as number,
-      country: targetUserObj.country as string,
-      currentBackground: targetUserObj.currentLevelBackground as string,
-      currentTag: targetUserObj.currentLevelTag as string,
-      currentLevel: targetUserObj.level as number,
-      equippedStoreItems: targetUserObj.equippedStoreItems as Record<
-        string,
-        string
-      >,
-    };
+    const adminInfo: IMemberDetails =
+      audioHelper.generateMemberDetails(targetUserObj);
     // send event to the room
     const socketInstance = SingletonSocketServer.getInstance();
     socketInstance.emitToRoom(roomId, AudioRoomChannels.audioAdminUpdates, {
@@ -755,19 +713,8 @@ export class AudioRoomService implements IAudioRoomService {
       this.categoryRepository,
       userObj.equippedStoreItems,
     );
-    const messageBody: IRoomMessage = {
-      _id: user._id as string,
-      name: user.name as string,
-      avatar: user.avatar as string,
-      country: user.country as string,
-      currentBackground: user.currentLevelBackground as string,
-      equippedStoreItems: userObj.equippedStoreItems,
-      currentLevel: user.level as number,
-      currentTag: user.currentLevelTag as string,
-      text: message,
-      uid: user.uid as string,
-      userId: user.userId as number,
-    };
+    const messageBody: IRoomMessage =
+      AudioRoomHelper.getInstance().generateRoomMessage(userObj, message);
     await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
       $push: {
         messages: {
@@ -1086,21 +1033,8 @@ export class AudioRoomService implements IAudioRoomService {
       this.categoryRepository,
       targetId,
     );
-    const memberDetails: IMemberDetails = {
-      _id: targetUserObj._id as string,
-      name: targetUserObj.name as string,
-      avatar: targetUserObj.avatar as string,
-      uid: targetUserObj.uid as string,
-      userId: targetUserObj.userId as number,
-      country: targetUserObj.country as string,
-      currentBackground: targetUserObj.currentLevelBackground as string,
-      currentTag: targetUserObj.currentLevelTag as string,
-      currentLevel: targetUserObj.level as number,
-      equippedStoreItems: targetUserObj.equippedStoreItems as Record<
-        string,
-        string
-      >,
-    };
+    const memberDetails: IMemberDetails =
+      audioHelper.generateMemberDetails(targetUserObj);
 
     // check if already banned → update, otherwise push
     const existingBan = audioRoom.bannedUsers.find(

@@ -2,6 +2,8 @@ import { StatusCodes } from "http-status-codes";
 import AppError from "../errors/app_errors";
 import AudioRoomModel, {
   IAudioRoomDocument,
+  IMemberDetails,
+  IRoomMessage,
 } from "../../models/audio_room/audio_room_model";
 import {
   IRecentVisitedRoomRepository,
@@ -76,6 +78,37 @@ export class AudioRoomHelper {
     }
 
     throw new AppError(StatusCodes.FORBIDDEN, "You are not on a seat");
+  }
+
+  public generateMemberDetails(userObj: any): IMemberDetails {
+    return {
+      _id: userObj._id as string,
+      name: userObj.name as string,
+      avatar: userObj.avatar as string,
+      uid: userObj.uid as string,
+      userId: userObj.userId as number,
+      country: userObj.country as string,
+      currentBackground: userObj.currentLevelBackground as string,
+      currentTag: userObj.currentLevelTag as string,
+      currentLevel: userObj.level as number,
+      equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
+    };
+  }
+
+  public generateRoomMessage(userObj: any, text: string): IRoomMessage {
+    return {
+      _id: userObj._id as string,
+      name: userObj.name as string,
+      avatar: userObj.avatar as string,
+      uid: userObj.uid as string,
+      userId: userObj.userId as number,
+      country: (userObj.country as string) || "",
+      currentBackground: userObj.currentLevelBackground as string,
+      currentTag: userObj.currentLevelTag as string,
+      currentLevel: userObj.level as number,
+      text: text,
+      equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
+    };
   }
 
   // this function is to make sure, the user only joins one room only after leaving the other
