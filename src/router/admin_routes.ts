@@ -46,9 +46,7 @@ const bonusRepository = new WithdrawBonusRepository(WithdrawBonusModel);
 const salaryRepository = new SalaryRepository(SalaryModel);
 const bannerRepository = new BannerRepository(BannerModel);
 const coinHistoryRepository = new CoinHistoryRepository(CoinHistoryModel);
-const agencyWithdrawRepository = new AgencyWithdrawRepository(
-  AgencyWithdrawModel
-);
+const agencyWithdrawRepository = new AgencyWithdrawRepository(AgencyWithdrawModel);
 const tagBgRepository = new LevelTagBgRepository(LevelTagBgModel);
 
 const posterRepository = new PosterRepository(PosterModel);
@@ -67,14 +65,18 @@ const adminUserService = new AdminUserService(
   agencyWithdrawRepository,
   tagBgRepository,
   posterRepository,
-  udpateCostRepository
+  udpateCostRepository,
 );
 const adminUserController = new AdminUserController(adminUserService);
 
 router
   .route("/auth")
   .post(adminUserController.registerAdmin)
-  .put(authenticate([UserRoles.Admin]), adminUserController.updateAdmin)
+  .put(
+    authenticate([UserRoles.Admin]),
+    upload.single("avatar"),
+    adminUserController.updateAdmin,
+  )
   .delete(authenticate([UserRoles.Admin]), adminUserController.deleteAdmin)
   .get(authenticate([UserRoles.Admin]), adminUserController.getAdminProfile);
 
@@ -88,7 +90,7 @@ router
   .route("/users/moderator-permissions")
   .put(
     authenticate([UserRoles.Admin]),
-    adminUserController.moderatorPermissionEdit
+    adminUserController.moderatorPermissionEdit,
   );
 
 router
@@ -103,7 +105,7 @@ router.put(
   "/users/activity-zone",
   authenticate([UserRoles.Admin]),
   validateRequest(ActivityZoneUpdateDto),
-  adminUserController.updateActivityZone
+  adminUserController.updateActivityZone,
 );
 
 router
@@ -111,7 +113,7 @@ router
   .post(
     authenticate([UserRoles.Admin]),
     validateRequest(UpdateStatDto),
-    adminUserController.updateUserStat
+    adminUserController.updateUserStat,
   );
 
 router
@@ -123,7 +125,7 @@ router
       { name: "svgaImage", maxCount: 1 },
     ]),
     validateRequest(CreateGiftDto),
-    adminUserController.createGift
+    adminUserController.createGift,
   )
   .get(authenticate(), adminUserController.getGifts);
 
@@ -131,7 +133,7 @@ router
   .route("/gift-category")
   .get(
     authenticate([UserRoles.Admin, UserRoles.Agency]),
-    adminUserController.getGiftCategory
+    adminUserController.getGiftCategory,
   );
 
 router
@@ -142,7 +144,7 @@ router
       { name: "previewImage", maxCount: 1 },
       { name: "svgaImage", maxCount: 1 },
     ]),
-    adminUserController.updateGift
+    adminUserController.updateGift,
   )
   .delete(authenticate([UserRoles.Admin]), adminUserController.deleteGift);
 
@@ -150,7 +152,7 @@ router
   .route("/create-role")
   .post(
     authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
-    adminUserController.createPortalUser
+    adminUserController.createPortalUser,
   );
 
 router
@@ -165,7 +167,7 @@ router
   .route("/role/permissions/remove/:roleId")
   .put(
     authenticate([UserRoles.Admin]),
-    adminUserController.removeRolePermissions
+    adminUserController.removeRolePermissions,
   );
 
 router
@@ -176,26 +178,26 @@ router
   .route("/withdraw-requests")
   .get(
     authenticate([UserRoles.Admin]),
-    adminUserController.getWithdrawRequests
+    adminUserController.getWithdrawRequests,
   );
 router
   .route("/withdraw-requests/:bonusId")
   .put(
     authenticate([UserRoles.Admin]),
-    adminUserController.updateWithdrawBonusStatus
+    adminUserController.updateWithdrawBonusStatus,
   );
 
 router
   .route("/agency-withdraw")
   .get(
     authenticate([UserRoles.Admin]),
-    adminUserController.getAgencyWithdrawList
+    adminUserController.getAgencyWithdrawList,
   );
 router
   .route("/agency-withdraw/:withdrawId")
   .put(
     authenticate([UserRoles.Admin]),
-    adminUserController.updateAgencyWithdrawStatus
+    adminUserController.updateAgencyWithdrawStatus,
   );
 
 router
@@ -213,7 +215,7 @@ router
   .route("/agency-commission-distribute")
   .put(
     authenticate([UserRoles.Admin]),
-    adminUserController.agencyCommissionDistribute
+    adminUserController.agencyCommissionDistribute,
   );
 
 router
@@ -230,7 +232,7 @@ router
   .post(
     authenticate([UserRoles.Admin]),
     upload.single("image"),
-    adminUserController.createBanner
+    adminUserController.createBanner,
   )
   .get(authenticate(), adminUserController.getBanners);
 
@@ -239,7 +241,7 @@ router
   .put(
     authenticate([UserRoles.Admin]),
     upload.single("image"),
-    adminUserController.updateBanner
+    adminUserController.updateBanner,
   )
   .delete(authenticate([UserRoles.Admin]), adminUserController.deleteBanner);
 
@@ -248,7 +250,7 @@ router
   .post(
     authenticate([UserRoles.Admin]),
     upload.single("image"),
-    adminUserController.createPoster
+    adminUserController.createPoster,
   )
   .get(authenticate(), adminUserController.getPosters);
 router
@@ -260,7 +262,7 @@ router
   .put(
     authenticate([UserRoles.Admin]),
     upload.single("image"),
-    adminUserController.updatePoster
+    adminUserController.updatePoster,
   )
   .delete(authenticate([UserRoles.Admin]), adminUserController.deletePoster);
 
@@ -268,14 +270,14 @@ router
   .route("/transaction-admin")
   .get(
     authenticate([UserRoles.Admin]),
-    adminUserController.getAdminCoinHistory
+    adminUserController.getAdminCoinHistory,
   );
 
 router
   .route("/transaction-portal-user/:userId")
   .get(
     authenticate([UserRoles.Admin, UserRoles.Merchant, UserRoles.Reseller]),
-    adminUserController.getPortalUserCoinHistory
+    adminUserController.getPortalUserCoinHistory,
   );
 
 router
@@ -290,7 +292,7 @@ router
       { name: "tag", maxCount: 1 },
       { name: "bg", maxCount: 1 },
     ]),
-    adminUserController.createLevelTag
+    adminUserController.createLevelTag,
   )
   .get(adminUserController.getLevelTags);
 
@@ -300,34 +302,24 @@ router.route("/level-tags/:id").put(
     { name: "tag", maxCount: 1 },
     { name: "bg", maxCount: 1 },
   ]),
-  adminUserController.updateLeveltags
+  adminUserController.updateLeveltags,
 );
 
 router
   .route("/update-cost")
-  .post(
-    authenticate([UserRoles.Admin]),
-    adminUserController.createUpdateCost
-  )
+  .post(authenticate([UserRoles.Admin]), adminUserController.createUpdateCost)
   .get(authenticate(), adminUserController.getUpdateCost);
 
 router
   .route("/update-cost/:id")
-  .put(
-    authenticate([UserRoles.Admin]),
-    adminUserController.updateUpdateCost
-  )
+  .put(authenticate([UserRoles.Admin]), adminUserController.updateUpdateCost)
   .delete(
     authenticate([UserRoles.Admin]),
-    adminUserController.deleteUpdateCost
+    adminUserController.deleteUpdateCost,
   );
 
-
-  
 router
   .route("/users/banned-users")
   .get(authenticate([UserRoles.Admin]), adminUserController.getBannedUsers);
-  
-
 
 export default router;

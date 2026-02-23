@@ -65,6 +65,7 @@ import {
   IUpdateCost,
   IUpdateCostDocument,
 } from "../../models/admin/update_cost_model";
+import { saveFileToLocal } from "../../core/Utils/save_file_to_local_sys";
 
 export interface IAdminUserService {
   loginAdmin(credentials: {
@@ -74,7 +75,7 @@ export interface IAdminUserService {
   registerAdmin(admin: IAdmin): Promise<IAdminDocument | null>;
   updateAdmin(
     id: string,
-    admin: Partial<IAdmin>
+    admin: Partial<IAdmin>,
   ): Promise<IAdminDocument | null>;
   deleteAdmin(id: string): Promise<IAdminDocument | null>;
   getAdminProfile(id: string): Promise<IAdminDocument | null>;
@@ -95,7 +96,7 @@ export interface IAdminUserService {
     userId: string;
   }): Promise<IUSerStatsDocument>;
   getAllModerators(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }>;
   // updatePermissions(
   //   id: string,
@@ -115,23 +116,23 @@ export interface IAdminUserService {
   deletePortalUser(id: string): Promise<IPortalUser>;
   addPermissionsToPortalUser(
     roleId: string,
-    permissions: string[]
+    permissions: string[],
   ): Promise<IPortalUser>;
   removePermissionsFromPortalUser(
     roleId: string,
-    permissions: string[]
+    permissions: string[],
   ): Promise<IPortalUser>;
   updateRoleActivityZone(
     id: string,
     zone: ActivityZoneState,
-    dateTill: string
+    dateTill: string,
   ): Promise<IPortalUserDocument>;
   getWithdrawRequests(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; data: IWithdrawBonusDocument[] }>;
   updateWithdrawBonusStatus(
     bonusId: string,
-    status: StatusTypes
+    status: StatusTypes,
   ): Promise<IWithdrawBonusDocument>;
   createSalary(salary: ISalary): Promise<ISalaryDocument>;
   getSalaries(): Promise<ISalaryDocument[]>;
@@ -146,7 +147,7 @@ export interface IAdminUserService {
   assignRoleToUser(userId: string, role: UserRoles): Promise<IUserDocument>;
   getUsersBasedOnRole(
     role: UserRoles,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{
     pagination: IPagination;
     users: IUserDocument[];
@@ -163,12 +164,12 @@ export interface IAdminUserService {
   getBannerDocs(): Promise<IBannerDocument[]>;
   createBanner(
     alt: string,
-    file: Express.Multer.File
+    file: Express.Multer.File,
   ): Promise<IBannerDocument>;
   updateBanner(
     id: string,
     alt?: string,
-    file?: Express.Multer.File
+    file?: Express.Multer.File,
   ): Promise<IBannerDocument>;
   deleteBanner(id: string): Promise<IBannerDocument>;
   // posters
@@ -177,18 +178,18 @@ export interface IAdminUserService {
 
   createPoster(
     alt: string,
-    file: Express.Multer.File
+    file: Express.Multer.File,
   ): Promise<IPosterDocument>;
   updatePoster(
     id: string,
     alt?: string,
-    file?: Express.Multer.File
+    file?: Express.Multer.File,
   ): Promise<IPosterDocument>;
   deletePoster(id: string): Promise<IPosterDocument>;
   getCoinHistory(
     senderRole: UserRoles,
     senderId: string | null,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; data: ICoinHistoryDocument[] }>;
   getAgencyWithdrawList(query: Record<string, unknown>): Promise<{
     pagination: IPagination;
@@ -196,33 +197,32 @@ export interface IAdminUserService {
   }>;
   updateAgencyWithdrawStatus(
     id: string,
-    status: StatusTypes
+    status: StatusTypes,
   ): Promise<IAgencyWithdrawDocument>;
 
   createLevelTagBg(
     level: string,
     tag: Express.Multer.File,
-    bg: Express.Multer.File
+    bg: Express.Multer.File,
   ): Promise<ILevelTagBgDocument>;
   getLevelTagBgs(): Promise<ILevelTagBgDocument[]>;
   updateLevelTagBg(
     id: string,
     level?: string,
     tag?: Express.Multer.File,
-    bg?: Express.Multer.File
+    bg?: Express.Multer.File,
   ): Promise<ILevelTagBgDocument>;
   createNewUpdateCost(data: IUpdateCost): Promise<IUpdateCostDocument>;
   getUpdateCostDocument(): Promise<IUpdateCostDocument>;
   updateUpdateCostDocument(
     id: string,
-    data: Partial<IUpdateCost>
+    data: Partial<IUpdateCost>,
   ): Promise<IUpdateCostDocument>;
   deleteUpdateCostDocument(id: string): Promise<IUpdateCostDocument>;
   getBannedUsers(query: Record<string, unknown>): Promise<{
     pagination: IPagination;
     users: IUserDocument[];
   }>;
-  
 }
 
 export default class AdminUserService implements IAdminUserService {
@@ -253,7 +253,7 @@ export default class AdminUserService implements IAdminUserService {
     AgencyWithdrawRepository: IAgencyWithdrawRepository,
     LevelTagBgRepository: ILevelTagBgRepository,
     PosterRepository: IPosterRepository,
-    UpdateCostRepository: IUpdateCostRepository
+    UpdateCostRepository: IUpdateCostRepository,
   ) {
     this.UserRepository = UserRepository;
     this.UserStatsRepository = UserStatsRepository;
@@ -275,7 +275,7 @@ export default class AdminUserService implements IAdminUserService {
     password: string;
   }): Promise<{ user: IAdminDocument; token: string }> {
     const admin = await this.AdminRepository.getAdminByUsername(
-      credentials.username
+      credentials.username,
     );
     if (!admin) {
       throw new AppError(StatusCodes.NOT_FOUND, "Invalid credentials");
@@ -298,7 +298,7 @@ export default class AdminUserService implements IAdminUserService {
     if (existingAdmin) {
       throw new AppError(
         StatusCodes.CONFLICT,
-        "You cannot have more than one admin"
+        "You cannot have more than one admin",
       );
     }
     const hashedPass = await bcrypt.hash(admin.password!, 10);
@@ -311,9 +311,17 @@ export default class AdminUserService implements IAdminUserService {
 
   async updateAdmin(
     id: string,
-    admin: Partial<IAdmin>
+    admin: Partial<IAdmin>,
+    avatar?: Express.Multer.File,
   ): Promise<IAdminDocument | null> {
     if (admin.password) admin.password = await bcrypt.hash(admin.password, 10);
+    if (avatar) {
+      const avatarUrl = await saveFileToLocal(avatar, {
+        folder: "admin_assets",
+      });
+
+      admin.avatar = avatarUrl;
+    }
     const updatedAdmin = await this.AdminRepository.updateAdmin(id, admin);
     if (!updatedAdmin)
       throw new AppError(StatusCodes.NOT_FOUND, "Admin not found");
@@ -338,7 +346,7 @@ export default class AdminUserService implements IAdminUserService {
 
   async assignCoinToSelf(
     id: string,
-    coins: number
+    coins: number,
   ): Promise<IAdminDocument | null> {
     const existingAdmin = await this.AdminRepository.getAdminById(id);
     if (!existingAdmin)
@@ -347,7 +355,7 @@ export default class AdminUserService implements IAdminUserService {
     if (!updateCoin)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to assign coins to self"
+        "Failed to assign coins to self",
       );
     return updateCoin;
   }
@@ -370,7 +378,7 @@ export default class AdminUserService implements IAdminUserService {
     if (zone === "temp_block" && dateTill == null)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "date_till is required for temporary block"
+        "date_till is required for temporary block",
       );
     if (zone === "temp_block" && dateTill != null) {
       payload["expire"] = dateTill;
@@ -385,7 +393,7 @@ export default class AdminUserService implements IAdminUserService {
     userId: string;
   }): Promise<IUSerStatsDocument> {
     let userStatReturnBody = await this.UserStatsRepository.getUserStats(
-      body.userId
+      body.userId,
     );
 
     if (!userStatReturnBody)
@@ -394,23 +402,23 @@ export default class AdminUserService implements IAdminUserService {
     if (body.diamonds) {
       userStatReturnBody = await this.UserStatsRepository.updateDiamonds(
         body.userId,
-        body.diamonds
+        body.diamonds,
       );
       if (!userStatReturnBody)
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          "failed update diamonds"
+          "failed update diamonds",
         );
     }
     if (body.stars) {
       userStatReturnBody = await this.UserStatsRepository.updateStars(
         body.userId,
-        body.stars
+        body.stars,
       );
       if (!userStatReturnBody)
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          "failed update stars"
+          "failed update stars",
         );
     }
 
@@ -418,7 +426,7 @@ export default class AdminUserService implements IAdminUserService {
   }
 
   async getAllModerators(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const moderators = await this.UserRepository.getAllModarators(query);
     return moderators;
@@ -524,7 +532,7 @@ export default class AdminUserService implements IAdminUserService {
     if (!previewImageUrl)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to upload prviewImage"
+        "Failed to upload prviewImage",
       );
     gift.previewImage = previewImageUrl;
     const svgaImageUrl = await uploadFileToCloudinary({
@@ -536,7 +544,7 @@ export default class AdminUserService implements IAdminUserService {
     if (!svgaImageUrl)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to upload svgaImage"
+        "Failed to upload svgaImage",
       );
     gift.svgaImage = svgaImageUrl;
 
@@ -559,7 +567,7 @@ export default class AdminUserService implements IAdminUserService {
       if (!previewUrl)
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          "Failed to upload image"
+          "Failed to upload image",
         );
       gift.previewImage = previewUrl;
     }
@@ -572,7 +580,7 @@ export default class AdminUserService implements IAdminUserService {
       if (!svgaUrl)
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          "Failed to upload image"
+          "Failed to upload image",
         );
       gift.svgaImage = svgaUrl;
     }
@@ -602,12 +610,12 @@ export default class AdminUserService implements IAdminUserService {
     if (existingUserId)
       throw new AppError(
         StatusCodes.CONFLICT,
-        `UserId -> ${user.userId} already exists`
+        `UserId -> ${user.userId} already exists`,
       );
     if (user.userRole == UserRoles.Reseller && user.parentCreator == null)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Reseller must have a parent creator"
+        "Reseller must have a parent creator",
       );
     if (
       user.userRole == UserRoles.countrySubAdmin &&
@@ -615,61 +623,60 @@ export default class AdminUserService implements IAdminUserService {
     )
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Sub Country Admin must have a parent creator"
+        "Sub Country Admin must have a parent creator",
       );
     if (user.userRole == UserRoles.Agency && user.parentCreator == null)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Agency must have a parent creator"
+        "Agency must have a parent creator",
       );
     if (user.userRole == UserRoles.Reseller) {
       const creatorUser = await this.PortalUserRepository.getPortalUserById(
-        user.parentCreator!.toString()
+        user.parentCreator!.toString(),
       );
       if (!creatorUser)
         throw new AppError(StatusCodes.NOT_FOUND, "Parent creator not found");
       if (creatorUser.userRole != UserRoles.Merchant)
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "Parent creator must be a merchant"
+          "Parent creator must be a merchant",
         );
     }
 
     if (user.userRole == UserRoles.Agency) {
       const creatorUser = await this.PortalUserRepository.getPortalUserById(
-        user.parentCreator!.toString()
+        user.parentCreator!.toString(),
       );
       if (!creatorUser)
         throw new AppError(StatusCodes.NOT_FOUND, "Parent creator not found");
       if (creatorUser.userRole != UserRoles.SubAdmin)
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "Parent creator must be a Sub Admin"
+          "Parent creator must be a Sub Admin",
         );
     }
 
     if (user.userRole == UserRoles.countrySubAdmin) {
       const creatorUser = await this.PortalUserRepository.getPortalUserById(
-        user.parentCreator!.toString()
+        user.parentCreator!.toString(),
       );
       if (!creatorUser)
         throw new AppError(StatusCodes.NOT_FOUND, "Parent creator not found");
       if (creatorUser.userRole != UserRoles.CountryAdmin)
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "Parent creator must be a Country Admin"
+          "Parent creator must be a Country Admin",
         );
     }
 
     const hashedPassword = await bcrypt.hash(user.password, 10);
     user.password = hashedPassword;
-    const newPortalUser = await this.PortalUserRepository.createPortalUser(
-      user
-    );
+    const newPortalUser =
+      await this.PortalUserRepository.createPortalUser(user);
     if (!newPortalUser)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to create portal user"
+        "Failed to create portal user",
       );
     return newPortalUser;
   }
@@ -689,24 +696,23 @@ export default class AdminUserService implements IAdminUserService {
 
   async addPermissionsToPortalUser(
     roleId: string,
-    permissions: string[]
+    permissions: string[],
   ): Promise<IPortalUser> {
-    const portalUser = await this.PortalUserRepository.getPortalUserById(
-      roleId
-    );
+    const portalUser =
+      await this.PortalUserRepository.getPortalUserById(roleId);
     if (!portalUser) {
       throw new AppError(StatusCodes.NOT_FOUND, "Portal user not found");
     }
 
     const existingPermissions = new Set(portalUser.userPermissions);
     const permissionsToAdd = permissions.filter(
-      (p) => !existingPermissions.has(p)
+      (p) => !existingPermissions.has(p),
     );
 
     if (permissionsToAdd.length === 0) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "All specified permissions already exist for this role."
+        "All specified permissions already exist for this role.",
       );
     }
 
@@ -714,12 +720,12 @@ export default class AdminUserService implements IAdminUserService {
 
     const updatedPortalUser = await this.PortalUserRepository.updatePortalUser(
       roleId,
-      { userPermissions: updatedPermissions }
+      { userPermissions: updatedPermissions },
     );
     if (!updatedPortalUser) {
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to add permissions to portal user"
+        "Failed to add permissions to portal user",
       );
     }
     return updatedPortalUser;
@@ -727,39 +733,38 @@ export default class AdminUserService implements IAdminUserService {
 
   async removePermissionsFromPortalUser(
     roleId: string,
-    permissions: string[]
+    permissions: string[],
   ): Promise<IPortalUser> {
-    const portalUser = await this.PortalUserRepository.getPortalUserById(
-      roleId
-    );
+    const portalUser =
+      await this.PortalUserRepository.getPortalUserById(roleId);
     if (!portalUser) {
       throw new AppError(StatusCodes.NOT_FOUND, "Portal user not found");
     }
 
     const existingPermissions = new Set(portalUser.userPermissions);
     const permissionsToRemove = permissions.filter((p) =>
-      existingPermissions.has(p)
+      existingPermissions.has(p),
     );
 
     if (permissionsToRemove.length === 0) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "None of the specified permissions exist for this role."
+        "None of the specified permissions exist for this role.",
       );
     }
 
     const updatedPermissions = portalUser.userPermissions.filter(
-      (p) => !permissionsToRemove.includes(p)
+      (p) => !permissionsToRemove.includes(p),
     );
 
     const updatedPortalUser = await this.PortalUserRepository.updatePortalUser(
       roleId,
-      { userPermissions: updatedPermissions }
+      { userPermissions: updatedPermissions },
     );
     if (!updatedPortalUser) {
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to remove permissions from portal user"
+        "Failed to remove permissions from portal user",
       );
     }
     return updatedPortalUser;
@@ -768,7 +773,7 @@ export default class AdminUserService implements IAdminUserService {
   async updateRoleActivityZone(
     id: string,
     zone: ActivityZoneState,
-    dateTill: string
+    dateTill: string,
   ): Promise<IPortalUserDocument> {
     const portalUser = await this.PortalUserRepository.getPortalUserById(id);
     if (!portalUser) {
@@ -785,19 +790,19 @@ export default class AdminUserService implements IAdminUserService {
     const finalPayload = { activityZone: payload };
     const updatedPortalUser = await this.PortalUserRepository.updatePortalUser(
       id,
-      finalPayload
+      finalPayload,
     );
     if (!updatedPortalUser) {
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to update portal user activity zone"
+        "Failed to update portal user activity zone",
       );
     }
     return updatedPortalUser;
   }
 
   async getWithdrawRequests(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; data: IWithdrawBonusDocument[] }> {
     const withdrawRequests =
       await this.WithdrawBonusRepository.getWithDrawBonus(query);
@@ -806,11 +811,10 @@ export default class AdminUserService implements IAdminUserService {
 
   async updateWithdrawBonusStatus(
     bonusId: string,
-    status: StatusTypes
+    status: StatusTypes,
   ): Promise<IWithdrawBonusDocument> {
-    const withdrawBonus = await this.WithdrawBonusRepository.getBonusWithId(
-      bonusId
-    );
+    const withdrawBonus =
+      await this.WithdrawBonusRepository.getBonusWithId(bonusId);
     if (!withdrawBonus) {
       throw new AppError(StatusCodes.NOT_FOUND, "Withdraw bonus not found");
     }
@@ -822,7 +826,7 @@ export default class AdminUserService implements IAdminUserService {
     if (!updatedWithdrawBonus) {
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to update withdraw bonus status"
+        "Failed to update withdraw bonus status",
       );
     }
     return updatedWithdrawBonus;
@@ -836,7 +840,7 @@ export default class AdminUserService implements IAdminUserService {
     if (existingSalary && existingSalary.length > 0)
       throw new AppError(
         StatusCodes.CONFLICT,
-        "Salary already exists, try editing the exisiting one"
+        "Salary already exists, try editing the exisiting one",
       );
     const newSalary = await this.SalaryRepository.createSalary(salary);
     return newSalary;
@@ -856,7 +860,7 @@ export default class AdminUserService implements IAdminUserService {
   }
   async updateSalary(
     id: string,
-    salary: Partial<ISalary>
+    salary: Partial<ISalary>,
   ): Promise<ISalaryDocument> {
     const updatedSalary = await this.SalaryRepository.updateSalary(id, salary);
     return updatedSalary;
@@ -896,7 +900,7 @@ export default class AdminUserService implements IAdminUserService {
       const diamondBonus = (100000 / 1200) * moneyShare;
       if (diamondBonus != 0) {
         const agencyAcc = await this.PortalUserRepository.getPortalUserById(
-          agency.agencyId
+          agency.agencyId,
         );
         if (!agencyAcc) continue;
         // throw new AppError(StatusCodes.NOT_FOUND, "Agency not found");
@@ -919,7 +923,7 @@ export default class AdminUserService implements IAdminUserService {
 
   async assignRoleToUser(
     userId: string,
-    role: UserRoles
+    role: UserRoles,
   ): Promise<IUserDocument> {
     const user = await this.UserRepository.findUserById(userId);
     if (!user) {
@@ -928,12 +932,12 @@ export default class AdminUserService implements IAdminUserService {
 
     const updatedUser = await this.UserRepository.findUserByIdAndUpdate(
       userId,
-      { userRole: role }
+      { userRole: role },
     );
     if (!updatedUser) {
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to assign role to user"
+        "Failed to assign role to user",
       );
     }
     return updatedUser;
@@ -941,7 +945,7 @@ export default class AdminUserService implements IAdminUserService {
 
   async getUsersBasedOnRole(
     role: UserRoles,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{
     pagination: IPagination;
     users: IUserDocument[];
@@ -958,13 +962,13 @@ export default class AdminUserService implements IAdminUserService {
   }> {
     const users = await this.UserRepository.getUserCounts(UserRoles.User);
     const subAdmins = await this.PortalUserRepository.getPortalUserCount(
-      UserRoles.SubAdmin
+      UserRoles.SubAdmin,
     );
     const merchant = await this.PortalUserRepository.getPortalUserCount(
-      UserRoles.Merchant
+      UserRoles.Merchant,
     );
     const countryAdmins = await this.PortalUserRepository.getPortalUserCount(
-      UserRoles.CountryAdmin
+      UserRoles.CountryAdmin,
     );
     return { users, subAdmins, merchants: merchant, countryAdmins };
   }
@@ -982,7 +986,7 @@ export default class AdminUserService implements IAdminUserService {
 
   async createBanner(
     alt: string,
-    file: Express.Multer.File
+    file: Express.Multer.File,
   ): Promise<IBannerDocument> {
     const bannerUrl = await uploadFileToCloudinary({
       isVideo: false,
@@ -1000,7 +1004,7 @@ export default class AdminUserService implements IAdminUserService {
   async updateBanner(
     id: string,
     alt?: string,
-    file?: Express.Multer.File
+    file?: Express.Multer.File,
   ): Promise<IBannerDocument> {
     let url;
     if (file) {
@@ -1017,7 +1021,7 @@ export default class AdminUserService implements IAdminUserService {
 
     const updatedBanner = await this.BannerRepository.updateBanner(
       id,
-      updateObj
+      updateObj,
     );
     return updatedBanner;
   }
@@ -1042,7 +1046,7 @@ export default class AdminUserService implements IAdminUserService {
     if (!deleteFile)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to delete image from cloudinary"
+        "Failed to delete image from cloudinary",
       );
     const deletedBanner = await this.BannerRepository.deleteBanner(id);
     return deletedBanner;
@@ -1063,7 +1067,7 @@ export default class AdminUserService implements IAdminUserService {
 
   async createPoster(
     alt: string,
-    file: Express.Multer.File
+    file: Express.Multer.File,
   ): Promise<IPosterDocument> {
     const posterUrl = await uploadFileToCloudinary({
       isVideo: false,
@@ -1081,7 +1085,7 @@ export default class AdminUserService implements IAdminUserService {
   async updatePoster(
     id: string,
     alt?: string,
-    file?: Express.Multer.File
+    file?: Express.Multer.File,
   ): Promise<IPosterDocument> {
     let url;
     if (file) {
@@ -1098,7 +1102,7 @@ export default class AdminUserService implements IAdminUserService {
 
     const updatedPoster = await this.PosterRepository.updatePoster(
       id,
-      updateObj
+      updateObj,
     );
     return updatedPoster;
   }
@@ -1123,7 +1127,7 @@ export default class AdminUserService implements IAdminUserService {
     if (!deleteFile)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to delete image from cloudinary"
+        "Failed to delete image from cloudinary",
       );
     const deletePoster = await this.PosterRepository.deletePoster(id);
     return deletePoster;
@@ -1132,7 +1136,7 @@ export default class AdminUserService implements IAdminUserService {
   async getCoinHistory(
     senderRole: UserRoles,
     senderId: string | null,
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; data: ICoinHistoryDocument[] }> {
     let history = {
       data: [] as ICoinHistoryDocument[],
@@ -1150,30 +1154,30 @@ export default class AdminUserService implements IAdminUserService {
       senderRole == UserRoles.Reseller
     ) {
       const portalUser = await this.PortalUserRepository.getPortalUserById(
-        senderId!
+        senderId!,
       );
       if (!portalUser)
         throw new AppError(
           StatusCodes.NOT_FOUND,
-          `Portal user with id -> ${senderId} not found`
+          `Portal user with id -> ${senderId} not found`,
         );
       history = await this.CoinHistoryRepository.getPortalHistory(
         senderId!,
-        query
+        query,
       );
     }
     return history;
   }
 
   async getAgencyWithdrawList(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; data: IAgencyWithdrawDocument[] }> {
     return await this.AgencyWithdrawRepository.getAgencyWithdrawlist(query);
   }
 
   async updateAgencyWithdrawStatus(
     id: string,
-    status: StatusTypes
+    status: StatusTypes,
   ): Promise<IAgencyWithdrawDocument> {
     return await this.AgencyWithdrawRepository.updateWithdraw(id, {
       status: status,
@@ -1183,7 +1187,7 @@ export default class AdminUserService implements IAdminUserService {
   async createLevelTagBg(
     level: string,
     tag: Express.Multer.File,
-    bg: Express.Multer.File
+    bg: Express.Multer.File,
   ): Promise<ILevelTagBgDocument> {
     const existingLevel = await this.LevelTagBgRepository.findByLevel(level);
     if (existingLevel)
@@ -1209,7 +1213,7 @@ export default class AdminUserService implements IAdminUserService {
     if (!newLevel)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to create level tag bg"
+        "Failed to create level tag bg",
       );
     return newLevel;
   }
@@ -1222,7 +1226,7 @@ export default class AdminUserService implements IAdminUserService {
     id: string,
     level?: string,
     tag?: Express.Multer.File,
-    bg?: Express.Multer.File
+    bg?: Express.Multer.File,
   ): Promise<ILevelTagBgDocument> {
     const existingLevel = await this.LevelTagBgRepository.findById(id);
     if (!existingLevel)
@@ -1272,12 +1276,12 @@ export default class AdminUserService implements IAdminUserService {
 
     const updatedLevelTagBg = await this.LevelTagBgRepository.update(
       id,
-      updateData
+      updateData,
     );
     if (!updatedLevelTagBg)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to update level tag bg"
+        "Failed to update level tag bg",
       );
     return updatedLevelTagBg;
   }
@@ -1287,7 +1291,7 @@ export default class AdminUserService implements IAdminUserService {
     if (existingDoc)
       throw new AppError(
         StatusCodes.CONFLICT,
-        "Update cost document already exists. Please update the existing one."
+        "Update cost document already exists. Please update the existing one.",
       );
     const newDoc = await this.UpdateCostRepository.createUpdateCost(data);
     return newDoc;
@@ -1298,23 +1302,23 @@ export default class AdminUserService implements IAdminUserService {
     if (!doc)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        "Update cost document not found."
+        "Update cost document not found.",
       );
     return doc;
   }
 
   async updateUpdateCostDocument(
     id: string,
-    data: Partial<IUpdateCost>
+    data: Partial<IUpdateCost>,
   ): Promise<IUpdateCostDocument> {
     const updatedDoc = await this.UpdateCostRepository.updateUpdateCost(
       id,
-      data
+      data,
     );
     if (!updatedDoc)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        "Update cost document not found."
+        "Update cost document not found.",
       );
     return updatedDoc;
   }
@@ -1324,13 +1328,13 @@ export default class AdminUserService implements IAdminUserService {
     if (!deletedDoc)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        "Update cost document not found."
+        "Update cost document not found.",
       );
     return deletedDoc;
   }
 
   async getBannedUsers(
-    query: Record<string, unknown>
+    query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const blockedUsers = await this.UserRepository.getBannedUsers(query);
     return blockedUsers;

@@ -69,6 +69,7 @@ export default class AdminUserController {
   updateAdmin = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.user!;
     const { username, password, email, role, coins } = req.body;
+    const avatar = req.file;
     if (coins)
       throw new AppError(
         StatusCodes.FORBIDDEN,
@@ -76,17 +77,21 @@ export default class AdminUserController {
       );
     if (role)
       throw new AppError(StatusCodes.FORBIDDEN, "Role cannot be updated");
-    if (!username && !password && !email && !coins)
+    if (!username && !password && !email && !coins && !avatar)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "At least one field (username, password, coins, or email) is required for update",
+        "At least one field (username, password, coins, avatar or email) is required for update",
       );
-    const updatedAdmin = await this.AdminUserService.updateAdmin(id, {
-      username,
-      password,
-      email,
-      coins,
-    });
+    const updatedAdmin = await this.AdminUserService.updateAdmin(
+      id,
+      {
+        username,
+        password,
+        email,
+        coins,
+      },
+      avatar,
+    );
     sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
