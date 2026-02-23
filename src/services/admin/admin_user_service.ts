@@ -65,7 +65,10 @@ import {
   IUpdateCost,
   IUpdateCostDocument,
 } from "../../models/admin/update_cost_model";
-import { saveFileToLocal } from "../../core/Utils/save_file_to_local_sys";
+import {
+  saveFileToLocal,
+  deleteLocalFile,
+} from "../../core/Utils/save_file_to_local_sys";
 
 export interface IAdminUserService {
   loginAdmin(credentials: {
@@ -76,6 +79,7 @@ export interface IAdminUserService {
   updateAdmin(
     id: string,
     admin: Partial<IAdmin>,
+    avatar?: Express.Multer.File,
   ): Promise<IAdminDocument | null>;
   deleteAdmin(id: string): Promise<IAdminDocument | null>;
   getAdminProfile(id: string): Promise<IAdminDocument | null>;
@@ -316,6 +320,11 @@ export default class AdminUserService implements IAdminUserService {
   ): Promise<IAdminDocument | null> {
     if (admin.password) admin.password = await bcrypt.hash(admin.password, 10);
     if (avatar) {
+      const existingAdmin = await this.AdminRepository.getAdminById(id);
+      if (existingAdmin?.avatar) {
+        await deleteLocalFile(existingAdmin.avatar);
+      }
+
       const avatarUrl = await saveFileToLocal(avatar, {
         folder: "admin_assets",
       });
