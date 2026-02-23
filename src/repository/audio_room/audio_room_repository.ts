@@ -32,6 +32,7 @@ export interface IAudioRoomRepository {
   deleteAudioRoom(roomId: string): Promise<IAudioRoomDocument>;
   getAllAudioRooms(): Promise<IAudioRoomDocument[]>;
   isMemberInAnyRoom(userId: string): Promise<IAudioRoomDocument | null>;
+  getRoomsByRoomIds(roomIds: string[]): Promise<IAudioRoomDocument[]>;
 }
 
 export class AudioRoomRepository implements IAudioRoomRepository {
@@ -143,5 +144,37 @@ export class AudioRoomRepository implements IAudioRoomRepository {
 
   async isMemberInAnyRoom(userId: string): Promise<IAudioRoomDocument | null> {
     return await this.audioRoomModel.findOne({ [`members.${userId}`]: true });
+  }
+
+  async getRoomsByRoomIds(roomIds: string[]): Promise<IAudioRoomDocument[]> {
+    const qb = new QueryBuilder(this.audioRoomModel, {});
+    const res = qb.aggregate([
+      {
+        $match: { roomId: { $in: roomIds } },
+      },
+      lookupRichUser("hostId", "hostId"),
+      {
+        $unwind: {
+          path: "$hostId",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
+      lookupEnrichedUsersArray("admins", "adminsInfo"),
+      {
+        $addFields: {
+          membersArray: "$membersArrayInfo",
+          admins: "$adminsInfo",
+        },
+      },
+      {
+        $project: {
+          membersArrayInfo: 0,
+          adminsInfo: 0,
+        },
+      },
+    ]);
+
+    return await res.exec();
   }
 }
