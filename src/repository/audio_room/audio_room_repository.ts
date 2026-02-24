@@ -91,7 +91,12 @@ export class AudioRoomRepository implements IAudioRoomRepository {
     const qb = new QueryBuilder(this.audioRoomModel, {});
     const res = qb.aggregate([
       {
-        $match: {},
+        $match: {
+          $or: [
+            { "membersArray.0": { $exists: true } },
+            { members: { $exists: true, $ne: {} } },
+          ],
+        },
       },
       lookupRichUser("hostId", "hostId"),
       {
