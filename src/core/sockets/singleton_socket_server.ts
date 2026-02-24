@@ -26,6 +26,7 @@ import MyBucketModel from "../../models/store/my_bucket_model";
 import StoreCategoryModel from "../../models/store/store_category_model";
 import { CurrentRoomMemberRepository } from "../../repository/audio_room/current_room_member_repository";
 import CurrentRoomMemberModel from "../../models/audio_room/current_room_member";
+import { AudioRoomHelper } from "../Utils/audioRoomHelper";
 
 export default class SingletonSocketServer {
   private static instance: SingletonSocketServer;
@@ -151,7 +152,11 @@ export default class SingletonSocketServer {
   }
 
   public emitToRoom(roomId: string, event: string, data: any) {
-    this.io.to(roomId).emit(event, data);
+    if (roomId == "") {
+      this.io.emit(event, data);
+    } else {
+      this.io.to(roomId).emit(event, data);
+    }
   }
 
   public roomSearializer(room: IAudioRoom) {
@@ -217,6 +222,7 @@ export default class SingletonSocketServer {
     room: IAudioRoomDocument,
   ) {
     try {
+      const helperInstance = AudioRoomHelper.getInstance();
       const isHost = room.hostId?.toString() === userId;
       const user = await this.userRepository.findUserById(userId);
       if (!user) {
@@ -229,22 +235,10 @@ export default class SingletonSocketServer {
         userId,
       );
       //leave message
-      const leaveMessage: IRoomMessage = {
-        _id: userObj._id as string,
-        name: userObj.name as string,
-        avatar: userObj.avatar as string,
-        uid: userObj.uid as string,
-        userId: userObj.userId as number,
-        country: userObj.country as string,
-        currentBackground: userObj.currentLevelBackground as string,
-        currentTag: userObj.currentLevelTag as string,
-        currentLevel: userObj.level as number,
-        text: "left the room",
-        equippedStoreItems: userObj.equippedStoreItems as Record<
-          string,
-          string
-        >,
-      };
+      const leaveMessage: IRoomMessage = helperInstance.generateRoomMessage(
+        userObj,
+        "left the room",
+      );
       if (isHost) {
         // remove from seat if seated
         // Check host seat
@@ -285,6 +279,14 @@ export default class SingletonSocketServer {
           userId: userId,
           isHostPresent: false,
         });
+
+        // a room is considered close when there are no members
+        if (room.membersArray.length == 0) {
+          this.emitToRoom("", AudioRoomChannels.AudioRoomClosed, {
+            roomId: room.roomId,
+          });
+        }
+
         // disconnect from socket room
         const socketId = this.getSocketId(userId);
         if (socketId) {
@@ -327,6 +329,12 @@ export default class SingletonSocketServer {
         this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
           userId: userId,
         });
+        // a room is considered close when there are no members
+        if (room.membersArray.length == 0) {
+          this.emitToRoom("", AudioRoomChannels.AudioRoomClosed, {
+            roomId: room.roomId,
+          });
+        }
         // disconnect from socket room
         const socketId = this.getSocketId(userId);
         if (socketId) {

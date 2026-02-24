@@ -207,7 +207,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.joinRoomSocket(hostId! as string, roomId!);
     // send create room event
     socketInstance.emitToRoom(
-      roomId!,
+      "", // empty string for global emit
       AudioRoomChannels.NewAudioRoomCreated,
       socketInstance.roomSearializer(audioRoomDocument),
     );

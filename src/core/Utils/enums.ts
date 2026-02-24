@@ -95,6 +95,7 @@ export enum GlobalSocketChannels {
 
 export enum AudioRoomChannels {
   NewAudioRoomCreated = "new-audio-room-created",
+  AudioRoomClosed = "audio-room-closed",
   UserJoined = "user-joined",
   UserLeft = "user-left",
   hostLeft = "host-left",
