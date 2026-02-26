@@ -10,6 +10,11 @@ import { xpLevels } from "../Utils/constants";
 export class XpHelper {
   private static instance: XpHelper;
   private readonly GIFT_SEND_XP = 600;
+  private readonly MULTIPLIER_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+  private svipMultiplierCache = new Map<
+    string,
+    { value: number; expiry: number }
+  >();
 
   //   repositories
   public userRepository = new UserRepository(User);
@@ -39,18 +44,31 @@ export class XpHelper {
   }
 
   private async calculateSvipMultiplier(userId: string): Promise<number> {
+    const cached = this.svipMultiplierCache.get(userId);
+    if (cached && cached.expiry > Date.now()) return cached.value;
+
     const svipPackages = (
       await this.bucketRepository.getAllPremiumItems(userId)
     )
       .map((item) => (item.itemId as IStoreItem).name)
       .filter((name) => name.includes("SVIP"))
       .map((name) => parseInt(name.split("SVIP-")[1]) || 0);
+
     const highestSvip =
-      svipPackages.length == 0 ? 0 : Math.max(...svipPackages);
-    if (highestSvip < 2) return 1;
-    if (highestSvip < 7) return 1.2;
-    if (highestSvip < 9) return 1.3;
-    return 1.4;
+      svipPackages.length === 0 ? 0 : Math.max(...svipPackages);
+
+    let multiplier = 1;
+
+    if (highestSvip >= 9) multiplier = 1.4;
+    else if (highestSvip >= 7) multiplier = 1.3;
+    else if (highestSvip >= 2) multiplier = 1.2;
+
+    this.svipMultiplierCache.set(userId, {
+      value: multiplier,
+      expiry: Date.now() + this.MULTIPLIER_CACHE_TTL,
+    });
+
+    return multiplier;
   }
 
   private determineUserLevelFromXp(xpCount: number): number {
