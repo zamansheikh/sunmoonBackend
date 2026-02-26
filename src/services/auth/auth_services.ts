@@ -496,7 +496,7 @@ export default class AuthService implements IAuthService {
           receiverId: targetUserId,
           giftId,
           qty,
-          totalCoinCost: coinCost,
+          totalCoinCost: gift.coinPrice * qty,
           totalDiamonds: diamonds,
           roomId,
         }),
