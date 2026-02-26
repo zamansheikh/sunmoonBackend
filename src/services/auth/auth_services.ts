@@ -71,6 +71,9 @@ import {
 } from "../../core/Utils/constants";
 import { IPagination } from "../../core/Utils/query_builder";
 import { IMyBucketDocument } from "../../models/store/my_bucket_model";
+import { UserCache } from "../../core/cache/user_chache";
+import { GiftUserCache } from "../../core/cache/gift_user_cache";
+import { XpHelper } from "../../core/helper_classes/xp_helper";
 
 export default class AuthService implements IAuthService {
   UserRepository: IUserRepository;
@@ -455,170 +458,53 @@ export default class AuthService implements IAuthService {
     roomId: string;
     giftId: string;
     qty: number;
-  }): Promise<UpdateResult> {
-    const myUser = await this.UserRepository.findUserById(myId);
-    // const userToGift = await this.UserRepository.findUserById(targetUserId);
-    if (!myUser) throw new AppError(StatusCodes.NOT_FOUND, "user not found");
-
-    const exisitngGift = await this.GiftRepository.getGiftById(giftId);
-    if (!exisitngGift)
-      throw new AppError(StatusCodes.NOT_FOUND, "gift not found");
-
-    // to determine the hot gifts
-    exisitngGift.sendCount! += qty;
-    await exisitngGift.save();
-
-    const mystats = await this.UserStatsRepository.getUserStats(myId);
-
-    const totalPrice = exisitngGift.coinPrice * targetUserIds.length * qty;
-
-    const ioInstance = SocketServer.getInstance().getIO();
-
-    if (!mystats)
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "my stats not found",
-      );
-
-    // starting a new session for safe rollback
-    if (mystats.coins! < totalPrice)
-      throw new AppError(StatusCodes.BAD_REQUEST, "not enough coins");
-
-    const hasMyId = targetUserIds.filter((id) => id == myId);
-    const otherIds = targetUserIds.filter((id) => id != myId);
-
-    let updateStats = {
-      acknowledged: true,
-      modifiedCount: 1,
-      upsertedId: null,
-      upsertedCount: 0,
-      matchedCount: 1,
-    } as UpdateResult;
-
-    const xpEnv = process.env.XP_MODE ?? "0";
-    const isXpMode = xpEnv.toString() == "1";
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    if (isXpMode) {
-      const updateCostDocument =
-        await this.UpdateCostRepository.getUpdateCostDoucment();
-      if (!updateCostDocument)
-        throw new AppError(
-          StatusCodes.NOT_FOUND,
-          "update cost document is not created yet",
-        );
-      const coinEquivalent = updateCostDocument.expEquivalentCoin;
-      if (!coinEquivalent || isNaN(coinEquivalent))
-        throw new AppError(
-          StatusCodes.BAD_GATEWAY,
-          "either xpCoinEquivalent is missing or not a number",
-        );
-      const totalNewXpGained = totalPrice / coinEquivalent;
-      await updateUserXpFunc(
-        this.UserRepository,
-        myId,
-        totalNewXpGained,
-        ioInstance,
-      );
+  }): Promise<any> {
+    const allExist =
+      await UserCache.getInstance().validateUserIds(targetUserIds);
+    if (!allExist) {
+      throw new AppError(404, "Some users not found");
+    }
+    const gift = await GiftUserCache.getInstance().getGift(giftId);
+    if (!gift) {
+      throw new AppError(404, "Gift not found");
     }
 
-    mystats.coins! -= totalPrice;
-    if (hasMyId.length > 0) mystats.diamonds! += exisitngGift.diamonds * qty;
-    await mystats.save({ session });
-
-    if (otherIds)
-      updateStats = await this.UserStatsRepository.updateGiftDiamond(
-        otherIds,
-        exisitngGift.diamonds * qty,
-      );
-
-    await session.commitTransaction();
-    session.endSession();
-
-    // sending the information to the frontend via socket
-
-    SocketServer.getInstance().updateRoomCoin(
-      roomId,
-      exisitngGift.diamonds * qty,
-      targetUserIds,
-    );
-
-    SocketServer.getInstance().updateRoomRanking(
-      roomId,
+    const coinCost = gift.coinPrice * qty * targetUserIds.length; //
+    const diamonds = gift.diamonds * qty;
+    const senderDiamonds = targetUserIds.includes(myId) ? diamonds : 0;
+    // deducting coins from sender and adding diamonds to sender if he is also a receiver
+    await this.UserStatsRepository.updateSenderStats(
       myId,
-      exisitngGift.diamonds * qty,
-      targetUserIds,
+      coinCost,
+      senderDiamonds,
     );
 
-    ioInstance.to(roomId).emit(SocketChannels.sendGift, {
-      avatar: myUser.avatar,
-      name: myUser.name,
-      recieverIds: targetUserIds,
-      diamonds: exisitngGift.diamonds,
-      qty: qty,
-      gift: exisitngGift,
-    });
+    const secondaryUpdates: Promise<any>[] = [
+      this.GiftRepository.updateGiftSendCount(
+        giftId,
+        qty * targetUserIds.length,
+      ), // updating gift send count to determine hot gifts
+      this.UserStatsRepository.updateGiftDiamond(targetUserIds, diamonds), // updating diamonds for all the receivers
+      XpHelper.getInstance().updateUserXp(myId, coinCost),
+    ];
 
-    ioInstance.to(roomId).emit(SocketAudioChannels.SentAudioGift, {
-      avatar: myUser.avatar,
-      name: myUser.name,
-      recieverIds: targetUserIds,
-      diamonds: exisitngGift.diamonds,
-      qty: qty,
-      gift: exisitngGift,
-    });
-
-    const firstRecievedUser = await this.UserRepository.findUserById(
-      targetUserIds[0],
-    );
-    if (!firstRecievedUser)
-      throw new AppError(StatusCodes.NOT_FOUND, "reciever not found");
-
-    const message: IRoomMessage = {
-      name: myUser.name as string,
-      avatar: myUser.avatar as string,
-      uid: myUser.uid as string,
-      userId: myUser.userId as number,
-      country: myUser.country as string,
-      _id: myUser._id as string,
-      text: `has gifted ${qty} ${exisitngGift.name} to ${
-        firstRecievedUser.name
-      } ${
-        targetUserIds.length - 1 == 0
-          ? ""
-          : `and ${targetUserIds.length - 1} more`
-      } `,
-      currentBackground: myUser.currentLevelBackground as string,
-      currentTag: myUser.currentLevelTag as string,
-      currentLevel: myUser.level as number,
-      equippedStoreItems: await getEquippedItemObjects(
-        this.BucketRepository,
-        this.CategoryRepository,
-        myId,
-      ),
-    };
-
-    ioInstance.to(roomId).emit(SocketChannels.sendMessage, message);
-    ioInstance.to(roomId).emit(SocketAudioChannels.SendMessage, {
-      success: true,
-      message: "",
-      data: message,
-    });
-
-    if (!updateStats)
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "updating user stats failed",
+    // add gift record promise for all the targetIds
+    for (const targetUserId of targetUserIds) {
+      secondaryUpdates.push(
+        GiftUserCache.getInstance().giftRecordRepository.createGiftRecord({
+          senderId: myId,
+          receiverId: targetUserId,
+          giftId,
+          qty,
+          totalCoinCost: coinCost,
+          totalDiamonds: diamonds,
+          roomId,
+        }),
       );
-
-    if (hasMyId.length > 0 && otherIds.length > 0) {
-      updateStats.matchedCount += 1;
-      updateStats.modifiedCount += 1;
     }
+    await Promise.all(secondaryUpdates);
 
-    return updateStats;
+    return { coinCost, diamonds };
   }
 
   // add
@@ -1070,3 +956,4 @@ export default class AuthService implements IAuthService {
     return items;
   }
 }
+``;

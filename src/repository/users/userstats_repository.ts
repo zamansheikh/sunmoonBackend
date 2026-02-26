@@ -1,3 +1,4 @@
+import { StatusCodes } from "http-status-codes";
 import mongoose, { ClientSession } from "mongoose";
 import {
   IUserStats,
@@ -33,12 +34,12 @@ export default class UserStatsRepository implements IUserStatsRepository {
   async updateGiftDiamond(
     userIds: string[],
     diamonds: number,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<mongoose.UpdateResult> {
     const result = await this.model
       .updateMany(
         { userId: { $in: userIds } },
-        { $inc: { diamonds: diamonds } }
+        { $inc: { diamonds: diamonds } },
       )
       .session(session || null);
     return result;
@@ -47,7 +48,7 @@ export default class UserStatsRepository implements IUserStatsRepository {
   async updateCoins(
     userId: string,
     coins: number,
-    session?: ClientSession
+    session?: ClientSession,
   ): Promise<IUSerStatsDocument> {
     const updated = await this.model
       .findOneAndUpdate({ userId }, { $inc: { coins } }, { new: true })
@@ -56,21 +57,39 @@ export default class UserStatsRepository implements IUserStatsRepository {
     return updated;
   }
 
+  async updateSenderStats(
+    userId: string,
+    coinsToSub: number,
+    diamondsToAdd: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument | null> {
+    const updated = await this.model
+      .findOneAndUpdate(
+        { userId, coins: { $gte: coinsToSub } },
+        { $inc: { coins: -coinsToSub, diamonds: diamondsToAdd } },
+        { new: true },
+      )
+      .session(session || null);
+    if (!updated)
+      throw new AppError(StatusCodes.BAD_REQUEST, "not enough coins");
+    return updated;
+  }
+
   async updateStars(
     userId: string,
-    stars: number
+    stars: number,
   ): Promise<IUSerStatsDocument | null> {
     return await this.model.findOneAndUpdate(
       { userId },
       { $inc: { stars } },
-      { new: true }
+      { new: true },
     );
   }
 
   async updateDiamonds(
     userId: string,
     diamonds: number,
-    session?: mongoose.ClientSession
+    session?: mongoose.ClientSession,
   ): Promise<IUSerStatsDocument | null> {
     return await this.model
       .findOneAndUpdate({ userId }, { $inc: { diamonds } }, { new: true })
@@ -79,18 +98,18 @@ export default class UserStatsRepository implements IUserStatsRepository {
 
   async updateLevels(
     userId: string,
-    levels: number
+    levels: number,
   ): Promise<IUSerStatsDocument | null> {
     return await this.model.findOneAndUpdate(
       { userId },
       { $inc: { levels } },
-      { new: true }
+      { new: true },
     );
   }
 
   async updateProperty(
     id: string,
-    property: Record<string, any>
+    property: Record<string, any>,
   ): Promise<IUSerStatsDocument | null> {
     return await this.model.findOneAndUpdate({ userId: id }, property, {
       new: true,
@@ -98,7 +117,7 @@ export default class UserStatsRepository implements IUserStatsRepository {
   }
 
   async getUserLeaderBoardInfo(
-    query: Record<string, string>
+    query: Record<string, string>,
   ): Promise<ILeaderBoardResponse[] | null> {
     const leaderboard = await this.model.aggregate([
       {

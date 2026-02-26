@@ -88,8 +88,12 @@ export interface IUserRepository {
     pagination: IPagination;
     users: IUserDocument[];
   }>;
-  updateUserXp(id: string, xp: number): Promise<IUserDocument | null>;
-  findUsersByIds(ids: string[]): Promise<IUserDocument[]>;
+  updateUserXp(
+    id: string,
+    xp: number,
+    session?: mongoose.ClientSession,
+  ): Promise<IUserDocument | null>;
+  validateUserIds(ids: string[]): Promise<boolean>;
 }
 
 export default class UserRepository implements IUserRepository {
@@ -495,7 +499,11 @@ export default class UserRepository implements IUserRepository {
     return { users, pagination };
   }
 
-  async updateUserXp(id: string, xp: number): Promise<IUserDocument | null> {
+  async updateUserXp(
+    id: string,
+    xp: number,
+    session?: mongoose.ClientSession,
+  ): Promise<IUserDocument | null> {
     if (!isValidMongooseToken(id)) {
       throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
@@ -503,12 +511,16 @@ export default class UserRepository implements IUserRepository {
       id,
       { $inc: { totalEarnedXp: xp } },
       { new: true },
-    );
+    ).session(session || null);
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
     return user;
   }
 
-  async findUsersByIds(ids: string[]): Promise<IUserDocument[]> {
-    return await this.UserModel.find({ _id: { $in: ids } });
+  async validateUserIds(ids: string[]): Promise<boolean> {
+    const uniqueIds = [...new Set(ids)];
+    const count = await this.UserModel.countDocuments({
+      _id: { $in: uniqueIds },
+    });
+    return count === uniqueIds.length;
   }
 }

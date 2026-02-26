@@ -7,6 +7,7 @@ import {
   IMyBucketModel,
 } from "../../models/store/my_bucket_model";
 import mongoose, { ClientSession, UpdateResult } from "mongoose";
+import { DatabaseNames } from "../../core/Utils/enums";
 
 export interface IMyBucketRepository {
   createNewBucket(
@@ -34,6 +35,7 @@ export interface IMyBucketRepository {
     pagination: IPagination;
     items: IMyBucketDocument[];
   }>;
+  getAllPremiumItems(userId: string): Promise<IMyBucketDocument[]>;
 }
 
 export default class MyBucketRepository implements IMyBucketRepository {
@@ -125,5 +127,17 @@ export default class MyBucketRepository implements IMyBucketRepository {
     const items = await res.exec();
     const pagination = await res.countTotal();
     return { pagination, items };
+  }
+
+  async getAllPremiumItems(userId: string): Promise<IMyBucketDocument[]> {
+    const premiumCategories = await mongoose
+      .model(DatabaseNames.StoreCategory)
+      .find({ isPremium: true });
+    const categoryIds = premiumCategories.map((cat) => cat._id);
+
+    return await this.Model.find({
+      ownerId: userId,
+      categoryId: { $in: categoryIds },
+    }).populate("itemId categoryId");
   }
 }

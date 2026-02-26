@@ -25,16 +25,16 @@ export interface IGiftUser {
 
 export interface IAuthService {
   registerWithGoogle(
-    UserData: IUserEntity
+    UserData: IUserEntity,
   ): Promise<{ user: IUserDocument; token: string }>;
   loginWithEmailPassword(
     email: string,
-    password: string
+    password: string,
   ): Promise<{ user: IUserDocument; token: string }>;
   verifyAccount(
     userId: string,
     phoneNumber: string,
-    password: string
+    password: string,
   ): Promise<IUserDocument>;
   retrieveMyDetails(id: string): Promise<IUserDocument | null>;
   deleteMyAccount(id: string): Promise<IUserDocument | null>;
@@ -54,7 +54,7 @@ export interface IAuthService {
   setMyPassword(
     id: string,
     password: string,
-    newPassword: string
+    newPassword: string,
   ): Promise<IUserDocument>;
   giftUser({
     targetUserIds,
@@ -68,7 +68,7 @@ export interface IAuthService {
     roomId: string;
     giftId: string;
     qty: number;
-  }): Promise<UpdateResult>;
+  }): Promise<any>;
   generateToken(info: {
     channelName: string;
     uid: string;
@@ -78,7 +78,7 @@ export interface IAuthService {
   getDailyBonus(
     id: string,
     totalTime: number,
-    type: StreamType
+    type: StreamType,
   ): Promise<{ bonus: number }>;
   setChatPrivacy(payload: {
     id: string;
@@ -96,7 +96,7 @@ export interface IAuthService {
   getMyBonus(userId: string): Promise<number>;
 
   agencyJoinRequest(
-    data: IAgencyJoinRequest
+    data: IAgencyJoinRequest,
   ): Promise<IAgencyJoinRequestDocument>;
   joinRequestStatus(userId: string): Promise<{
     status: AgencyJoinStatus;
@@ -113,7 +113,7 @@ export interface IAuthService {
 
   isPremiumUser(userId: string): Promise<boolean>;
   updateMyXp(userId: string, isMyRoom: boolean): Promise<{ XP: number }>;
-  
+
   getAllBucketItems(query: Record<string, any>): Promise<{
     pagination: IPagination;
     items: IMyBucketDocument[];

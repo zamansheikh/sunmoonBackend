@@ -6,7 +6,7 @@ export function validateCreateStoreItem(body: any) {
   if (!name || !validity || !categoryId || !price)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, validity, categoryId, price are required"
+      "name, validity, categoryId, price are required",
     );
   validateNumber(validity, "validity");
   validateNumber(price, "price");
@@ -16,7 +16,7 @@ export function validateUpdateStoreItem(body: any) {
   if (!name && !validity && !categoryId && !price)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, validity, categoryId, price at least one is required"
+      "name, validity, categoryId, price at least one is required",
     );
   if (validity) validateNumber(validity, "validity");
   if (price) validateNumber(price, "price");
@@ -24,16 +24,26 @@ export function validateUpdateStoreItem(body: any) {
 
 export function ValidateStoreItemBatch(
   body: any,
-  files: Express.Multer.File[]
+  files: Express.Multer.File[],
 ) {
   const { name, validity, categoryId, price, categoryNames } = body;
   if (!name || !validity || !categoryId || !price)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, validity, categoryId, price are required"
+      "name, validity, categoryId, price are required",
     );
   validateNumber(validity, "validity");
   validateNumber(price, "price");
+
+  if (name != "VIP" && !name.startsWith("SVIP"))
+    throw new AppError(StatusCodes.BAD_REQUEST, "Invalid name");
+
+  if (name.startsWith("SVIP")) {
+    const parts = name.split("-");
+    if (parts.length != 2)
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid name");
+    validateNumber(parts[1], "SVIP level");
+  }
 
   if (!files || files.length < 1)
     throw new AppError(StatusCodes.BAD_REQUEST, "files are required");
@@ -41,29 +51,30 @@ export function ValidateStoreItemBatch(
   if (categories.length !== files.length)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "categoryNames and files must be the same length"
+      "categoryNames and files must be the same length",
     );
 }
 
 export function ValidateStoreItemUpdateBatch(
   body: any,
-  files: Express.Multer.File[]
+  files: Express.Multer.File[],
 ) {
   const { name, validity, categoryId, price, categoryNames } = body;
   if (!name && !validity && !categoryId && !price)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, validity, categoryId, price are required"
+      "name, validity, categoryId, price are required",
     );
   if (validity) validateNumber(validity, "validity");
   if (price) validateNumber(price, "price");
-  if(files && files.length != 0 && !categoryNames) throw new AppError(StatusCodes.BAD_REQUEST, "categoryNames are required");
+  if (files && files.length != 0 && !categoryNames)
+    throw new AppError(StatusCodes.BAD_REQUEST, "categoryNames are required");
   if (categoryNames) {
     const categories = categoryNames.split(",");
     if (categories.length !== files.length)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "categoryNames and files must be the same length"
+        "categoryNames and files must be the same length",
       );
   }
 }
@@ -79,11 +90,11 @@ export function validateNumber(num: any, filedName: string) {
   if (isNaN(Number(num)))
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      `${filedName} must be a number`
+      `${filedName} must be a number`,
     );
   if (num < 0)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      `${filedName} must be a number`
+      `${filedName} must be a number`,
     );
 }

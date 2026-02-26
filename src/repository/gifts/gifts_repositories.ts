@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { StatusCodes } from "http-status-codes";
 import AppError from "../../core/errors/app_errors";
 import {
@@ -14,10 +15,13 @@ export interface IGiftRepository {
   updateGift(id: string, gift: Partial<IGift>): Promise<IGiftDocument>;
   deleteGift(id: string): Promise<IGiftDocument>;
   getGiftCategories(
-    query: Record<string, string>
+    query: Record<string, string>,
   ): Promise<{ category: string }[]>;
-  updateGiftSendCount(id: string): Promise<IGiftDocument>;
-
+  updateGiftSendCount(
+    id: string,
+    qty?: number,
+    session?: mongoose.ClientSession,
+  ): Promise<IGiftDocument>;
 }
 
 export class GiftRepository implements IGiftRepository {
@@ -64,7 +68,7 @@ export class GiftRepository implements IGiftRepository {
   }
 
   async getGiftCategories(
-    query: Record<string, string>
+    query: Record<string, string>,
   ): Promise<{ category: string }[]> {
     const qb = new QueryBuilder(this.Model, query);
     const res = qb.search(["category"]).selectField("category -_id");
@@ -72,16 +76,18 @@ export class GiftRepository implements IGiftRepository {
     return data;
   }
 
-  async updateGiftSendCount(id: string): Promise<IGiftDocument> {
+  async updateGiftSendCount(
+    id: string,
+    qty: number = 1,
+    session?: mongoose.ClientSession,
+  ): Promise<IGiftDocument> {
     const updatedGift = await this.Model.findByIdAndUpdate(
       id,
-      { $inc: { sendCount: 1 } },
-      { new: true }
-    );
+      { $inc: { sendCount: qty } },
+      { new: true },
+    ).session(session || null);
     if (!updatedGift)
       throw new AppError(StatusCodes.NOT_FOUND, "Gift not found");
     return updatedGift;
   }
-
-
 }

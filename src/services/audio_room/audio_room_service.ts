@@ -1263,8 +1263,8 @@ export class AudioRoomService implements IAudioRoomService {
 
     if (Array.isArray(chatPrivacy)) {
       // check if all users exist
-      const users = await this.userRepository.findUsersByIds(chatPrivacy);
-      if (users.length !== chatPrivacy.length) {
+      const allExist = await this.userRepository.validateUserIds(chatPrivacy);
+      if (!allExist) {
         throw new AppError(404, "Some users not found");
       }
     }
