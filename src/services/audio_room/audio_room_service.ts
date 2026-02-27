@@ -503,22 +503,14 @@ export class AudioRoomService implements IAudioRoomService {
         admins: targetId,
       },
     });
-    // new admin profile info
-    const targetUserObj = targetUser.toObject();
-    targetUserObj.equippedStoreItems = await getEquippedItemObjects(
-      this.bucketRepository,
-      this.categoryRepository,
-      targetId,
-    );
-    const adminInfo: IMemberDetails =
-      audioHelper.generateMemberDetails(targetUserObj);
     // send event to the room
     const socketInstance = SingletonSocketServer.getInstance();
-    socketInstance.emitToRoom(roomId, AudioRoomChannels.audioAdminUpdates, {
-      isAdded: true,
-      admins: adminInfo,
+    const updatedAudioRoom =
+      await this.audioRoomRepository.getAudioRoomById(roomId);
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
+      admins: updatedAudioRoom?.admins,
     });
-    return await this.audioRoomRepository.getAudioRoomById(roomId);
+    return updatedAudioRoom;
   }
 
   async removeAudioAdmin(
@@ -550,11 +542,12 @@ export class AudioRoomService implements IAudioRoomService {
     });
     // send event to the room
     const socketInstance = SingletonSocketServer.getInstance();
-    socketInstance.emitToRoom(roomId, AudioRoomChannels.audioAdminUpdates, {
-      isAdded: false,
-      admins: targetId,
+    const updatedAudioRoom =
+      await this.audioRoomRepository.getAudioRoomById(roomId);
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
+      admins: updatedAudioRoom?.admins,
     });
-    return await this.audioRoomRepository.getAudioRoomById(roomId);
+    return updatedAudioRoom;
   }
 
   async removeFromSeat(
