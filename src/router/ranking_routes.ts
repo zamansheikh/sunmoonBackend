@@ -12,5 +12,6 @@ const service = new RankingService(repository);
 const controller = new RankingController(service);
 
 router.route("/sender").get(authenticate(), controller.getSenderRanking);
+router.route("/receiver").get(authenticate(), controller.getReceiverRanking);
 
 export default router;

@@ -59,9 +59,36 @@ export class RankingService implements IRankingService {
     return { ranking, myRanking };
   }
 
-  async getReceiverRanking(myId: string, period: RankingPeriods): Promise<any> {
-    try {
-    } catch (error) {}
+  async getReceiverRanking(
+    myId: string,
+    period: RankingPeriods,
+  ): Promise<IRankingResponse> {
+    const user = UserCache.getInstance().validateUserId(myId);
+    if (!user) throw new AppError(404, "User not found");
+
+    // execute independent queries in parallel to reduce latency
+    const [ranking, myRankingDetails] = await Promise.all([
+      this.GiftRecordRepository.getReceiverRanking(myId, period),
+      this.GiftRecordRepository.getMyReceiveAmount(myId, period),
+    ]);
+
+    // Find index once instead of using .some() and .findIndex()
+    const myIndex = ranking.findIndex(
+      (ranking) => ranking.memberDetails._id.toString() === myId,
+    );
+
+    const myRanking = {
+      amount: myRankingDetails.amount,
+      memberDetails: myRankingDetails.memberDetails,
+      rank:
+        myIndex !== -1
+          ? myIndex + 1
+          : ranking.length >= 100
+            ? "100+"
+            : ranking.length + 1,
+    };
+
+    return { ranking, myRanking };
   }
 
   async getRoomRanking(myId: string, period: RankingPeriods): Promise<any> {

@@ -179,7 +179,7 @@ export class GiftRecordRepository implements IGiftRecordRepository {
       {
         $group: {
           _id: "$receiverId",
-          amount: { $sum: "$totalCoinCost" },
+          amount: { $sum: "$totalDiamonds" },
         },
       },
       lookupRichUser("_id", "memberDetails"),
@@ -239,7 +239,7 @@ export class GiftRecordRepository implements IGiftRecordRepository {
       {
         $group: {
           _id: "$receiverId",
-          amount: { $sum: "$totalCoinCost" },
+          amount: { $sum: "$totalDiamonds" },
         },
       },
       { $sort: { amount: -1 } },
