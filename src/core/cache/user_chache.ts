@@ -4,7 +4,7 @@ import UserRepository from "../../repository/users/user_repository";
 export class UserCache {
   private static instance: UserCache | null = null;
 
-  public cachedUser = new Map<string, number>();
+  private cachedUser = new Map<string, number>();
   private readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hour = 1 day
   public userRepository = new UserRepository(User);
 

@@ -1,7 +1,7 @@
 import mongoose, { Document, Model, Schema, Types } from "mongoose";
 import { DatabaseNames } from "../../core/Utils/enums";
 
-export interface IGIftRecord {
+export interface IGiftRecord {
   senderId: Types.ObjectId | string;
   receiverId: Types.ObjectId | string;
   giftId: Types.ObjectId | string;
@@ -12,7 +12,7 @@ export interface IGIftRecord {
   expireAt?: Date;
 }
 
-export interface IGiftRecordDocument extends IGIftRecord, Document {
+export interface IGiftRecordDocument extends IGiftRecord, Document {
   createdAt: Date;
   updatedAt: Date;
 }
