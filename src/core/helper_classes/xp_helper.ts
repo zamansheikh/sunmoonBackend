@@ -5,7 +5,9 @@ import User from "../../models/user/user_model";
 import MyBucketRepository from "../../repository/store/my_bucket_repository";
 import StoreCategoryRepository from "../../repository/store/store_category_repository";
 import UserRepository from "../../repository/users/user_repository";
+import SingletonSocketServer from "../sockets/singleton_socket_server";
 import { xpLevels } from "../Utils/constants";
+import { AudioRoomChannels } from "../Utils/enums";
 
 export class XpHelper {
   private static instance: XpHelper;
@@ -38,6 +40,10 @@ export class XpHelper {
       (coins / this.GIFT_SEND_XP) *
       (await this.calculateSvipMultiplier(userId));
     const level = this.determineUserLevelFromXp(user!.totalEarnedXp + xpAmount);
+    if (level > user!.level!) {
+      const socketInstance = SingletonSocketServer.getInstance();
+      socketInstance.emitToUser(userId, AudioRoomChannels.LevelUp, { level });
+    }
     user!.totalEarnedXp += xpAmount;
     user!.level = level;
     await user!.save();

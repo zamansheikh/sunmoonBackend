@@ -112,6 +112,7 @@ export enum AudioRoomChannels {
   UnBanUser = "unban-audio-user",
   chatPrivacy = "chat-privacy",
   BasicRoomUpdate = "basic-room-update",
+  LevelUp = "level-up",
 }
 
 export enum SocketChannels {
@@ -301,4 +302,10 @@ export enum LaunchGiftTypes {
   Coins = "coins",
   XP = "xp",
   Assets = "assets",
+}
+
+export enum RankingPeriods {
+  Daily = "daily",
+  Weekly = "weekly",
+  Monthly = "monthly",
 }

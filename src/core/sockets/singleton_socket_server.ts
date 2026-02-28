@@ -26,7 +26,7 @@ import MyBucketModel from "../../models/store/my_bucket_model";
 import StoreCategoryModel from "../../models/store/store_category_model";
 import { CurrentRoomMemberRepository } from "../../repository/audio_room/current_room_member_repository";
 import CurrentRoomMemberModel from "../../models/audio_room/current_room_member";
-import { AudioRoomHelper } from "../Utils/audioRoomHelper";
+import { AudioRoomHelper } from "../helper_classes/audioRoomHelper";
 
 export default class SingletonSocketServer {
   private static instance: SingletonSocketServer;
@@ -148,6 +148,13 @@ export default class SingletonSocketServer {
     const socketId = this.getSocketId(userId);
     if (socketId) {
       this.io.sockets.sockets.get(socketId)?.leave(roomId);
+    }
+  }
+
+  public emitToUser(userId: string, event: string, data: any) {
+    const socketId = this.getSocketId(userId);
+    if (socketId) {
+      this.io.to(socketId).emit(event, data);
     }
   }
 

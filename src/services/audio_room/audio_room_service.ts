@@ -1,7 +1,7 @@
 import AppError from "../../core/errors/app_errors";
 import { isValidObjectId } from "mongoose";
 import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
-import { AudioRoomHelper } from "../../core/Utils/audioRoomHelper";
+import { AudioRoomHelper } from "../../core/helper_classes/audioRoomHelper";
 import {
   ALLOWED_MESSAGES_COUNT,
   ROCKET_MILESTONES,

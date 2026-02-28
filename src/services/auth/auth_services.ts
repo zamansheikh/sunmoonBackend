@@ -469,7 +469,7 @@ export default class AuthService implements IAuthService {
       throw new AppError(404, "Gift not found");
     }
 
-    const coinCost = gift.coinPrice * qty * targetUserIds.length; //
+    const coinCost = gift.coinPrice * qty * targetUserIds.length; 
     const diamonds = gift.diamonds * qty;
     const senderDiamonds = targetUserIds.includes(myId) ? diamonds : 0;
     // deducting coins from sender and adding diamonds to sender if he is also a receiver

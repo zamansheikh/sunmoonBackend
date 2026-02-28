@@ -410,8 +410,15 @@ export class AudioRoomController {
     validateFieldExistance(roomId, "roomId");
     validateNumber(seatCount, "seatCount");
 
-    if (seatCount != 6 && seatCount != 8 && seatCount != 12) {
-      throw new AppError(400, "Number of seats must be 6, 8 or 12");
+    if (
+      seatCount != 6 &&
+      seatCount != 8 &&
+      seatCount != 10 &&
+      seatCount != 12 &&
+      seatCount != 15 &&
+      seatCount != 16
+    ) {
+      throw new AppError(400, "Number of seats must be 6, 8, 10, 12, 15 or 16");
     }
 
     const result = await this.Service.updateSeatCount(
