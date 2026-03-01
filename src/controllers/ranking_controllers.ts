@@ -48,4 +48,23 @@ export class RankingController {
     );
     sendResponseEnhanced(res, receiverRanking);
   });
+
+  getRoomRanking = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.user!;
+    const { period } = req.query;
+    if (
+      !period ||
+      !Object.values(RankingPeriods).includes(period as RankingPeriods)
+    ) {
+      throw new AppError(
+        400,
+        "Period is required in the params and must be one of daily, weekly, monthly",
+      );
+    }
+    const roomRanking = await this.Service.getRoomRanking(
+      id,
+      period as RankingPeriods,
+    );
+    sendResponseEnhanced(res, roomRanking);
+  });
 }

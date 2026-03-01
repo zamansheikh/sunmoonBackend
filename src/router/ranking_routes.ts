@@ -13,5 +13,6 @@ const controller = new RankingController(service);
 
 router.route("/sender").get(authenticate(), controller.getSenderRanking);
 router.route("/receiver").get(authenticate(), controller.getReceiverRanking);
+router.route("/room").get(authenticate(), controller.getRoomRanking);
 
 export default router;

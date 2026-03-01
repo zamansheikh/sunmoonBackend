@@ -191,3 +191,42 @@ export function lookupEnrichedUsersArray(
     },
   };
 }
+
+export const lookupRoom = (localField: string, asField?: string) => ({
+  $lookup: {
+    from: DatabaseNames.AudioRoom,
+    let: { roomId: `$${localField}` },
+    pipeline: [
+      {
+        $match: {
+          $expr: {
+            $eq: ["$roomId", "$$roomId"],
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: DatabaseNames.User,
+          localField: "hostId",
+          foreignField: "_id",
+          as: "hostInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$hostInfo",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          roomPhoto: 1,
+          roomName: "$title",
+          hostLevel: { $ifNull: ["$hostInfo.level", 0] },
+        },
+      },
+    ],
+    as: asField || `${localField}Info`,
+  },
+});
