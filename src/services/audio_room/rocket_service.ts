@@ -1,9 +1,35 @@
 import RedisService from "../../core/redis/redis_service";
 import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
-import { SocketAudioChannels } from "../../core/Utils/enums";
+import { ROCKET_MILESTONES } from "../../core/Utils/constants";
+import { AudioRoomChannels, LaunchGiftTypes, SocketAudioChannels } from "../../core/Utils/enums";
+import { IMemberDetails } from "../../models/audio_room/audio_room_model";
 
-export class RocketService {
+export interface ILaunchGifts {
+  type: LaunchGiftTypes;
+  thumbnail: string;
+  quantity: number;
+}
+
+export interface IRewarededUser extends IMemberDetails {
+  gifts: ILaunchGifts[];
+}
+
+export interface IRocketServiceResponse {
+  roomId: string;
+  fuel?: number;
+  level: number;
+  milestone: number;
+  percentage?: number;
+}
+
+export default class RocketService {
   private static instance: RocketService | null = null;
+  // folder properties
+  private static readonly FUEL_KEY_PREFIX = "rocket:fuel:";
+  private static readonly LEVEL_KEY_PREFIX = "rocket:level:";
+  private static readonly ROCKET_MILESTONE_KEY_PREFIX = "rocket:milestone:";
+  
+
   private redis = RedisService.getInstance();
 
   private constructor() {}
@@ -21,99 +47,159 @@ export class RocketService {
    * @param amount Amount of fuel to add
    */
   public async addFuel(roomId: string, amount: number) {
-    const fuelKey = `rocket:fuel:${roomId}`;
-    const levelKey = `rocket:level:${roomId}`;
+    // ! validate roomId
+    const { fuel, level, milestone } =
+      await this.setRocketDefaultValues(roomId);
 
-    // 1. Update fuel in Redis
-    const currentFuel = await this.redis.getClient().incrBy(fuelKey, amount);
+    const fuelKey = `${RocketService.FUEL_KEY_PREFIX}${roomId}`;
+    const newFuel = fuel + amount;
 
-    // 2. Fetch current level
-    let currentLevel = parseInt(
-      (await this.redis.getClient().get(levelKey)) || "1",
-    );
+    // Step 1: Check if new fuel reaches or exceeds the milestone
+    if (newFuel >= milestone) {
+      // Rocket launch logic
+      await this.launchRocket(roomId, amount, level + 1);
+    } else {
+      // Step 2: Update the current fuel in Redis and notify the room
+      await this.redis.set(fuelKey, newFuel.toString());
 
-    console.log(
-      `[Rocket] Room ${roomId}: +${amount} fuel (Total: ${currentFuel})`,
-    );
+      // Notify the whole room about the new fuel
+      const socketServer = SingletonSocketServer.getInstance();
 
-    // 3. Process intermediate logic
-    await this.checkLevelUp(roomId, currentFuel, currentLevel);
+      // Calculate percentage based on current milestone
+      const fuelPercentage = (newFuel / milestone) * 100;
 
-    // 4. Notify clients about new fuel percentage/amount
-    // Assuming each level needs 1000 fuel for now (you can adjust this logic)
-    const fuelPercentage = (currentFuel % 1000) / 10;
-
-    const socketServer = SingletonSocketServer.getInstance();
-    socketServer.emitToRoom(
-      roomId,
-      SocketAudioChannels.NewRocketFuelPercentage,
-      {
+      socketServer.emitToRoom(
         roomId,
-        fuel: currentFuel,
-        percentage: fuelPercentage,
-      },
-    );
+        AudioRoomChannels.NewRocketFuelPercentage,
+        {
+          roomId,
+          fuel: newFuel,
+          level: level,
+          milestone: milestone,
+          percentage: parseFloat(fuelPercentage.toFixed(2)),
+        } as IRocketServiceResponse,
+      );
+    }
 
-    return { currentFuel, currentLevel };
+    return { fuel: newFuel, level, milestone };
   }
 
   /**
-   * Internal function to handle level up logic
+   * this function will be called when the fuel reaches or exceeds the milestone
+   * @param roomId // id of the room
+   * @param fuel // the amount of fuel gifted
+   * @param level // current level of the room
    */
-  private async checkLevelUp(
-    roomId: string,
-    fuel: number,
-    currentLevel: number,
-  ) {
-    const fuelNeededForNextLevel = currentLevel * 1000; // Example formula
-
-    if (fuel >= fuelNeededForNextLevel) {
-      const newLevel = currentLevel + 1;
-      await this.redis
-        .getClient()
-        .set(`rocket:level:${roomId}`, newLevel.toString());
-
-      console.log(`[Rocket] Room ${roomId} LEVELED UP to ${newLevel}!`);
-
-      // Call other internal functions
-      await this.handleMilestoneReward(roomId, newLevel);
-
-      // Notify via Socket
-      const socketServer = SingletonSocketServer.getInstance();
-      socketServer.emitToRoom(roomId, SocketAudioChannels.NewRocketLevel, {
-        roomId,
-        level: newLevel,
-      });
-
-      // If it reaches a special level, launch it!
-      if (newLevel % 5 === 0) {
-        await this.launchRocket(roomId, newLevel);
-      }
-    }
-  }
-
-  private async handleMilestoneReward(roomId: string, level: number) {
-    console.log(
-      `[Rocket] Handling milestone reward for level ${level} in room ${roomId}`,
-    );
-    // Add your custom reward logic here (e.g. updating DB, giving badges, etc.)
-  }
-
-  private async launchRocket(roomId: string, level: number) {
-    console.log(
-      `[Rocket] LAUNCHING ROCKET in room ${roomId} at level ${level}!`,
-    );
-
+  private async launchRocket(roomId: string, fuel: number, level: number) {
+    // calculate the remaining fuel
+    const remainingFuel = fuel - ROCKET_MILESTONES[level - 1];
+    // reward the users
+    // notifying the app about the rocket launch (scope: room)
     const socketServer = SingletonSocketServer.getInstance();
-    socketServer.emitToRoom(roomId, SocketAudioChannels.LaunchRocket, {
+    socketServer.emitToRoom(roomId, AudioRoomChannels.LaunchRocket, {
       roomId,
+      fuel,
+      rewardedUser: [],
       level,
-      message: "Rocket Launching!",
     });
+    // banner notification (scope: global)
+    socketServer.emitToAll(AudioRoomChannels.NewRocketFuelPercentage, {
+      roomId: roomId,
+      message: "Rocket Is About to Launch",
+    });
+    // update the rocket informations (update level, update milestone, update fuel)
+    const fuelKey = `${RocketService.FUEL_KEY_PREFIX}${roomId}`;
+    const levelKey = `${RocketService.LEVEL_KEY_PREFIX}${roomId}`;
+    const milestoneKey = `${RocketService.ROCKET_MILESTONE_KEY_PREFIX}${roomId}`;
+    // The rocket Reached its Maximum Level, Reset to Level 1
+    if (level == 5) {
+      await this.redis.set(fuelKey, "0");
+      await this.redis.set(levelKey, "1");
+      await this.redis.set(milestoneKey, ROCKET_MILESTONES[0].toString());
+    } else {
+      await this.redis.set(fuelKey, "0");
+      await this.redis.set(levelKey, level.toString());
+      await this.redis.set(
+        milestoneKey,
+        ROCKET_MILESTONES[level - 1].toString(),
+      );
+    }
+    // Notify Level Update
+    socketServer.emitToRoom(roomId, AudioRoomChannels.NewRocketLevel, {
+      roomId,
+      level: level,
+      milestone: ROCKET_MILESTONES[level - 1],
+    } as IRocketServiceResponse);
+    // recursive call (if the remaining fuel is greater than the next milestone)
+    if (remainingFuel > ROCKET_MILESTONES[level - 1]) {
+      this.launchRocket(roomId, remainingFuel, level + 1);
+      return;
+    }
+    // fuel notification (scope: room)
+    socketServer.emitToRoom(roomId, AudioRoomChannels.NewRocketFuelPercentage, {
+      roomId,
+      fuel: remainingFuel,
+      level: level,
+      milestone: ROCKET_MILESTONES[level - 1],
+      percentage: parseFloat(
+        ((remainingFuel / ROCKET_MILESTONES[level - 1]) * 100).toFixed(2),
+      ),
+    } as IRocketServiceResponse);
+  }
 
-    // Reset fuel/level if necessary after launch?
-    // Or keep it escalating. Based on your game design.
+  private async rewardUsers(roomId: string, fuel: number, level: number) {
+    // the number of users eligible for reward recieve
+    // sort the users based on gift sent
+    // adjust the number if the number of room users is less than the number of users eligible for reward
+    // to store the rewarded user informations
+    /**
+     * first user recieves -> 2 assets, Xps and coins
+     * second user recieves -> 1 asset, Xps and coins
+     * third user recieves -> Xps and coins
+     * nth user recieves -> only coins
+     */
+  }
+
+  private async setRocketDefaultValues(roomId: string): Promise<{
+    fuel: number;
+    level: number;
+    milestone: number;
+  }> {
+    /**
+     * get the fuel, level, milestone from redis.
+     * if does not exist set the default values
+     * LEVEL -> 1
+     * FUEL -> 0
+     * MILESTONE -> ROCKET_MILESTONES[0] from const
+     * and return the values
+     */
+    const fuelKey = `${RocketService.FUEL_KEY_PREFIX}${roomId}`;
+    const levelKey = `${RocketService.LEVEL_KEY_PREFIX}${roomId}`;
+    const milestoneKey = `${RocketService.ROCKET_MILESTONE_KEY_PREFIX}${roomId}`;
+
+    let fuel: string | null = await this.redis.get(fuelKey);
+    let level: string | null = await this.redis.get(levelKey);
+    let milestone: string | null = await this.redis.get(milestoneKey);
+
+    if (!fuel) {
+      await this.redis.set(fuelKey, "0");
+      fuel = "0";
+    }
+
+    if (!level) {
+      await this.redis.set(levelKey, "1");
+      level = "1";
+    }
+
+    if (!milestone) {
+      await this.redis.set(milestoneKey, ROCKET_MILESTONES[0]);
+      milestone = ROCKET_MILESTONES[0].toString();
+    }
+
+    return {
+      fuel: parseInt(fuel), // Good idea to parse them here for easier use
+      level: parseInt(level),
+      milestone: parseInt(milestone),
+    };
   }
 }
-
-export default RocketService;

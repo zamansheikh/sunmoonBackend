@@ -166,6 +166,10 @@ export default class SingletonSocketServer {
     }
   }
 
+  public emitToAll(event: string, data: any) {
+    this.io.emit(event, data);
+  }
+
   public roomSearializer(room: IAudioRoom) {
     return {
       title: room.title,

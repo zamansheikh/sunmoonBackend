@@ -114,6 +114,9 @@ export enum AudioRoomChannels {
   chatPrivacy = "chat-privacy",
   BasicRoomUpdate = "basic-room-update",
   LevelUp = "level-up",
+  NewRocketFuelPercentage = "new-rocket-fuel-percentage",
+  LaunchRocket = "rocket-launch",
+  NewRocketLevel = "new-rocket-level",
 }
 
 export enum SocketChannels {
@@ -140,6 +143,7 @@ export enum SocketChannels {
   roomClosed = "room-closed",
   inviteUser = "invite-user",
   invited = "invited",
+  NewRocketFuelPercentage = "new-rocket-fuel-percentage",
   getRooms = "get-rooms",
   error = "error-message",
   sendGift = "sent-gift",

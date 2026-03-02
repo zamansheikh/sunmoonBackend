@@ -30,6 +30,7 @@ export interface IGiftRecordRepository {
   getMyReceiveAmount(myId: string, period: RankingPeriods): Promise<IRanking>;
   getRoomRanking(period: RankingPeriods): Promise<IRanking[]>;
   getMyRoomAmount(myId: string, period: RankingPeriods): Promise<IRanking>;
+  getRoomSenderRanking(roomId: string): Promise<IMemberDetails[]>;
 }
 
 export class GiftRecordRepository implements IGiftRecordRepository {
@@ -400,5 +401,36 @@ export class GiftRecordRepository implements IGiftRecordRepository {
         hostLevel: 0,
       },
     };
+  }
+
+  async getRoomSenderRanking(roomId: string): Promise<IMemberDetails[]> {
+    // Aggregate top senders within a specific room based on totalCoinCost
+    const ranking = await this.Model.aggregate([
+      {
+        $match: {
+          roomId: roomId,
+        },
+      },
+      {
+        $group: {
+          _id: "$senderId",
+          totalCoins: { $sum: "$totalCoinCost" },
+        },
+      },
+      { $sort: { totalCoins: -1 } },
+      { $limit: 100 },
+      lookupRichUser("_id", "memberDetails"),
+      { $unwind: "$memberDetails" },
+      {
+        $project: {
+          _id: 0,
+          memberDetails: 1,
+          totalCoins: 1,
+        },
+      },
+    ]);
+
+    // Return only the memberDetails array (sorted by totalCoins)
+    return ranking.map((r) => (r as any).memberDetails as IMemberDetails);
   }
 }
