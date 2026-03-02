@@ -37,6 +37,7 @@ import { roomSupportRewardSystem } from "./core/corn/jobs/room_support_jobs";
 import { saveToLocalFileApiFunction } from "./core/Utils/save_file_to_local_sys";
 import { upload } from "./core/middlewares/multer";
 import SingletonSocketServer from "./core/sockets/singleton_socket_server";
+import RedisConfig from "./core/config/redis_config";
 
 // Initialize dotenv for environment variables
 dotenv.config();
@@ -136,8 +137,16 @@ const PORT = process.env.PORT || 8000;
 const MONGOURL =
   process.env.MONGO_URL || "mongodb://localhost:27017/livestreaming";
 
-mongoose.connect(MONGOURL).then(() => {
+mongoose.connect(MONGOURL).then(async () => {
   console.log("DB Connected");
+
+  // Connect to Redis
+  try {
+    await RedisConfig.connect();
+  } catch (err) {
+    console.error("Failed to connect to Redis:", err);
+  }
+
   // socket connection to the http server
   // SocketServer.initialize(server);
   SingletonSocketServer.initialize(server);
@@ -150,4 +159,11 @@ mongoose.connect(MONGOURL).then(() => {
     cronManager.register("0 0 * * *", resetRoomXPTrackingSystem); // Everyday at 12:00 AM reset xp tracking system
     cronManager.register("0 0 * * 0", roomSupportRewardSystem); // every week at sunday room support reset
   });
+});
+
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  console.log("Shutting down...");
+  await RedisConfig.disconnect();
+  process.exit(0);
 });
