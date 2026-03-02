@@ -36,7 +36,8 @@ export class XpHelper {
 
   public async updateUserXp(userId: string, xpAmount: number) {
     const user = await this.userRepository.findUserById(userId);
-    const level = this.determineUserLevelFromXp(user!.totalEarnedXp + xpAmount);
+    if (!user) return;
+    const level = this.determineUserLevelFromXp(user.totalEarnedXp + xpAmount);
     if (level > user!.level!) {
       const socketInstance = SingletonSocketServer.getInstance();
       socketInstance.emitToUser(userId, AudioRoomChannels.LevelUp, { level });
@@ -44,7 +45,7 @@ export class XpHelper {
     user!.totalEarnedXp += xpAmount;
     user!.level = level;
     await user!.save();
-  } 
+  }
 
   public async updateUserXpFromCoin(userId: string, coins: number) {
     const user = await this.userRepository.findUserById(userId);

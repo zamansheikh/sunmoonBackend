@@ -254,8 +254,12 @@ export default class RocketService {
       _id: string;
       name: string;
     }[];
+
+    if (categories.length === 0) return "no-categories-available";
+
     const randomCategory: { _id: string; name: string } =
       categories[Math.floor(Math.random() * categories.length)];
+
     // select a random item
     const items = await this.storeItemRepository.getAllStoreItemByCategory(
       randomCategory._id,
