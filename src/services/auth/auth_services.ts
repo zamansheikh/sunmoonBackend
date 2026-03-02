@@ -74,6 +74,7 @@ import { IMyBucketDocument } from "../../models/store/my_bucket_model";
 import { UserCache } from "../../core/cache/user_chache";
 import { GiftUserCache } from "../../core/cache/gift_user_cache";
 import { XpHelper } from "../../core/helper_classes/xp_helper";
+import RocketService from "../audio_room/rocket_service";
 
 export default class AuthService implements IAuthService {
   UserRepository: IUserRepository;
@@ -469,7 +470,7 @@ export default class AuthService implements IAuthService {
       throw new AppError(404, "Gift not found");
     }
 
-    const coinCost = gift.coinPrice * qty * targetUserIds.length; 
+    const coinCost = gift.coinPrice * qty * targetUserIds.length;
     const diamonds = gift.diamonds * qty;
     const senderDiamonds = targetUserIds.includes(myId) ? diamonds : 0;
     // deducting coins from sender and adding diamonds to sender if he is also a receiver
@@ -487,6 +488,11 @@ export default class AuthService implements IAuthService {
       this.UserStatsRepository.updateGiftDiamond(targetUserIds, diamonds), // updating diamonds for all the receivers
       XpHelper.getInstance().updateUserXpFromCoin(myId, coinCost),
     ];
+    if (roomId) {
+      secondaryUpdates.push(
+        RocketService.getInstance().addFuel(roomId, coinCost),
+      );
+    }
 
     // add gift record promise for all the targetIds
     for (const targetUserId of targetUserIds) {
