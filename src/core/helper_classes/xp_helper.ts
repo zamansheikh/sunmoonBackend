@@ -34,7 +34,19 @@ export class XpHelper {
     return XpHelper.instance;
   }
 
-  public async updateUserXp(userId: string, coins: number) {
+  public async updateUserXp(userId: string, xpAmount: number) {
+    const user = await this.userRepository.findUserById(userId);
+    const level = this.determineUserLevelFromXp(user!.totalEarnedXp + xpAmount);
+    if (level > user!.level!) {
+      const socketInstance = SingletonSocketServer.getInstance();
+      socketInstance.emitToUser(userId, AudioRoomChannels.LevelUp, { level });
+    }
+    user!.totalEarnedXp += xpAmount;
+    user!.level = level;
+    await user!.save();
+  } 
+
+  public async updateUserXpFromCoin(userId: string, coins: number) {
     const user = await this.userRepository.findUserById(userId);
     const xpAmount =
       (coins / this.GIFT_SEND_XP) *

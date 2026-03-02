@@ -485,7 +485,7 @@ export default class AuthService implements IAuthService {
         qty * targetUserIds.length,
       ), // updating gift send count to determine hot gifts
       this.UserStatsRepository.updateGiftDiamond(targetUserIds, diamonds), // updating diamonds for all the receivers
-      XpHelper.getInstance().updateUserXp(myId, coinCost),
+      XpHelper.getInstance().updateUserXpFromCoin(myId, coinCost),
     ];
 
     // add gift record promise for all the targetIds
