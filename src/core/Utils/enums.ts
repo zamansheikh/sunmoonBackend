@@ -52,6 +52,7 @@ export enum DatabaseNames {
   RecentVisitedRoom = "recent_visited_rooms",
   CurrentRoomMember = "current_room_members",
   GiftRecords = "gift_records",
+  Reports = "reports",
 }
 
 export enum ReelStatus {
