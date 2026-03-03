@@ -46,13 +46,7 @@ export interface IAudioRoom {
   announcement?: string;
   roomId: string;
   roomPhoto?: string;
-  currentRocketLevel?: number; // eg: level 1 to level 5
-  currentRocketFuel?: number; // eg : 5,00,000 - fromt gift coins
-  currentRocketMilestone: number; // eg: 10,00,000 - constant set according to business logic
   admins: (mongoose.Schema.Types.ObjectId | string)[];
-  hostTotalSendGift: number; // host sent amount (used for ranking)
-  hostTotalRecievedGift: number; // host recieved amount (used to display the gifts)
-  roomTotalTransaction: number; // total amount exchanged in the room
   hostSeat: IAudioSeat;
   seats: Map<string, IAudioSeat>;
   messages: IRoomMessage[];
@@ -66,9 +60,6 @@ export interface IAudioRoom {
   isHostPresent: boolean; // to check if the host is present in the room
   isLocked: boolean; // private or public
   hostId: mongoose.Schema.Types.ObjectId | string; // to track the host
-  uniqueUsers: Map<string, true>; // to track the unique users _id in the room
-  roomLevel: number; // to track the room level (used for room support reward)
-  roomPartners: (mongoose.Schema.Types.ObjectId | string)[]; // to track the room partners (used for room support reward)
 }
 
 export interface IAudioRoomDocument extends IAudioRoom, Document {
@@ -140,13 +131,7 @@ const AudioRoomSchema = new Schema<IAudioRoomDocument>(
     announcement: String,
     roomId: { type: String, unique: true, required: true },
     roomPhoto: String,
-    currentRocketLevel: { type: Number, default: 1 },
-    currentRocketFuel: { type: Number, default: 0 },
-    currentRocketMilestone: { type: Number, required: true },
     admins: [{ type: Schema.Types.ObjectId, ref: DatabaseNames.User }],
-    hostTotalSendGift: { type: Number, default: 0 },
-    hostTotalRecievedGift: { type: Number, default: 0 },
-    roomTotalTransaction: { type: Number, default: 0 },
     hostSeat: {
       type: AudioSeatSchema,
       default: () => ({ available: true }),
@@ -167,9 +152,6 @@ const AudioRoomSchema = new Schema<IAudioRoomDocument>(
       ref: DatabaseNames.User,
       required: true,
     },
-    uniqueUsers: { type: Map, of: Boolean, default: new Map() },
-    roomLevel: { type: Number, default: 0 },
-    roomPartners: [{ type: Schema.Types.ObjectId, ref: DatabaseNames.User }],
   },
   { timestamps: true },
 );

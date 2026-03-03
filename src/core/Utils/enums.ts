@@ -53,6 +53,7 @@ export enum DatabaseNames {
   CurrentRoomMember = "current_room_members",
   GiftRecords = "gift_records",
   Reports = "reports",
+  RoomSupport = "room_supports",
 }
 
 export enum ReelStatus {

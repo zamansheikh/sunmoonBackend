@@ -176,13 +176,7 @@ export class AudioRoomService implements IAudioRoomService {
       announcement: announcement!,
       roomId: roomId!,
       roomPhoto: roomPhoto!,
-      currentRocketLevel: 1,
-      currentRocketFuel: 0,
-      currentRocketMilestone: ROCKET_MILESTONES[0],
       admins: [],
-      hostTotalSendGift: 0,
-      hostTotalRecievedGift: 0,
-      roomTotalTransaction: 0,
       hostSeat: { available: true },
       seats: seats,
       messages: [],
@@ -196,9 +190,6 @@ export class AudioRoomService implements IAudioRoomService {
       isHostPresent: true,
       isLocked: false,
       hostId: hostId!,
-      uniqueUsers: new Map([[hostId!.toString(), true]]), // to track unique users
-      roomLevel: 0,
-      roomPartners: [],
     };
 
     //socket instance
@@ -302,7 +293,6 @@ export class AudioRoomService implements IAudioRoomService {
         {
           $set: {
             [`members.${userId}`]: true,
-            [`uniqueUsers.${userId}`]: true,
             isHostPresent:
               audioRoom.hostId.toString() === userId
                 ? true
