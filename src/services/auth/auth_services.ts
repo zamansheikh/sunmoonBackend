@@ -75,6 +75,7 @@ import { UserCache } from "../../core/cache/user_chache";
 import { GiftUserCache } from "../../core/cache/gift_user_cache";
 import { XpHelper } from "../../core/helper_classes/xp_helper";
 import RocketService from "../audio_room/rocket_service";
+import { RepositoryProviders } from "../../core/providers/repository_providers";
 
 export default class AuthService implements IAuthService {
   UserRepository: IUserRepository;
@@ -491,6 +492,12 @@ export default class AuthService implements IAuthService {
     if (roomId) {
       secondaryUpdates.push(
         RocketService.getInstance().addFuel(roomId, coinCost),
+      );
+      secondaryUpdates.push(
+        RepositoryProviders.roomSupportRepositoryProvider.incrementTransaction(
+          roomId,
+          coinCost,
+        ),
       );
     }
 

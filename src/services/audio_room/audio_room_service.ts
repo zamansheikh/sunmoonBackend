@@ -20,6 +20,7 @@ import { IMyBucketRepository } from "../../repository/store/my_bucket_repository
 import { IStoreCategoryRepository } from "../../repository/store/store_category_repository";
 import { IUserRepository } from "../../repository/users/user_repository";
 import { IRecentVisitedRoomRepository } from "../../repository/audio_room/recent_visited_room_reposiory";
+import { RepositoryProviders } from "../../core/providers/repository_providers";
 
 export interface IAudioRoomService {
   createAudioRoom(audioRoom: Partial<IAudioRoom>): Promise<IAudioRoomDocument>;
@@ -207,16 +208,21 @@ export class AudioRoomService implements IAudioRoomService {
     const created =
       await this.audioRoomRepository.createAudioRoom(audioRoomDocument);
 
-    // to keep track of recent visits
-    await this.recentVisitedRoomRepository.create({
-      userId: hostId! as string,
-      roomId: roomId!,
-    });
-
-    await AudioRoomHelper.getInstance().handleRoomPresence(
-      hostId! as string,
-      roomId!,
-    );
+    // parallel operations for tracking and presence
+    await Promise.all([
+      this.recentVisitedRoomRepository.create({
+        userId: hostId! as string,
+        roomId: roomId!,
+      }),
+      RepositoryProviders.roomSupportRepositoryProvider.addUniqueUser(
+        roomId!,
+        hostId! as string,
+      ),
+      AudioRoomHelper.getInstance().handleRoomPresence(
+        hostId! as string,
+        roomId!,
+      ),
+    ]);
 
     return await this.audioRoomRepository.getAudioRoomById(created.roomId);
   }
@@ -321,11 +327,18 @@ export class AudioRoomService implements IAudioRoomService {
       message: joinMessage,
     });
 
-    // to keep track of recent visits
-    await this.recentVisitedRoomRepository.create({
-      userId: userId,
-      roomId: roomId,
-    });
+    // parallel operations for tracking
+    await Promise.all([
+      this.recentVisitedRoomRepository.create({
+        userId: userId,
+        roomId: roomId,
+      }),
+      RepositoryProviders.roomSupportRepositoryProvider.addUniqueUser(
+        roomId,
+        userId,
+      ),
+    ]);
+
     return await this.audioRoomRepository.getAudioRoomById(roomId);
   }
 
