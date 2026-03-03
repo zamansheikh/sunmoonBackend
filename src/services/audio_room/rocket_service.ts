@@ -82,7 +82,7 @@ export default class RocketService {
     // Step 1: Check if new fuel reaches or exceeds the milestone
     if (newFuel >= milestone) {
       // Rocket launch logic
-      await this.launchRocket(roomId, amount, level + 1);
+      await this.launchRocket(roomId, newFuel, level + 1);
     } else {
       // Step 2: Update the current fuel in Redis and notify the room
       await this.redis.set(fuelKey, newFuel.toString());
@@ -117,9 +117,9 @@ export default class RocketService {
    */
   private async launchRocket(roomId: string, fuel: number, level: number) {
     // calculate the remaining fuel
-    const remainingFuel = fuel - ROCKET_MILESTONES[level - 1];
+    const remainingFuel = fuel - ROCKET_MILESTONES[level - 2];
     // reward the users
-    const rewardedUsers = await this.rewardUsers(roomId, fuel, level);
+    const rewardedUsers = await this.rewardUsers(roomId, level);
     // notifying the app about the rocket launch (scope: room)
     const socketServer = SingletonSocketServer.getInstance();
     socketServer.emitToRoom(roomId, AudioRoomChannels.LaunchRocket, {
@@ -128,6 +128,12 @@ export default class RocketService {
       rewardedUser: rewardedUsers,
       level,
     });
+    // Notify Level Update
+    socketServer.emitToRoom(roomId, AudioRoomChannels.NewRocketLevel, {
+      roomId,
+      level: level,
+      milestone: ROCKET_MILESTONES[level - 1],
+    } as IRocketServiceResponse);
     // banner notification (scope: global)
     socketServer.emitToAll(AudioRoomChannels.NewRocketFuelPercentage, {
       roomId: roomId,
@@ -150,15 +156,10 @@ export default class RocketService {
         ROCKET_MILESTONES[level - 1].toString(),
       );
     }
-    // Notify Level Update
-    socketServer.emitToRoom(roomId, AudioRoomChannels.NewRocketLevel, {
-      roomId,
-      level: level,
-      milestone: ROCKET_MILESTONES[level - 1],
-    } as IRocketServiceResponse);
+
     // recursive call (if the remaining fuel is greater than the next milestone)
     if (remainingFuel > ROCKET_MILESTONES[level - 1]) {
-      this.launchRocket(roomId, remainingFuel, level + 1);
+      await this.launchRocket(roomId, remainingFuel, level + 1);
       return;
     }
     // fuel notification (scope: room)
@@ -173,7 +174,7 @@ export default class RocketService {
     } as IRocketServiceResponse);
   }
 
-  private async rewardUsers(roomId: string, fuel: number, level: number) {
+  private async rewardUsers(roomId: string, level: number) {
     // the number of users eligible for reward recieve
     let rewardableUserCount = REWARD_NUMBERS[level - 1];
     // sort the users based on gift sent
