@@ -18,6 +18,7 @@ export interface IRoomSupportRepository {
     amount: number,
   ): Promise<IRoomSupportDocument>;
   delete(roomId: string): Promise<IRoomSupportDocument | null>;
+  clearRoomSupport(): Promise<void>;
 }
 
 export class RoomSupportRepository implements IRoomSupportRepository {
@@ -78,5 +79,9 @@ export class RoomSupportRepository implements IRoomSupportRepository {
 
   async delete(roomId: string): Promise<IRoomSupportDocument | null> {
     return await this.Model.findOneAndDelete({ roomId });
+  }
+
+  async clearRoomSupport(): Promise<void> {
+    await this.Model.deleteMany({});
   }
 }
