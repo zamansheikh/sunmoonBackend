@@ -3,6 +3,7 @@ import { DateHelper } from "../../core/helper_classes/date_helper";
 import { DatabaseNames, RankingPeriods } from "../../core/Utils/enums";
 import {
   lookupRichUser,
+  lookupRoom,
   userWithEquippedItemsPipeline,
 } from "../../core/Utils/helper_pipelines";
 import { IMemberDetails } from "../../models/audio_room/audio_room_model";
@@ -13,7 +14,12 @@ import {
 
 export interface IRanking {
   amount: number;
-  memberDetails: IMemberDetails;
+  memberDetails?: IMemberDetails;
+  roomDetails?: {
+    roomPhoto: string;
+    roomName: string;
+    hostLevel: number;
+  };
 }
 
 export interface IGiftRecordRepository {
@@ -22,6 +28,9 @@ export interface IGiftRecordRepository {
   getMySendAmount(myId: string, period: RankingPeriods): Promise<IRanking>;
   getReceiverRanking(myId: string, period: RankingPeriods): Promise<IRanking[]>;
   getMyReceiveAmount(myId: string, period: RankingPeriods): Promise<IRanking>;
+  getRoomRanking(period: RankingPeriods): Promise<IRanking[]>;
+  getMyRoomAmount(myId: string, period: RankingPeriods): Promise<IRanking>;
+  getRoomSenderRanking(roomId: string): Promise<IMemberDetails[]>;
 }
 
 export class GiftRecordRepository implements IGiftRecordRepository {
@@ -256,5 +265,172 @@ export class GiftRecordRepository implements IGiftRecordRepository {
     ]);
 
     return ranking;
+  }
+
+  async getRoomRanking(period: RankingPeriods): Promise<IRanking[]> {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    if (period === RankingPeriods.Daily) {
+      startDate = DateHelper.getStartOfDay(now);
+      endDate = DateHelper.getEndOfDay(now);
+    } else if (period === RankingPeriods.Weekly) {
+      startDate = DateHelper.getStartOfWeek(now);
+      endDate = DateHelper.getEndOfWeek(now);
+    } else {
+      startDate = DateHelper.getStartOfMonth(now);
+      endDate = DateHelper.getEndOfMonth(now);
+    }
+
+    const ranking: IRanking[] = await this.Model.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: "$roomId",
+          amount: { $sum: "$totalDiamonds" },
+        },
+      },
+      { $sort: { amount: -1 } },
+      { $limit: 100 },
+      lookupRoom("_id", "roomDetails"),
+      { $unwind: "$roomDetails" },
+      {
+        $project: {
+          _id: 0,
+          roomDetails: 1,
+          amount: 1,
+        },
+      },
+    ]);
+
+    return ranking;
+  }
+
+  async getMyRoomAmount(
+    myId: string,
+    period: RankingPeriods,
+  ): Promise<IRanking> {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    if (period === RankingPeriods.Daily) {
+      startDate = DateHelper.getStartOfDay(now);
+      endDate = DateHelper.getEndOfDay(now);
+    } else if (period === RankingPeriods.Weekly) {
+      startDate = DateHelper.getStartOfWeek(now);
+      endDate = DateHelper.getEndOfWeek(now);
+    } else {
+      startDate = DateHelper.getStartOfMonth(now);
+      endDate = DateHelper.getEndOfMonth(now);
+    }
+
+    const result = await this.Model.db
+      .model(DatabaseNames.AudioRoom)
+      .aggregate([
+        {
+          $match: { hostId: new mongoose.Types.ObjectId(myId) },
+        },
+        {
+          $lookup: {
+            from: DatabaseNames.User,
+            localField: "hostId",
+            foreignField: "_id",
+            as: "hostInfo",
+          },
+        },
+        {
+          $unwind: { path: "$hostInfo", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $lookup: {
+            from: DatabaseNames.GiftRecords,
+            let: { rId: "$roomId" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$roomId", "$$rId"] },
+                      { $gte: ["$createdAt", startDate] },
+                      { $lte: ["$createdAt", endDate] },
+                    ],
+                  },
+                },
+              },
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: "$totalDiamonds" },
+                },
+              },
+            ],
+            as: "giftData",
+          },
+        },
+        {
+          $unwind: { path: "$giftData", preserveNullAndEmptyArrays: true },
+        },
+        {
+          $project: {
+            _id: 0,
+            amount: { $ifNull: ["$giftData.total", 0] },
+            roomDetails: {
+              roomPhoto: "$roomPhoto",
+              roomName: "$title",
+              hostLevel: { $ifNull: ["$hostInfo.level", 0] },
+            },
+          },
+        },
+      ]);
+
+    if (result.length > 0) {
+      return result[0];
+    }
+
+    return {
+      amount: 0,
+      roomDetails: {
+        roomPhoto: "",
+        roomName: "Not a host",
+        hostLevel: 0,
+      },
+    };
+  }
+
+  async getRoomSenderRanking(roomId: string): Promise<IMemberDetails[]> {
+    // Aggregate top senders within a specific room based on totalCoinCost
+    const ranking = await this.Model.aggregate([
+      {
+        $match: {
+          roomId: roomId,
+        },
+      },
+      {
+        $group: {
+          _id: "$senderId",
+          totalCoins: { $sum: "$totalCoinCost" },
+        },
+      },
+      { $sort: { totalCoins: -1 } },
+      { $limit: 100 },
+      lookupRichUser("_id", "memberDetails"),
+      { $unwind: "$memberDetails" },
+      {
+        $project: {
+          _id: 0,
+          memberDetails: 1,
+          totalCoins: 1,
+        },
+      },
+    ]);
+
+    // Return only the memberDetails array (sorted by totalCoins)
+    return ranking.map((r) => (r as any).memberDetails as IMemberDetails);
   }
 }

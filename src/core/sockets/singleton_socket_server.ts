@@ -166,6 +166,10 @@ export default class SingletonSocketServer {
     }
   }
 
+  public emitToAll(event: string, data: any) {
+    this.io.emit(event, data);
+  }
+
   public roomSearializer(room: IAudioRoom) {
     return {
       title: room.title,
@@ -173,13 +177,7 @@ export default class SingletonSocketServer {
       announcement: room.announcement,
       roomId: room.roomId,
       roomPhoto: room.roomPhoto,
-      currentRocketLevel: room.currentRocketLevel,
-      currentRocketFuel: room.currentRocketFuel,
-      currentRocketMilestone: room.currentRocketMilestone,
       admins: room.admins,
-      hostTotalSendGift: room.hostTotalSendGift,
-      hostTotalRecievedGift: room.hostTotalRecievedGift,
-      roomTotalTransaction: room.roomTotalTransaction,
       hostSeat: room.hostSeat,
       seats: Object.fromEntries(room.seats),
       messages: room.messages,
@@ -193,9 +191,6 @@ export default class SingletonSocketServer {
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
       hostId: room.hostId,
-      uniqueUsers: Object.fromEntries(room.uniqueUsers),
-      roomLevel: room.roomLevel,
-      roomPartners: room.roomPartners,
     };
   }
 

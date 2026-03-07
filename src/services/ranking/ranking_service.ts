@@ -42,7 +42,7 @@ export class RankingService implements IRankingService {
 
     // Find index once instead of using .some() and .findIndex()
     const myIndex = ranking.findIndex(
-      (ranking) => ranking.memberDetails._id.toString() === myId,
+      (ranking) => ranking.memberDetails!._id.toString() === myId,
     );
 
     const myRanking = {
@@ -74,7 +74,7 @@ export class RankingService implements IRankingService {
 
     // Find index once instead of using .some() and .findIndex()
     const myIndex = ranking.findIndex(
-      (ranking) => ranking.memberDetails._id.toString() === myId,
+      (ranking) => ranking.memberDetails!._id.toString() === myId,
     );
 
     const myRanking = {
@@ -91,8 +91,36 @@ export class RankingService implements IRankingService {
     return { ranking, myRanking };
   }
 
-  async getRoomRanking(myId: string, period: RankingPeriods): Promise<any> {
-    try {
-    } catch (error) {}
+  async getRoomRanking(
+    myId: string,
+    period: RankingPeriods,
+  ): Promise<IRankingResponse> {
+    const user = UserCache.getInstance().validateUserId(myId);
+    if (!user) throw new AppError(404, "User not found");
+
+    // execute independent queries in parallel to reduce latency
+    const [ranking, myRoomRankingDetails] = await Promise.all([
+      this.GiftRecordRepository.getRoomRanking(period),
+      this.GiftRecordRepository.getMyRoomAmount(myId, period),
+    ]);
+
+    // Find index once instead of using .some() and .findIndex()
+    const myIndex = ranking.findIndex(
+      (r) =>
+        r.roomDetails?.roomName === myRoomRankingDetails.roomDetails?.roomName,
+    );
+
+    const myRanking = {
+      amount: myRoomRankingDetails.amount,
+      memberDetails: myRoomRankingDetails.roomDetails,
+      rank:
+        myIndex !== -1
+          ? myIndex + 1
+          : ranking.length >= 100
+            ? "100+"
+            : ranking.length + 1,
+    };
+
+    return { ranking, myRanking };
   }
 }
