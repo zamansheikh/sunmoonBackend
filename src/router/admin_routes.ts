@@ -246,6 +246,10 @@ router
   .delete(authenticate([UserRoles.Admin]), adminUserController.deleteBanner);
 
 router
+  .route("/posters/docs")
+  .get(authenticate(), adminUserController.getPosterDoc);
+
+router
   .route("/posters")
   .post(
     authenticate([UserRoles.Admin]),

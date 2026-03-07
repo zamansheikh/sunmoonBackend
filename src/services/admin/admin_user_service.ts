@@ -178,6 +178,7 @@ export interface IAdminUserService {
   deleteBanner(id: string): Promise<IBannerDocument>;
   // posters
   getPosters(): Promise<String[]>;
+  getPosterDocs(): Promise<IPosterDocument[]>;
   getRandomPosters(): Promise<IPosterDocument>;
 
   createPoster(
@@ -1067,6 +1068,10 @@ export default class AdminUserService implements IAdminUserService {
     const posters = await this.PosterRepository.getPosters();
     const postersArray = posters.map((poster) => poster.url);
     return postersArray;
+  }
+
+  async getPosterDocs(): Promise<IPosterDocument[]> {
+    return this.PosterRepository.getPosters();
   }
 
   async getRandomPosters(): Promise<IPosterDocument> {
