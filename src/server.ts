@@ -27,6 +27,7 @@ import BlockedEmail from "./router/blocked_email_routes";
 import DiamondExchangeRouter from "./router/diamond_exchange_route";
 import AudioRoomRouter from "./router/audio_room_routes";
 import RankingRouter from "./router/ranking_routes";
+import RoomSupportRouter from "./router/room_support_router";
 import ReportRouter from "./router/report_routes";
 import path from "path";
 
@@ -120,6 +121,7 @@ app.use("/api/blocked-emails", BlockedEmail);
 app.use("/api/diamond-exchange", DiamondExchangeRouter);
 app.use("/api/audio-room", AudioRoomRouter);
 app.use("/api/ranking", RankingRouter);
+app.use("/api/room-support", RoomSupportRouter);
 app.use("/api/reports", ReportRouter);
 
 app.post(

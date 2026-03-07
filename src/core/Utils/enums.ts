@@ -115,6 +115,7 @@ export enum AudioRoomChannels {
   chatPrivacy = "chat-privacy",
   BasicRoomUpdate = "basic-room-update",
   LevelUp = "level-up",
+  GlobalBanner = "global-banner",
   NewRocketFuelPercentage = "new-rocket-fuel-percentage",
   LaunchRocket = "rocket-launch",
   NewRocketLevel = "new-rocket-level",

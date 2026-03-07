@@ -7,7 +7,7 @@ import RoomSupportModel, {
 
 export interface IRoomSupportRepository {
   create(data: Partial<IRoomSupport>): Promise<IRoomSupportDocument>;
-  getByRoomId(roomId: string): Promise<IRoomSupportDocument | null>;
+  getByRoomId(roomId: string): Promise<IRoomSupportDocument>;
   update(
     roomId: string,
     data: Partial<IRoomSupport>,
@@ -16,6 +16,12 @@ export interface IRoomSupportRepository {
   incrementTransaction(
     roomId: string,
     amount: number,
+  ): Promise<IRoomSupportDocument>;
+  incrementLevel(roomId: string): Promise<IRoomSupportDocument>;
+  addPartner(roomId: string, partnerId: string): Promise<IRoomSupportDocument>;
+  removePartner(
+    roomId: string,
+    partnerId: string,
   ): Promise<IRoomSupportDocument>;
   delete(roomId: string): Promise<IRoomSupportDocument | null>;
   clearRoomSupport(): Promise<void>;
@@ -32,8 +38,12 @@ export class RoomSupportRepository implements IRoomSupportRepository {
     return await this.Model.create(data);
   }
 
-  async getByRoomId(roomId: string): Promise<IRoomSupportDocument | null> {
-    return await this.Model.findOne({ roomId });
+  async getByRoomId(roomId: string): Promise<IRoomSupportDocument> {
+    const res = await this.Model.findOne({ roomId });
+    if (!res) {
+      return await this.create({ roomId });
+    }
+    return res;
   }
 
   async update(
@@ -83,5 +93,41 @@ export class RoomSupportRepository implements IRoomSupportRepository {
 
   async clearRoomSupport(): Promise<void> {
     await this.Model.deleteMany({});
+  }
+
+  async incrementLevel(roomId: string): Promise<IRoomSupportDocument> {
+    const res = await this.Model.findOneAndUpdate(
+      { roomId },
+      { $inc: { roomLevel: 1 } },
+      { new: true },
+    );
+    if (!res) throw new AppError(404, "Room support record not found");
+    return res;
+  }
+
+  async addPartner(
+    roomId: string,
+    partnerId: string,
+  ): Promise<IRoomSupportDocument> {
+    const res = await this.Model.findOneAndUpdate(
+      { roomId },
+      { $addToSet: { roomPartners: partnerId } },
+      { new: true },
+    );
+    if (!res) throw new AppError(404, "Room support record not found");
+    return res;
+  }
+
+  async removePartner(
+    roomId: string,
+    partnerId: string,
+  ): Promise<IRoomSupportDocument> {
+    const res = await this.Model.findOneAndUpdate(
+      { roomId },
+      { $pull: { roomPartners: partnerId } },
+      { new: true },
+    );
+    if (!res) throw new AppError(404, "Room support record not found");
+    return res;
   }
 }

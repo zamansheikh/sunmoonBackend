@@ -1,3 +1,4 @@
+import AudioRoomModel from "../../models/audio_room/audio_room_model";
 import RoomSupportModel from "../../models/audio_room/room_support_model";
 import GiftRecordModel from "../../models/gifts/gift_record_model";
 import MyBucketModel from "../../models/store/my_bucket_model";
@@ -5,6 +6,7 @@ import StoreCategoryModel from "../../models/store/store_category_model";
 import StoreItemModel from "../../models/store/store_item_model";
 import User from "../../models/user/user_model";
 import UserStats from "../../models/userstats/userstats_model";
+import { AudioRoomRepository } from "../../repository/audio_room/audio_room_repository";
 import { RoomSupportRepository } from "../../repository/audio_room/room_support_repository";
 import { GiftRecordRepository } from "../../repository/gifts/gift_record_repository";
 import MyBucketRepository from "../../repository/store/my_bucket_repository";
@@ -38,5 +40,9 @@ export class RepositoryProviders {
 
   static readonly roomSupportRepositoryProvider = new RoomSupportRepository(
     RoomSupportModel,
+  );
+
+  static readonly audioRoomRepositoryProvider = new AudioRoomRepository(
+    AudioRoomModel,
   );
 }

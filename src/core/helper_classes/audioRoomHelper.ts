@@ -14,11 +14,16 @@ import CurrentRoomMemberModel from "../../models/audio_room/current_room_member"
 import { CurrentRoomMemberRepository } from "../../repository/audio_room/current_room_member_repository";
 import SingletonSocketServer from "../sockets/singleton_socket_server";
 import { AudioRoomRepository } from "../../repository/audio_room/audio_room_repository";
+import { RepositoryProviders } from "../providers/repository_providers";
+import { ROOM_LEVEL_CRITERIA } from "../Utils/constants";
+import { IRoomSupportDocument } from "../../models/audio_room/room_support_model";
 
 //  singleton class for AudioRoom Helper functionality
 export class AudioRoomHelper {
   private static instance: AudioRoomHelper;
   // important repositories
+  private roomSupportRepository =
+    RepositoryProviders.roomSupportRepositoryProvider;
   public audioRoomRepository = new AudioRoomRepository(AudioRoomModel);
   public recentVisitedRoomRepository = new RecentVisitedRoomRepository(
     RecentVisitedRoomModel,
@@ -34,6 +39,48 @@ export class AudioRoomHelper {
       AudioRoomHelper.instance = new AudioRoomHelper();
     }
     return AudioRoomHelper.instance;
+  }
+
+  public async addUniqueUserToRoomSupport(roomId: string, userId: string) {
+    /** this function is to add a unique user to the room support
+     * and to check if the room is ready for the next level or not
+     * @param roomId -> room id
+     * @param userId -> user id
+     */
+    const res = await this.roomSupportRepository.addUniqueUser(roomId, userId);
+    await this.roomSupportLevelUp(res);
+  }
+
+  public async addTransactionToRoomSupport(roomId: string, amount: number) {
+    /** this function is to add a transaction to the room support
+     * and to check if the room is ready for the next level or not
+     * @param roomId -> room id
+     * @param amount -> amount to be added
+     */
+    const res = await this.roomSupportRepository.incrementTransaction(
+      roomId,
+      amount,
+    );
+    await this.roomSupportLevelUp(res);
+  }
+
+  public async roomSupportLevelUp(support: IRoomSupportDocument) {
+    /** this function is to check if the room is ready for the next level or not
+     * if yes then it will increment the level of the room
+     * @param support -> room support document
+     * the condition is checked against ROOM_LEVEL_CRITERIA constant
+     * and the criteria includes roomTransactions and uniqueUsers
+     */
+    const level: number = support.roomLevel || 0;
+    if (level == 0) return;
+
+    if (
+      support.roomTransaction >=
+        ROOM_LEVEL_CRITERIA[level - 1].roomTransactions &&
+      support.uniqueUsers.length >= ROOM_LEVEL_CRITERIA[level - 1].roomVisitor
+    ) {
+      await this.roomSupportRepository.incrementLevel(support.roomId);
+    }
   }
 
   public checkAuthorityInAudioRoom(

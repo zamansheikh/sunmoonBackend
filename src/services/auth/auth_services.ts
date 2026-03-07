@@ -76,6 +76,8 @@ import { GiftUserCache } from "../../core/cache/gift_user_cache";
 import { XpHelper } from "../../core/helper_classes/xp_helper";
 import RocketService from "../audio_room/rocket_service";
 import { RepositoryProviders } from "../../core/providers/repository_providers";
+import { AudioRoomHelper } from "../../core/helper_classes/audioRoomHelper";
+import { AudioRoomCache } from "../../core/cache/audio_room_cache";
 
 export default class AuthService implements IAuthService {
   UserRepository: IUserRepository;
@@ -494,14 +496,16 @@ export default class AuthService implements IAuthService {
         RocketService.getInstance().addFuel(roomId, coinCost),
       );
       secondaryUpdates.push(
-        RepositoryProviders.roomSupportRepositoryProvider.incrementTransaction(
+        AudioRoomHelper.getInstance().addTransactionToRoomSupport(
           roomId,
           coinCost,
         ),
       );
     }
-
     // add gift record promise for all the targetIds
+    let isValid = false;
+    if (roomId)
+      isValid = await AudioRoomCache.getInstance().validateRoomId(roomId);
     for (const targetUserId of targetUserIds) {
       secondaryUpdates.push(
         GiftUserCache.getInstance().giftRecordRepository.createGiftRecord({
@@ -511,7 +515,7 @@ export default class AuthService implements IAuthService {
           qty,
           totalCoinCost: gift.coinPrice * qty,
           totalDiamonds: diamonds,
-          roomId,
+          roomId: isValid ? roomId : undefined, // only adding room id if the room is valid
         }),
       );
     }

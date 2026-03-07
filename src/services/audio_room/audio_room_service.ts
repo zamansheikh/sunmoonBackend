@@ -214,7 +214,7 @@ export class AudioRoomService implements IAudioRoomService {
         userId: hostId! as string,
         roomId: roomId!,
       }),
-      RepositoryProviders.roomSupportRepositoryProvider.addUniqueUser(
+      AudioRoomHelper.getInstance().addUniqueUserToRoomSupport(
         roomId!,
         hostId! as string,
       ),
@@ -333,10 +333,7 @@ export class AudioRoomService implements IAudioRoomService {
         userId: userId,
         roomId: roomId,
       }),
-      RepositoryProviders.roomSupportRepositoryProvider.addUniqueUser(
-        roomId,
-        userId,
-      ),
+      AudioRoomHelper.getInstance().addUniqueUserToRoomSupport(roomId, userId),
     ]);
 
     return await this.audioRoomRepository.getAudioRoomById(roomId);

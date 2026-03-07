@@ -1,3 +1,4 @@
+import { AudioRoomCache } from "../../core/cache/audio_room_cache";
 import { XpHelper } from "../../core/helper_classes/xp_helper";
 import { RepositoryProviders } from "../../core/providers/repository_providers";
 import RedisService from "../../core/redis/redis_service";
@@ -72,7 +73,8 @@ export default class RocketService {
    * @param amount Amount of fuel to add
    */
   public async addFuel(roomId: string, amount: number) {
-    // ! validate roomId
+    const isValid = await AudioRoomCache.getInstance().validateRoomId(roomId);
+    if (!isValid) return;
     const { fuel, level, milestone } =
       await this.setRocketDefaultValues(roomId);
 
@@ -135,7 +137,7 @@ export default class RocketService {
       milestone: ROCKET_MILESTONES[level - 1],
     } as IRocketServiceResponse);
     // banner notification (scope: global)
-    socketServer.emitToAll(AudioRoomChannels.NewRocketFuelPercentage, {
+    socketServer.emitToAll(AudioRoomChannels.GlobalBanner, {
       roomId: roomId,
       message: "Rocket Is About to Launch",
     });
