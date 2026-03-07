@@ -653,6 +653,16 @@ export default class AdminUserController {
     });
   });
 
+  getPosterDoc = catchAsync(async (req: Request, res: Response) => {
+    const posters = await this.AdminUserService.getPosterDocs();
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: posters,
+      message: "Posters retrieved successfully",
+    });
+  });
+
   getRandomPosters = catchAsync(async (req: Request, res: Response) => {
     const Posters = await this.AdminUserService.getRandomPosters();
     sendResponse(res, {
