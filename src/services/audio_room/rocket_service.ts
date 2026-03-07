@@ -137,9 +137,13 @@ export default class RocketService {
       milestone: ROCKET_MILESTONES[level - 1],
     } as IRocketServiceResponse);
     // banner notification (scope: global)
+    const basicRoomInfo =
+      await AudioRoomCache.getInstance().getBasicRoomInfo(roomId);
     socketServer.emitToAll(AudioRoomChannels.GlobalBanner, {
       roomId: roomId,
-      message: "Rocket Is About to Launch",
+      message: `Rocket in ${basicRoomInfo?.title || "Room"} is about to launch`,
+      rocketLevel: level,
+      roomPhoto: basicRoomInfo?.roomPhoto || "",
     });
     // update the rocket informations (update level, update milestone, update fuel)
     const fuelKey = `${RocketService.FUEL_KEY_PREFIX}${roomId}`;
