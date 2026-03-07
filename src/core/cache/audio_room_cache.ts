@@ -8,6 +8,7 @@ interface IBasicRoomInfo {
   roomPhoto?: string;
   announcement?: string;
   roomLevel: number;
+  hostId: string;
   ttl: number;
 }
 
@@ -57,6 +58,7 @@ export class AudioRoomCache {
         roomPhoto: room.roomPhoto,
         announcement: room.announcement,
         roomLevel: support?.roomLevel || 0,
+        hostId: room.hostId.toString(),
         ttl: Date.now() + this.CACHE_TTL,
       });
       return this.cachedRoomInfo.get(roomId)!;

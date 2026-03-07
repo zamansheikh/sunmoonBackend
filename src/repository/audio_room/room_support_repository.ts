@@ -25,6 +25,7 @@ export interface IRoomSupportRepository {
   ): Promise<IRoomSupportDocument>;
   delete(roomId: string): Promise<IRoomSupportDocument | null>;
   clearRoomSupport(): Promise<void>;
+  getAll(): Promise<IRoomSupportDocument[]>;
 }
 
 export class RoomSupportRepository implements IRoomSupportRepository {
@@ -129,5 +130,9 @@ export class RoomSupportRepository implements IRoomSupportRepository {
     );
     if (!res) throw new AppError(404, "Room support record not found");
     return res;
+  }
+
+  async getAll(): Promise<IRoomSupportDocument[]> {
+    return await this.Model.find({ roomLevel: { $gte: 1 } });
   }
 }

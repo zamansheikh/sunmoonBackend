@@ -54,6 +54,7 @@ export enum DatabaseNames {
   GiftRecords = "gift_records",
   Reports = "reports",
   RoomSupport = "room_supports",
+  RoomSupportHistory = "room_support_histories",
 }
 
 export enum ReelStatus {
