@@ -51,7 +51,7 @@ export const roomSupportRewardSystem = async () => {
     }
   }
 
-  const batchSize = 20;
+  const batchSize = 100;
   for (let i = 0; i < promises.length; i += batchSize) {
     const batch = promises.slice(i, i + batchSize);
     try {
