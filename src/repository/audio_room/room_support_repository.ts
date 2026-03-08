@@ -4,6 +4,8 @@ import RoomSupportModel, {
   IRoomSupportDocument,
   IRoomSupportModel,
 } from "../../models/audio_room/room_support_model";
+import { IMemberDetails } from "../../models/audio_room/audio_room_model";
+import { lookupEnrichedUsersArray } from "../../core/Utils/helper_pipelines";
 
 export interface IRoomSupportRepository {
   create(data: Partial<IRoomSupport>): Promise<IRoomSupportDocument>;
@@ -26,6 +28,7 @@ export interface IRoomSupportRepository {
   delete(roomId: string): Promise<IRoomSupportDocument | null>;
   clearRoomSupport(): Promise<void>;
   getAll(): Promise<IRoomSupportDocument[]>;
+  getRoomPartners(roomId: string): Promise<IMemberDetails[]>;
 }
 
 export class RoomSupportRepository implements IRoomSupportRepository {
@@ -134,5 +137,28 @@ export class RoomSupportRepository implements IRoomSupportRepository {
 
   async getAll(): Promise<IRoomSupportDocument[]> {
     return await this.Model.find({ roomLevel: { $gte: 1 } });
+  }
+
+  async getRoomPartners(roomId: string): Promise<IMemberDetails[]> {
+    const res = await this.Model.aggregate([
+      { $match: { roomId } },
+      lookupEnrichedUsersArray("roomPartners", "partnersInfo"),
+      { $unwind: "$partnersInfo" },
+      {
+        $project: {
+          _id: "$partnersInfo._id",
+          name: "$partnersInfo.name",
+          avatar: "$partnersInfo.avatar",
+          uid: "$partnersInfo.uid",
+          userId: "$partnersInfo.userId",
+          country: "$partnersInfo.country",
+          currentBackground: "$partnersInfo.currentLevelBackground",
+          currentTag: "$partnersInfo.currentLevelTag",
+          currentLevel: "$partnersInfo.level",
+          equippedStoreItems: "$partnersInfo.equippedStoreItems",
+        },
+      },
+    ]);
+    return res as IMemberDetails[];
   }
 }

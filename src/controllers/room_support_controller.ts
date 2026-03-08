@@ -50,4 +50,17 @@ export class RoomSupportController {
       result: result,
     });
   });
+
+  getMyRoomPartners = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.getMyRoomPartners(roomId);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Room partners fetched successfully",
+      result: result,
+    });
+  });
 }

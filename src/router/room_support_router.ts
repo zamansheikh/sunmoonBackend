@@ -16,6 +16,10 @@ router
   .get(authenticate(), roomSupportController.getMyRoomSupportDetails);
 
 router
+  .route("/:roomId/partners")
+  .get(authenticate(), roomSupportController.getMyRoomPartners);
+
+router
   .route("/:roomId/partners/:partnerId")
   .post(authenticate(), roomSupportController.addRoomPartners)
   .delete(authenticate(), roomSupportController.removeRoomPartners);

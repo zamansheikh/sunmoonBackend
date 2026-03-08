@@ -4,9 +4,17 @@ import AppError from "../../core/errors/app_errors";
 import { ROOM_LEVEL_CRITERIA } from "../../core/Utils/constants";
 import { AudioRoomCache } from "../../core/cache/audio_room_cache";
 import { UserCache } from "../../core/cache/user_chache";
+import { IRoomSupportHistory } from "../../models/audio_room/room_support_history_model";
+import { RepositoryProviders } from "../../core/providers/repository_providers";
+import { IMemberDetails } from "../../models/audio_room/audio_room_model";
+
+interface IRoomSupportDetails {
+  thisWeek: IRoomSupportHistory;
+  lastWeek: IRoomSupportHistory;
+}
 
 export interface IRoomSupportService {
-  getMyRoomSupportDetails(roomId: string): Promise<IRoomSupportDocument>;
+  getMyRoomSupportDetails(roomId: string): Promise<IRoomSupportDetails>;
   addRoomPartners(
     roomId: string,
     partnerId: string,
@@ -15,6 +23,7 @@ export interface IRoomSupportService {
     roomId: string,
     partnerId: string,
   ): Promise<IRoomSupportDocument>;
+  getMyRoomPartners(roomId: string): Promise<IMemberDetails[]>;
 }
 
 export class RoomSupportService implements IRoomSupportService {
@@ -23,8 +32,33 @@ export class RoomSupportService implements IRoomSupportService {
     this.RoomSupportRepository = RoomSupportRepository;
   }
 
-  async getMyRoomSupportDetails(roomId: string): Promise<IRoomSupportDocument> {
-    return await this.RoomSupportRepository.getByRoomId(roomId);
+  private roomSupportHistoryRepo =
+    RepositoryProviders.roomSupportHistoryRepositoryProvider;
+
+  async getMyRoomSupportDetails(roomId: string): Promise<IRoomSupportDetails> {
+    // fetch the current support status and the previous history
+    const [roomSupport, supportHistory] = await Promise.all([
+      this.RoomSupportRepository.getByRoomId(roomId),
+      this.roomSupportHistoryRepo.getByRoomId(roomId),
+    ]);
+
+    // if the previous histroy does not exists the default values are 0
+    const response: IRoomSupportDetails = {
+      thisWeek: {
+        roomId: roomSupport.roomId,
+        numberOfUniqueUsers: roomSupport.uniqueUsers.length,
+        roomTransaction: roomSupport.roomTransaction,
+        roomLevel: roomSupport.roomLevel || 0,
+      },
+      lastWeek: {
+        roomId: roomId,
+        numberOfUniqueUsers: supportHistory?.numberOfUniqueUsers || 0,
+        roomTransaction: supportHistory?.roomTransaction || 0,
+        roomLevel: supportHistory?.roomLevel || 0,
+      },
+    };
+
+    return response;
   }
 
   /**
@@ -138,5 +172,9 @@ export class RoomSupportService implements IRoomSupportService {
 
     // Step 5: Proceed with removal in the repository
     return await this.RoomSupportRepository.removePartner(roomId, partnerId);
+  }
+
+  async getMyRoomPartners(roomId: string): Promise<IMemberDetails[]> {
+    return await this.RoomSupportRepository.getRoomPartners(roomId);
   }
 }
