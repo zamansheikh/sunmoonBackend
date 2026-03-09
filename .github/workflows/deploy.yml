@@ -19,18 +19,27 @@ jobs:
 
       - name: Deploy to VPS
         run: |
+          if [ "${{ github.repository }}" = "zamansheikh/sunmoonBackend" ]; then
+            APP_NAME="sunmoonBackend"
+          elif [ "${{ github.repository }}" = "zamansheikh/AddaLiveBackend" ]; then
+            APP_NAME="AddaLiveBackend"
+          else
+            echo "Unsupported repository: ${{ github.repository }}"
+            exit 1
+          fi
+
           ssh -o StrictHostKeyChecking=no root@88.222.213.235 "
             export PATH=/root/.nvm/versions/node/v20.19.5/bin:\$PATH &&  # Use Node path for Yarn
-            cd /var/www/AddaLiveBackend &&
+            cd /var/www/$APP_NAME &&
             git stash &&
             GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_ed25519_deploy\" git pull origin main &&
             yarn install &&
             yarn build &&
-            if tmux has-session -t AddaLiveBackend 2>/dev/null; then
-              echo \"Already session running: AddaLiveBackend. Killing it...\"
-              tmux kill-session -t AddaLiveBackend
+            if tmux has-session -t $APP_NAME 2>/dev/null; then
+              echo \"Already session running: $APP_NAME. Killing it...\"
+              tmux kill-session -t $APP_NAME
             fi &&
-            echo \"Starting new session: AddaLiveBackend\" &&
-            tmux new-session -d -s AddaLiveBackend 'yarn start' &&
-            echo \"Successfully started 'yarn start' in tmux session AddaLiveBackend\"
+            echo \"Starting new session: $APP_NAME\" &&
+            tmux new-session -d -s $APP_NAME 'yarn start' &&
+            echo \"Successfully started 'yarn start' in tmux session $APP_NAME\"
           "
