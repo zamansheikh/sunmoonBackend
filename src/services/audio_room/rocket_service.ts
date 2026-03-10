@@ -1,6 +1,7 @@
 import { AudioRoomCache } from "../../core/cache/audio_room_cache";
 import { XpHelper } from "../../core/helper_classes/xp_helper";
 import { RepositoryProviders } from "../../core/providers/repository_providers";
+import { RedisFolderProvider } from "../../core/redis/redis_folder_provider";
 import RedisService from "../../core/redis/redis_service";
 import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
 import {
@@ -42,9 +43,11 @@ export interface IRocketServiceResponse {
 export default class RocketService {
   private static instance: RocketService | null = null;
   // folder properties
-  private static readonly FUEL_KEY_PREFIX = "rocket:fuel:";
-  private static readonly LEVEL_KEY_PREFIX = "rocket:level:";
-  private static readonly ROCKET_MILESTONE_KEY_PREFIX = "rocket:milestone:";
+  private static readonly ROCKET_SERVICE_FOLDER =
+    RedisFolderProvider.RocketServiceFolderPrefix;
+  private static readonly FUEL_KEY_PREFIX = `${this.ROCKET_SERVICE_FOLDER}:fuel:`;
+  private static readonly LEVEL_KEY_PREFIX = `${this.ROCKET_SERVICE_FOLDER}:level:`;
+  private static readonly ROCKET_MILESTONE_KEY_PREFIX = `${this.ROCKET_SERVICE_FOLDER}:milestone:`;
 
   // repositories
   private giftRecordRepository =
