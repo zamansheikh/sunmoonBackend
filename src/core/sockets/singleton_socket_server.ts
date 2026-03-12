@@ -9,7 +9,7 @@ import { AudioRoomRepository } from "../../repository/audio_room/audio_room_repo
 import UserRepository, {
   IUserRepository,
 } from "../../repository/users/user_repository";
-import { AudioRoomChannels, SocketAudioChannels } from "../Utils/enums";
+import { AudioRoomChannels } from "../Utils/enums";
 import MyBucketRepository, {
   IMyBucketRepository,
 } from "../../repository/store/my_bucket_repository";
