@@ -55,6 +55,7 @@ export enum DatabaseNames {
   Reports = "reports",
   RoomSupport = "room_supports",
   RoomSupportHistory = "room_support_histories",
+  MagicBall = "magic_balls",
 }
 
 export enum ReelStatus {
@@ -121,6 +122,10 @@ export enum AudioRoomChannels {
   LaunchRocket = "rocket-launch",
   NewRocketLevel = "new-rocket-level",
   MicInviteRequest = "mic-invite-request",
+}
+
+export enum MagicBallChallengeTypes {
+  UserInviteToMicSuccessfully = "user-invite-to-mic-successfully",
 }
 
 // export enum SocketChannels {
