@@ -9,6 +9,8 @@ import {
 import sendResponse from "../../core/Utils/send_response";
 import { ActivityZoneState } from "../../core/Utils/enums";
 import { isValidObjectId } from "mongoose";
+import { MicInviteService } from "../../services/audio_room/mic_invite_service";
+
 
 export class AudioRoomController {
   Service: IAudioRoomService;
@@ -473,6 +475,46 @@ export class AudioRoomController {
       statusCode: 200,
       message: "Recent visited rooms fetched successfully",
       result: result,
+    });
+  });
+
+  sendMicInvite = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    const { userId, seatKey } = req.body;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(userId, "userId");
+    validateFieldExistance(seatKey, "seatKey");
+
+    await MicInviteService.getInstance().sendMicInvite(roomId, userId, seatKey);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Mic invite sent successfully",
+    });
+  });
+
+  acceptMicInvite = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+
+    await MicInviteService.getInstance().acceptMicInvite(myUserId);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Mic invite accepted successfully",
+    });
+  });
+
+  rejectMicInvite = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+
+    await MicInviteService.getInstance().rejectMicInvite(myUserId);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Mic invite rejected successfully",
     });
   });
 }

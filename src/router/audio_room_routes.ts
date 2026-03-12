@@ -130,4 +130,17 @@ router
   .route("/:roomId/chat-privacy")
   .put(authenticate(), audioRoomController.setChatPrivacy);
 
+// Mic Invite Routes
+router
+  .route("/:roomId/mic-invite/send")
+  .post(authenticate(), audioRoomController.sendMicInvite);
+
+router
+  .route("/mic-invite/accept")
+  .post(authenticate(), audioRoomController.acceptMicInvite);
+
+router
+  .route("/mic-invite/reject")
+  .post(authenticate(), audioRoomController.rejectMicInvite);
+
 export default router;
