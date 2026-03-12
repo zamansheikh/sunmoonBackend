@@ -28,6 +28,7 @@ import AudioRoomRouter from "./router/audio_room_routes";
 import RankingRouter from "./router/ranking_routes";
 import RoomSupportRouter from "./router/room_support_router";
 import ReportRouter from "./router/report_routes";
+import MagicBallAdminRouter from "./router/magic_ball/magic_ball_admin_routes";
 import path from "path";
 
 // error handlers
@@ -121,6 +122,7 @@ app.use("/api/audio-room", AudioRoomRouter);
 app.use("/api/ranking", RankingRouter);
 app.use("/api/room-support", RoomSupportRouter);
 app.use("/api/reports", ReportRouter);
+app.use("/api/magic-ball-admin", MagicBallAdminRouter);
 
 app.post(
   "/api/upload-file-local",

@@ -16,6 +16,8 @@ import StoreCategoryRepository from "../../repository/store/store_category_repos
 import StoreItemRepository from "../../repository/store/store_item_repository";
 import UserRepository from "../../repository/users/user_repository";
 import UserStatsRepository from "../../repository/users/userstats_repository";
+import { MagicBallModel } from "../../models/magic_ball/magic_ball_model";
+import { MagicBallRepository } from "../../repository/magic_ball/magic_ball_repository";
 
 export class RepositoryProviders {
   static readonly giftRecordRepositoryProvider = new GiftRecordRepository(
@@ -49,5 +51,9 @@ export class RepositoryProviders {
 
   static readonly audioRoomRepositoryProvider = new AudioRoomRepository(
     AudioRoomModel,
+  );
+
+  static readonly magicBallRepositoryProvider = new MagicBallRepository(
+    MagicBallModel,
   );
 }
