@@ -291,27 +291,38 @@ export class AudioRoomService implements IAudioRoomService {
 
     await AudioRoomHelper.getInstance().handleRoomPresence(userId, roomId);
 
-    // handle if the user already in the room
+    const isHost = audioRoom.hostId.toString() === userId;
     const userAlreadyInRoom = audioRoom.members.has(userId);
-    if (!userAlreadyInRoom) {
+
+    // handle if the user already in the room or if it's the host
+    if (!userAlreadyInRoom || isHost) {
+      const updateQuery: any = {
+        $set: {
+          [`members.${userId}`]: true,
+          isHostPresent: isHost ? true : audioRoom.isHostPresent,
+        },
+      };
+
+      if (isHost) {
+        updateQuery.$set.hostSeat = {
+          available: true,
+          member: userInfo,
+        };
+      }
+
+      if (!userAlreadyInRoom) {
+        updateQuery.$push = {
+          membersArray: userId,
+          messages: {
+            $each: [joinMessage],
+            $slice: -ALLOWED_MESSAGES_COUNT,
+          },
+        };
+      }
+
       audioRoom = await this.audioRoomRepository.findByIdAndUpdate(
         audioRoom._id as string,
-        {
-          $set: {
-            [`members.${userId}`]: true,
-            isHostPresent:
-              audioRoom.hostId.toString() === userId
-                ? true
-                : audioRoom.isHostPresent,
-          },
-          $push: {
-            membersArray: userId,
-            messages: {
-              $each: [joinMessage],
-              $slice: -ALLOWED_MESSAGES_COUNT,
-            },
-          },
-        },
+        updateQuery,
       );
     }
 
@@ -321,8 +332,15 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.joinRoomSocket(userId, roomId);
     socketInstance.emitToRoom(roomId, AudioRoomChannels.UserJoined, {
       user: userInfo,
-      ...(audioRoom.hostId.toString() === userId && { isHostPresent: true }),
+      ...(isHost && { isHostPresent: true }),
     });
+
+    if (isHost) {
+      socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatJoined, {
+        seatKey: "hostSeat",
+        userInfo,
+      });
+    }
     socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioRoomMessage, {
       message: joinMessage,
     });
