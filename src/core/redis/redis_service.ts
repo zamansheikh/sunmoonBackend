@@ -79,6 +79,67 @@ export class RedisService {
   }
 
   /**
+   * Add a value to a Redis list (RPUSH)
+   * @param key Key
+   * @param value Value (will be stringified if it's an object/array)
+   */
+  public async addToArray(key: string, value: any): Promise<void> {
+    const stringValue =
+      typeof value === "string" ? value : JSON.stringify(value);
+    await this.client.rPush(key, stringValue);
+  }
+
+  /**
+   * Remove a value from a Redis list (LREM)
+   * @param key Key
+   * @param value Value (will be stringified if it's an object/array)
+   */
+  public async removeFromArray(key: string, value: any): Promise<void> {
+    const stringValue =
+      typeof value === "string" ? value : JSON.stringify(value);
+    // LREM key 0 value removes all occurrences
+    await this.client.lRem(key, 0, stringValue);
+  }
+
+  /**
+   * Add a value to a Redis set (SADD)
+   * Sets only allow unique values; duplicates are ignored.
+   * @param key Key
+   * @param value Value (will be stringified if it's an object/array)
+   */
+  public async addToSet(key: string, value: any): Promise<void> {
+    const stringValue =
+      typeof value === "string" ? value : JSON.stringify(value);
+    await this.client.sAdd(key, stringValue);
+  }
+
+  /**
+   * Remove a value from a Redis set (SREM)
+   * @param key Key
+   * @param value Value (will be stringified if it's an object/array)
+   */
+  public async removeFromSet(key: string, value: any): Promise<void> {
+    const stringValue =
+      typeof value === "string" ? value : JSON.stringify(value);
+    await this.client.sRem(key, stringValue);
+  }
+
+  /**
+   * Get all members of a Redis set (SMEMBERS)
+   * @param key Key
+   */
+  public async getSetMembers<T>(key: string): Promise<T[]> {
+    const members = await this.client.sMembers(key);
+    return members.map((member) => {
+      try {
+        return JSON.parse(member);
+      } catch {
+        return member as unknown as T;
+      }
+    });
+  }
+
+  /**
    * Get the underlying Redis client if needed for advanced operations
    */
   public getClient() {
