@@ -72,6 +72,9 @@ export class MicInviteService {
       if (!seat.available) throw new AppError(400, "Seat is not available");
       if (!isEmptyObject(seat.member || {}))
         throw new AppError(400, "Seat is already occupied");
+      if (this.invitationSessions.has(userId)) {
+        await this.clearInvitationSession(userId, true);
+      }
 
       // check if the user is any other seat
       const existingSeat = Array.from(room.seats.values()).find(
@@ -79,28 +82,34 @@ export class MicInviteService {
       );
       if (existingSeat) throw new AppError(400, "User is already in a seat");
 
-      // create a session for the user.
-      this.invitationSessions.set(userId, {
-        roomId: room._id as string,
-        seatKey,
-        TTL: Date.now() + this.invitationSessionTTL,
-      });
-
-      // lock the seat
+      // lock the seat using dot notation to avoid wiping other seat properties
       await this.AudioRoomRepository.findByIdAndUpdate(room._id as string, {
         $set: {
-          [`${`seats.${seatKey}`}`]: {
-            available: false,
-          },
+          [`seats.${seatKey}.available`]: false,
         },
       });
+
+      // auto clear the invite and unlock the seat
+      const timeoutId = setTimeout(async () => {
+        await this.clearInvitationSession(userId, true);
+      }, this.invitationSessionTTL + 2000);
+
+      // create a session for the user.
+      this.invitationSessions.set(userId, {
+        roomDbId: room._id as string,
+        roomSocketId: room.roomId, // Human-readable ID for socket emissions
+        seatKey,
+        TTL: Date.now() + this.invitationSessionTTL,
+        timeoutId,
+      });
+
       // send notification to the user
       SingletonSocketServer.getInstance().emitToUser(
         userId,
         AudioRoomChannels.MicInviteRequest,
         {
           message: `You have been invited to join the mic`,
-          roomId,
+          roomId: room.roomId,
           seatKey,
           userId,
         },
@@ -116,13 +125,44 @@ export class MicInviteService {
       const isValid = await UserCache.getInstance().validateUserId(userId);
       if (!isValid) throw new AppError(400, "Invalid user id");
       // get session
-      const session: IInviteSession | undefined =
-        this.invitationSessions.get(userId);
+      const session = this.invitationSessions.get(userId);
       if (!session) throw new AppError(400, "Invalid session");
-      if (session.TTL < Date.now()) throw new AppError(400, "Session expired");
+      if (session.TTL < Date.now()) {
+        await this.clearInvitationSession(userId, true);
+        throw new AppError(400, "Session expired");
+      }
+
+      // 1. Fetch Room State and Re-validate
+      const room = await this.AudioRoomRepository.checkRoomExisistance(
+        session.roomSocketId,
+      );
+      if (!room) throw new AppError(404, "Room not found");
+
+      // 2. Banned check
+      if (room.bannedUsers.some((b) => b.user._id.toString() === userId)) {
+        await this.clearInvitationSession(userId, true);
+        throw new AppError(403, "You are banned from this room");
+      }
+
+      // 3. Check if user is already on another seat (Atomic re-check)
+      const existingSeat = Array.from(room.seats.values()).find(
+        (s) => s.member?._id?.toString() === userId,
+      );
+      if (existingSeat) {
+        await this.clearInvitationSession(userId, true);
+        throw new AppError(400, "User is already in a seat");
+      }
+
+      // 4. PREVENT RACE CONDITIONS: Clear session immediately before heavy IO
+      const timeoutId = session.timeoutId;
+      const roomDbId = session.roomDbId;
+      const roomSocketId = session.roomSocketId;
+      const seatKey = session.seatKey;
+
+      if (timeoutId) clearTimeout(timeoutId);
       this.invitationSessions.delete(userId);
-      // join the user to the room
-      // fetch user information
+
+      // 5. Join logic
       const user = await this.UserRepository.findUserById(userId);
       if (!user) {
         throw new AppError(404, "User not found");
@@ -136,28 +176,24 @@ export class MicInviteService {
       const userInfo: IMemberDetails =
         AudioRoomHelper.getInstance().generateMemberDetails(userObj);
 
-      // socket emit to the whole room
+      // socket emit to the whole room (Using correct Socket Room ID)
       const socketInstance = SingletonSocketServer.getInstance();
       socketInstance.emitToRoom(
-        session.roomId,
+        roomSocketId,
         AudioRoomChannels.AudioSeatJoined,
         {
-          seatKey: session.seatKey,
+          seatKey: seatKey,
           userInfo,
         },
       );
-      //update the audio room and unlock the seat again
-      await this.AudioRoomRepository.findByIdAndUpdate(
-        session.roomId as string,
-        {
-          $set: {
-            [`${`seats.${session.seatKey}`}`]: {
-              available: true,
-              member: userInfo,
-            },
-          },
+
+      // update the audio room and unlock the seat again
+      await this.AudioRoomRepository.findByIdAndUpdate(roomDbId, {
+        $set: {
+          [`seats.${seatKey}.available`]: true,
+          [`seats.${seatKey}.member`]: userInfo,
         },
-      );
+      });
     } catch (error) {
       console.log(error);
     }
@@ -168,28 +204,55 @@ export class MicInviteService {
       // validate user
       const isValid = await UserCache.getInstance().validateUserId(userId);
       if (!isValid) throw new AppError(400, "Invalid user id");
+
       // get session
-      const session: IInviteSession | undefined =
-        this.invitationSessions.get(userId);
+      const session = this.invitationSessions.get(userId);
       if (!session) throw new AppError(400, "Invalid session");
       if (session.TTL < Date.now()) throw new AppError(400, "Session expired");
-      this.invitationSessions.delete(userId);
-      // unlock the seat
-      await this.AudioRoomRepository.findByIdAndUpdate(session.roomId as string, {
-        $set: {
-          [`${`seats.${session.seatKey}`}`]: {
-            available: true,
-          },
-        },
-      });
+
+      // clear invitation and unlock seat
+      await this.clearInvitationSession(userId, true);
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  /**
+   * Helper function to clear invitation session and optionally unlock seat
+   * @param userId
+   * @param shouldUnlockInDb
+   * @private
+   */
+  private async clearInvitationSession(
+    userId: string,
+    shouldUnlockInDb: boolean = false,
+  ): Promise<void> {
+    const session = this.invitationSessions.get(userId);
+    if (!session) return;
+
+    // clear timer
+    if (session.timeoutId) {
+      clearTimeout(session.timeoutId);
+    }
+
+    // delete session from local cache
+    this.invitationSessions.delete(userId);
+
+    // unlock the seat in database using dot notation
+    if (shouldUnlockInDb) {
+      await this.AudioRoomRepository.findByIdAndUpdate(session.roomDbId, {
+        $set: {
+          [`seats.${session.seatKey}.available`]: true,
+        },
+      });
     }
   }
 }
 
 interface IInviteSession {
-  roomId: string;
+  roomDbId: string;
+  roomSocketId: string;
   seatKey: string;
   TTL: number;
+  timeoutId?: NodeJS.Timeout;
 }
