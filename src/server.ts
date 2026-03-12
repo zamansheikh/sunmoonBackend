@@ -5,8 +5,7 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import session, { Store } from "express-session";
 import http from "http";
-// socket server
-import SocketServer from "./core/sockets/socket_server";
+
 // import mongoClient from "mongodb";
 import mongoose, { omitUndefined } from "mongoose";
 // router imports
@@ -34,7 +33,6 @@ import path from "path";
 // error handlers
 import globalErrorHandler from "./core/errors/global_error_handlar";
 import CronManager from "./core/corn/corn_manager";
-import { resetRoomXPTrackingSystem } from "./core/corn/jobs/reset_room_xp_tracking_sys";
 import { roomSupportRewardSystem } from "./core/corn/jobs/room_support_jobs";
 import { saveToLocalFileApiFunction } from "./core/Utils/save_file_to_local_sys";
 import { upload } from "./core/middlewares/multer";
@@ -165,7 +163,7 @@ mongoose.connect(MONGOURL).then(async () => {
     // Starting corn server
     const cronManager = CronManager.getInstance();
     cronManager.start();
-    cronManager.register("0 0 * * *", resetRoomXPTrackingSystem); // Everyday at 12:00 AM reset xp tracking system
+    // cronManager.register("0 0 * * *", resetRoomXPTrackingSystem); // Everyday at 12:00 AM reset xp tracking system
     cronManager.register("0 0 * * 0", roomSupportRewardSystem); // every week at sunday room support reset
   });
 });

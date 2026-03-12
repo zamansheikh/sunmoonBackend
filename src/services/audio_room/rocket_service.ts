@@ -15,7 +15,7 @@ import {
 import {
   AudioRoomChannels,
   LaunchGiftTypes,
-  SocketAudioChannels,
+
 } from "../../core/Utils/enums";
 import { getRandomNumberFromRange } from "../../core/Utils/helper_functions";
 import { IMemberDetails } from "../../models/audio_room/audio_room_model";

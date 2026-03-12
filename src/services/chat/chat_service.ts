@@ -1,6 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 import AppError from "../../core/errors/app_errors";
-import { CloudinaryFolder, SocketChannels, WhoCanTextMe, WhoCanTextMeLevelTypes } from "../../core/Utils/enums";
+import { CloudinaryFolder,  WhoCanTextMe, WhoCanTextMeLevelTypes } from "../../core/Utils/enums";
 import { isVideoFile } from "../../core/Utils/helper_functions";
 import { IPagination } from "../../core/Utils/query_builder";
 import { uploadFileToCloudinary } from "../../core/Utils/upload_file_cloudinary";
@@ -9,7 +9,6 @@ import { IMessage, IMessageDocument, IMessageModel } from "../../entities/chats/
 import { IConversationRepostiry } from "../../repository/chats/conversations/conversation_repository_interface";
 import IMessageRepository, { IUpdateResult } from "../../repository/chats/messages/message_repository_interface";
 import IChatService from "./chat_service_interface";
-import SocketServer from "../../core/sockets/socket_server";
 import mongoose, { Types } from "mongoose";
 import { IUserRepository } from "../../repository/users/user_repository";
 import { IFollowerRepository } from "../../repository/follower/follower_repository";
@@ -82,13 +81,13 @@ export default class ChatService implements IChatService {
         }
 
         // to get the socket singleton instance
-        const ioInstance = SocketServer.getInstance();
-        if (ioInstance.isUserOnline(message.recieverId.toString())) {
-            ioInstance.getIO().to(ioInstance.getSocketId(message.recieverId.toString())!).emit(SocketChannels.newMessage, sendMessage);
-            ioInstance.getIO().to(ioInstance.getSocketId(message.recieverId.toString())!).emit(SocketChannels.newConversation, conversation);
-        } else {
-            //Todo: send firebase notification
-        }
+        // const ioInstance = SocketServer.getInstance();
+        // if (ioInstance.isUserOnline(message.recieverId.toString())) {
+        //     ioInstance.getIO().to(ioInstance.getSocketId(message.recieverId.toString())!).emit(SocketChannels.newMessage, sendMessage);
+        //     ioInstance.getIO().to(ioInstance.getSocketId(message.recieverId.toString())!).emit(SocketChannels.newConversation, conversation);
+        // } else {
+        //     //Todo: send firebase notification
+        // }
         return sendMessage;
     }
 

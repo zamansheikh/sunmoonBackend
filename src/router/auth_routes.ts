@@ -191,7 +191,7 @@ router
 
 router.route("/is-premium").get(authenticate(), authController.isPremiumUser);
 
-router.route("/room-stay-xp").put(authenticate(), authController.roomStayXp);
+// router.route("/room-stay-xp").put(authenticate(), authController.roomStayXp);
 
 router.route("/bucket-items").get(authenticate(), authController.getAllBucketItems);
 

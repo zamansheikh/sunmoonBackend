@@ -5,7 +5,6 @@ import {
   ActivityZoneState,
   AdminPowers,
   AudioSeatTypes,
-  SocketChannels,
   StatusTypes,
   UserRoles,
   WithdrawAccountTypes,
@@ -20,13 +19,8 @@ import { IStoreItem } from "../../models/store/store_item_model";
 import { IStoreCategoryRepository } from "../../repository/store/store_category_repository";
 import { userLevels, xpLevels } from "./constants";
 import { Server } from "socket.io";
-import {
-  IAudioRoomData,
-  IMemberDetails,
-  ISearializedAudioRoom,
-} from "../sockets/interface/socket_interface";
+
 import { IUserRepository } from "../../repository/users/user_repository";
-import SocketServer from "../sockets/socket_server";
 import {
   IAudioRoom,
   IAudioRoomDocument,
@@ -384,27 +378,7 @@ export function validateGiftAudioRocket(
   }
 }
 
-export function getAudioUserSeat(
-  userId: string,
-  roomData: IAudioRoomData,
-): string {
-  if (
-    !isEmptyObject(roomData.premiumSeat.member) &&
-    (roomData.premiumSeat.member as IMemberDetails)._id == userId
-  ) {
-    return AudioSeatTypes.Premium;
-  }
-  if (roomData.hostDetails?._id == userId) return AudioSeatTypes.Host;
-  for (const [seatKey, seat] of Object.entries(roomData.seats)) {
-    if (
-      !isEmptyObject(seat.member) &&
-      (seat.member as IMemberDetails)._id == userId
-    ) {
-      return seatKey;
-    }
-  }
-  return AudioSeatTypes.Regular;
-}
+
 
 export function isTheDateFromThisMonth(date: Date): boolean {
   const today = new Date();
@@ -427,35 +401,7 @@ export function socketResponse(
   });
 }
 
-export async function updateUserXpFunc(
-  repository: IUserRepository,
-  userId: string,
-  xp: number,
-  io: Server,
-) {
-  const exisitngUser = await repository.findUserById(userId);
-  if (!exisitngUser) return;
-  const socketInstance = SocketServer.getInstance();
-  const userSocketId = socketInstance.getSocketId(userId);
-  const newLevel = determineUserLevelFromXp(exisitngUser.totalEarnedXp + xp);
-  if (userSocketId) {
-    socketResponse(io, SocketChannels.XpUp, userSocketId, {
-      success: true,
-      message: "Successfully updated user xp",
-      data: xp,
-    });
-  }
-  if (exisitngUser.level == newLevel - 1 && userSocketId) {
-    socketResponse(io, SocketChannels.levelUp, userSocketId, {
-      success: true,
-      message: "Successfully updated user level",
-      data: newLevel,
-    });
-  }
-  exisitngUser.level = newLevel;
-  exisitngUser.totalEarnedXp += xp;
-  exisitngUser.save();
-}
+
 
 export function getRandomNumberFromRange(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;

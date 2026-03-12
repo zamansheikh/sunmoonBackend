@@ -1,8 +1,6 @@
 import { AudioRoomCache } from "../../cache/audio_room_cache";
 import { RepositoryProviders } from "../../providers/repository_providers";
-import SocketServer from "../../sockets/socket_server";
 import { ROOM_LEVEL_CRITERIA } from "../../Utils/constants";
-import { SocketAudioChannels } from "../../Utils/enums";
 import { socketResponse } from "../../Utils/helper_functions";
 
 export const roomSupportRewardSystem = async () => {

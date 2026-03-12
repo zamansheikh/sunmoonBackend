@@ -3,8 +3,6 @@ import AppError from "../../core/errors/app_errors";
 import {
   AgencyJoinStatus,
   CloudinaryFolder,
-  SocketAudioChannels,
-  SocketChannels,
   StatusTypes,
   StreamType,
   UserRoles,
@@ -21,7 +19,6 @@ import { IUserDocument } from "../../models/user/user_model_interface";
 import mongoose from "mongoose";
 import { RtcRole, RtcTokenBuilder } from "agora-token";
 import { IUserRepository } from "../../repository/users/user_repository";
-import SocketServer from "../../core/sockets/socket_server";
 import { IGiftRepository } from "../../repository/gifts/gifts_repositories";
 import { IPostRepository } from "../../repository/posts/post_repository_interface";
 import { IReelRepository } from "../../repository/reels/reels_interface";
@@ -56,11 +53,10 @@ import {
   getEquippedItemObjects,
   getNextSalaryDate,
   isTheDateFromThisMonth,
-  updateUserXpFunc,
+
 } from "../../core/Utils/helper_functions";
 import { IRoomBonusRecords } from "../../models/room/bonus_records_model";
 import { IRoomBonusRecordsRepository } from "../../repository/room/room_bonus_records_repository";
-import { IRoomMessage } from "../../core/sockets/interface/socket_interface";
 import bcrypt from "bcrypt";
 import { IUpdateCostRepository } from "../../repository/admin/updateCostRepository";
 import {
@@ -915,56 +911,56 @@ export default class AuthService implements IAuthService {
     return await checkPremiumItem(this.BucketRepository, userId);
   }
 
-  async updateMyXp(userId: string, isMyRoom: boolean): Promise<{ XP: number }> {
-    const existingUser = await this.UserRepository.findUserById(userId);
-    if (!existingUser) {
-      throw new AppError(StatusCodes.NOT_FOUND, "user not found");
-    }
+  // async updateMyXp(userId: string, isMyRoom: boolean): Promise<{ XP: number }> {
+  //   const existingUser = await this.UserRepository.findUserById(userId);
+  //   if (!existingUser) {
+  //     throw new AppError(StatusCodes.NOT_FOUND, "user not found");
+  //   }
 
-    const socketInstance = SocketServer.getInstance();
+  //   const socketInstance = SocketServer.getInstance();
 
-    // initialize tracker if missing
-    socketInstance.roomXpTrackingSystem[userId] ??= {
-      firstEntry: false,
-      othersRoomXp: 0,
-      ownRoomXP: 0,
-    };
+  //   // initialize tracker if missing
+  //   socketInstance.roomXpTrackingSystem[userId] ??= {
+  //     firstEntry: false,
+  //     othersRoomXp: 0,
+  //     ownRoomXP: 0,
+  //   };
 
-    // room-based config
-    const config = isMyRoom
-      ? {
-          key: "ownRoomXP" as const,
-          maxXp: OWN_ROOM_MAX_XP,
-          increment: OWN_ROOM_XP_MULTIPLIER,
-          errorMsg: "you have reached the maximum xp for this room",
-        }
-      : {
-          key: "othersRoomXp" as const,
-          maxXp: OTHERS_ROOM_MAX_XP,
-          increment: OTHERS_ROOM_XP_MULTIPLIER,
-          errorMsg: "you have reached the maximum xp for this room",
-        };
+  //   // room-based config
+  //   const config = isMyRoom
+  //     ? {
+  //         key: "ownRoomXP" as const,
+  //         maxXp: OWN_ROOM_MAX_XP,
+  //         increment: OWN_ROOM_XP_MULTIPLIER,
+  //         errorMsg: "you have reached the maximum xp for this room",
+  //       }
+  //     : {
+  //         key: "othersRoomXp" as const,
+  //         maxXp: OTHERS_ROOM_MAX_XP,
+  //         increment: OTHERS_ROOM_XP_MULTIPLIER,
+  //         errorMsg: "you have reached the maximum xp for this room",
+  //       };
 
-    const tracker = socketInstance.roomXpTrackingSystem[userId];
+  //   const tracker = socketInstance.roomXpTrackingSystem[userId];
 
-    // limit check
-    if (tracker[config.key] >= config.maxXp) {
-      throw new AppError(StatusCodes.BAD_REQUEST, config.errorMsg);
-    }
+  //   // limit check
+  //   if (tracker[config.key] >= config.maxXp) {
+  //     throw new AppError(StatusCodes.BAD_REQUEST, config.errorMsg);
+  //   }
 
-    // update tracker
-    tracker[config.key] += config.increment;
+  //   // update tracker
+  //   tracker[config.key] += config.increment;
 
-    // update DB + emit socket
-    await updateUserXpFunc(
-      this.UserRepository,
-      userId,
-      config.increment,
-      socketInstance.getIO(),
-    );
+  //   // update DB + emit socket
+  //   await updateUserXpFunc(
+  //     this.UserRepository,
+  //     userId,
+  //     config.increment,
+  //     socketInstance.getIO(),
+  //   );
 
-    return { XP: config.increment };
-  }
+  //   return { XP: config.increment };
+  // }
 
   async getAllBucketItems(
     query: Record<string, any>,
@@ -973,4 +969,4 @@ export default class AuthService implements IAuthService {
     return items;
   }
 }
-``;
+
