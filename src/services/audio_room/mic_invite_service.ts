@@ -60,6 +60,10 @@ export class MicInviteService {
     seatKey: string,
   ): Promise<void> {
     try {
+      // clear any existing session
+      if (this.invitationSessions.has(userId)) {
+        await this.clearInvitationSession(userId, true);
+      }
       // validating client side data and store them
       const user = await UserCache.getInstance().validateUserId(userId);
       if (!user) throw new AppError(404, "User not found");
@@ -72,9 +76,6 @@ export class MicInviteService {
       if (!seat.available) throw new AppError(400, "Seat is not available");
       if (!isEmptyObject(seat.member || {}))
         throw new AppError(400, "Seat is already occupied");
-      if (this.invitationSessions.has(userId)) {
-        await this.clearInvitationSession(userId, true);
-      }
 
       // check if the user is any other seat
       const existingSeat = Array.from(room.seats.values()).find(
@@ -115,7 +116,7 @@ export class MicInviteService {
         },
       );
     } catch (error) {
-      console.log(error);
+     throw error;
     }
   }
 
@@ -195,7 +196,7 @@ export class MicInviteService {
         },
       });
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
@@ -213,7 +214,7 @@ export class MicInviteService {
       // clear invitation and unlock seat
       await this.clearInvitationSession(userId, true);
     } catch (error) {
-      console.log(error);
+      throw error;
     }
   }
 
