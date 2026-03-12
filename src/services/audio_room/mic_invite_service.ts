@@ -116,7 +116,7 @@ export class MicInviteService {
         },
       );
     } catch (error) {
-     throw error;
+      throw error;
     }
   }
 
