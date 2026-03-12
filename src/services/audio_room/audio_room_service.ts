@@ -912,14 +912,9 @@ export class AudioRoomService implements IAudioRoomService {
     const socketInstance = SingletonSocketServer.getInstance();
 
     for (const [key, seat] of audioRoom.seats.entries()) {
-      updateQuery.$set[`seats.${key}.available`] = false;
-      // remove seated members
-      if (seat.member) {
-        updateQuery.$set[`seats.${key}.member`] = null;
-        socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
-          seatKey: key,
-          member: {},
-        });
+      // Only lock if the seat is empty
+      if (!seat.member) {
+        updateQuery.$set[`seats.${key}.available`] = false;
       }
     }
 
