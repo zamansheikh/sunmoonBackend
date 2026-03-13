@@ -212,6 +212,7 @@ export default class SingletonSocketServer {
     console.log(`User ${userId} connected with socket ID: ${socket.id}`);
   }
 
+  
   // this function here instead of being in the audio helper
   //  because its more convinent to handle the room logic here`
   // and when i wrote it here, i didnt have the audio helper
