@@ -517,7 +517,7 @@ export class AudioRoomService implements IAudioRoomService {
     audioHelper.checkUserOnSeat(targetId, audioRoom); // user must be on a seat to be made admin
     // update audio room admins
     await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
-      $push: {
+      $addToSet: {
         admins: targetId,
       },
     });
