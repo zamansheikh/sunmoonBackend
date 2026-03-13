@@ -107,10 +107,12 @@ export class RedisService {
    * @param key Key
    * @param value Value (will be stringified if it's an object/array)
    */
-  public async addToSet(key: string, value: any): Promise<void> {
-    const stringValue =
-      typeof value === "string" ? value : JSON.stringify(value);
-    await this.client.sAdd(key, stringValue);
+  public async addToSet(key: string, ...values: any[]): Promise<void> {
+    if (values.length === 0) return;
+    const stringValues = values.map((value) =>
+      typeof value === "string" ? value : JSON.stringify(value),
+    );
+    await this.client.sAdd(key, stringValues);
   }
 
   /**
@@ -118,10 +120,12 @@ export class RedisService {
    * @param key Key
    * @param value Value (will be stringified if it's an object/array)
    */
-  public async removeFromSet(key: string, value: any): Promise<void> {
-    const stringValue =
-      typeof value === "string" ? value : JSON.stringify(value);
-    await this.client.sRem(key, stringValue);
+  public async removeFromSet(key: string, ...values: any[]): Promise<void> {
+    if (values.length === 0) return;
+    const stringValues = values.map((value) =>
+      typeof value === "string" ? value : JSON.stringify(value),
+    );
+    await this.client.sRem(key, stringValues);
   }
 
   /**

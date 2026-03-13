@@ -95,6 +95,10 @@ export enum RequestTypes {
 
 export enum MAGIC_BALL_CRITERIA_TYPES {
   SuccessfullMicInvitation = "SuccessfullMicInvitation",
+  SendGiftUniqueUser = "SendGiftUniqueUser",
+  SendGiftUniqueUserInRoom = "SendGiftUniqueUserInRoom",
+  NewFollower = "NewFollower",
+  KeepMicOnForDuration = "KeepMicOnForDuration",
 }
 
 export enum GlobalSocketChannels {

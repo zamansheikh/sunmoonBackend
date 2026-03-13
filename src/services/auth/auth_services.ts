@@ -74,6 +74,7 @@ import RocketService from "../audio_room/rocket_service";
 import { RepositoryProviders } from "../../core/providers/repository_providers";
 import { AudioRoomHelper } from "../../core/helper_classes/audioRoomHelper";
 import { AudioRoomCache } from "../../core/cache/audio_room_cache";
+import { MgbGiftTrackingSystem } from "../magic_ball/mgb_gift_tracking_system";
 
 export default class AuthService implements IAuthService {
   UserRepository: IUserRepository;
@@ -486,6 +487,11 @@ export default class AuthService implements IAuthService {
       ), // updating gift send count to determine hot gifts
       this.UserStatsRepository.updateGiftDiamond(targetUserIds, diamonds), // updating diamonds for all the receivers
       XpHelper.getInstance().updateUserXpFromCoin(myId, coinCost),
+      MgbGiftTrackingSystem.getInstance().onGiftSent(
+        myId,
+        targetUserIds,
+        roomId,
+      ),
     ];
     if (roomId) {
       secondaryUpdates.push(
