@@ -97,6 +97,7 @@ export class AudioRoomHelper {
      * room -> the current Audio room, where the action is taking place
      */
     if (room.hostId.toString() === myId) return;
+    if (targetId && myId.toString() == targetId?.toString()) return;
     if (
       authorityLevel === 1 &&
       room.admins.some((admin) => admin.toString() === myId)
