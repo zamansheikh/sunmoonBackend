@@ -226,6 +226,12 @@ export default class SingletonSocketServer {
     try {
       const helperInstance = AudioRoomHelper.getInstance();
       const isHost = room.hostId?.toString() === userId;
+      const isMember = room.members.has(userId);
+
+      if (!isHost && !isMember) {
+        return room;
+      }
+
       const user = await this.userRepository.findUserById(userId);
       if (!user) {
         return room;
@@ -236,114 +242,101 @@ export default class SingletonSocketServer {
         this.categoryRepository,
         userId,
       );
-      //leave message
+
+      // leave message
       const leaveMessage: IRoomMessage = helperInstance.generateRoomMessage(
         userObj,
         "left the room",
       );
-      if (isHost) {
-        // remove from seat if seated
-        // Check host seat
-        if (room.hostSeat?.member?._id?.toString() === userId) {
-          room.hostSeat.member = undefined;
+
+      const updateQuery: any = {
+        $set: {},
+        $unset: {},
+        $pull: { membersArray: userId },
+        $push: {
+          messages: {
+            $each: [leaveMessage],
+            $slice: -ALLOWED_MESSAGES_COUNT,
+          },
+        },
+      };
+
+      // 1. Remove from host seat if applicable
+      if (isHost && room.hostSeat?.member?._id?.toString() === userId) {
+        updateQuery.$unset["hostSeat.member"] = 1;
+        this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
+          seatKey: "hostSeat",
+          member: {},
+        });
+      }
+
+      // 2. Remove from regular seats
+      for (const [seatKey, seat] of room.seats.entries()) {
+        if (seat.member?._id?.toString() === userId) {
+          updateQuery.$unset[`seats.${seatKey}.member`] = 1;
           this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
-            seatKey: "hostSeat",
+            seatKey: seatKey,
             member: {},
           });
         }
-
-        // Check other seats
-        for (const [seatKey, seat] of room.seats.entries()) {
-          if (seat.member?._id?.toString() === userId) {
-            seat.member = undefined;
-            this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
-              seatKey: seatKey,
-              member: {},
-            });
-          }
-        }
-        // remove from members and member details
-        room.members.delete(userId);
-        room.membersArray = room.membersArray.filter(
-          (member) => member.toString() !== userId,
-        );
-
-        // send room wide leave message
-        if (room.messages.length > ALLOWED_MESSAGES_COUNT)
-          room.messages.shift();
-        room.messages.push(leaveMessage);
-        this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
-          message: leaveMessage,
-        });
-        // leave the audio room -> send roomwide message
-        room.isHostPresent = false;
-        this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
-          userId: userId,
-          isHostPresent: false,
-        });
-
-        // a room is considered close when there are no members
-        if (room.membersArray.length == 0) {
-          this.emitToRoom("", AudioRoomChannels.AudioRoomClosed, {
-            roomId: room.roomId,
-          });
-        }
-
-        // disconnect from socket room
-        const socketId = this.getSocketId(userId);
-        if (socketId) {
-          this.io.sockets.sockets.get(socketId)?.leave(room.roomId);
-        }
       }
 
-      const isMember = room.members.has(userId);
-      if (isMember) {
-        // remove from seat if seated
-        for (const [seatKey, seat] of room.seats.entries()) {
-          if (seat.member?._id?.toString() === userId) {
-            seat.member = undefined;
-            this.emitToRoom(room.roomId, AudioRoomChannels.AudioSeatLeft, {
-              seatKey: seatKey,
-              member: {},
-            });
-          }
-        }
-        // remove from members and member details
-        room.members.delete(userId);
-        room.membersArray = room.membersArray.filter(
-          (member) => member.toString() !== userId,
-        );
-        // remove from muted users
-        if (room.mutedUsers.has(userId)) {
-          room.mutedUsers.delete(userId);
-          this.emitToRoom(room.roomId, AudioRoomChannels.muteUnmuteUser, {
-            mutedUsers: Array.from(room.mutedUsers.keys()),
-          });
-        }
-        // send room wide leave message
-        if (room.messages.length > ALLOWED_MESSAGES_COUNT)
-          room.messages.shift();
-        room.messages.push(leaveMessage);
-        this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
-          message: leaveMessage,
-        });
-        // leave the audio room -> send roomwide message
-        this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
-          userId: userId,
-        });
-        // a room is considered close when there are no members
-        if (room.membersArray.length == 0) {
-          this.emitToRoom("", AudioRoomChannels.AudioRoomClosed, {
-            roomId: room.roomId,
-          });
-        }
-        // disconnect from socket room
-        const socketId = this.getSocketId(userId);
-        if (socketId) {
-          this.io.sockets.sockets.get(socketId)?.leave(room.roomId);
-        }
+      // 3. Remove from members Map
+      updateQuery.$unset[`members.${userId}`] = 1;
+
+      // 4. Handle host presence
+      if (isHost) {
+        updateQuery.$set.isHostPresent = false;
       }
-      return await room.save();
+
+      // 5. Handle muted users
+      if (room.mutedUsers.has(userId)) {
+        updateQuery.$unset[`mutedUsers.${userId}`] = 1;
+        this.emitToRoom(room.roomId, AudioRoomChannels.muteUnmuteUser, {
+          mutedUsers: Array.from(room.mutedUsers.keys()).filter(
+            (id) => id !== userId,
+          ),
+        });
+      }
+
+      // 6. Emissions
+      this.emitToRoom(room.roomId, AudioRoomChannels.AudioRoomMessage, {
+        message: leaveMessage,
+      });
+
+      this.emitToRoom(room.roomId, AudioRoomChannels.UserLeft, {
+        userId: userId,
+        ...(isHost ? { isHostPresent: false } : {}),
+      });
+
+      // 7. Check if room is empty
+      const stillHasMembers = room.membersArray.some(
+        (m) => m.toString() !== userId,
+      );
+      if (!stillHasMembers) {
+        this.emitToRoom("", AudioRoomChannels.AudioRoomClosed, {
+          roomId: room.roomId,
+        });
+      }
+
+      // 8. Socket leave
+      const socketId = this.getSocketId(userId);
+      if (socketId) {
+        this.io.sockets.sockets.get(socketId)?.leave(room.roomId);
+      }
+
+      // Final cleanup of query object
+      if (Object.keys(updateQuery.$set).length === 0) delete updateQuery.$set;
+      if (Object.keys(updateQuery.$unset).length === 0)
+        delete updateQuery.$unset;
+
+      const updatedRoom = await AudioRoomModel.findOneAndUpdate(
+        { _id: room._id },
+        updateQuery,
+        { new: true },
+      );
+
+      return updatedRoom || room;
     } catch (error) {
       console.log("Error in handleAudioRoomDisconnection", error);
       return room;
