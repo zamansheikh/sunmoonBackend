@@ -140,6 +140,14 @@ export class RedisService {
   }
 
   /**
+   * Get the number of members in a Redis set (SCARD)
+   * @param key Key
+   */
+  public async getSetCount(key: string): Promise<number> {
+    return await this.client.sCard(key);
+  }
+
+  /**
    * Get the underlying Redis client if needed for advanced operations
    */
   public getClient() {
