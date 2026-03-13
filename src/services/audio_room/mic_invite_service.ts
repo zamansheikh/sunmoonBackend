@@ -11,6 +11,7 @@ import {
   isEmptyObject,
 } from "../../core/Utils/helper_functions";
 import { IMemberDetails } from "../../models/audio_room/audio_room_model";
+import { MgbInvitationTrackingService } from "../magic_ball/mgb_invitation_tracking_service";
 
 /**
  * Mic Invite Service
@@ -55,6 +56,7 @@ export class MicInviteService {
    * @param seatKey
    */
   public async sendMicInvite(
+    myId: string,
     roomId: string,
     userId: string,
     seatKey: string,
@@ -97,6 +99,7 @@ export class MicInviteService {
 
       // create a session for the user.
       this.invitationSessions.set(userId, {
+        inviterId: myId,
         roomDbId: room._id as string,
         roomSocketId: room.roomId, // Human-readable ID for socket emissions
         seatKey,
@@ -155,6 +158,7 @@ export class MicInviteService {
       }
 
       // 4. PREVENT RACE CONDITIONS: Clear session immediately before heavy IO
+      const inviterId = session.inviterId;
       const timeoutId = session.timeoutId;
       const roomDbId = session.roomDbId;
       const roomSocketId = session.roomSocketId;
@@ -195,6 +199,10 @@ export class MicInviteService {
           [`seats.${seatKey}.member`]: userInfo,
         },
       });
+      MgbInvitationTrackingService.getInstance().onInviteSuccess(
+        inviterId,
+        userId,
+      );
     } catch (error) {
       throw error;
     }
@@ -251,6 +259,7 @@ export class MicInviteService {
 }
 
 interface IInviteSession {
+  inviterId: string;
   roomDbId: string;
   roomSocketId: string;
   seatKey: string;

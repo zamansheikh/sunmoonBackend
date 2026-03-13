@@ -479,13 +479,14 @@ export class AudioRoomController {
   });
 
   sendMicInvite = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
     const { roomId } = req.params;
     const { userId, seatKey } = req.body;
     validateFieldExistance(roomId, "roomId");
     validateFieldExistance(userId, "userId");
     validateFieldExistance(seatKey, "seatKey");
 
-    await MicInviteService.getInstance().sendMicInvite(roomId, userId, seatKey);
+    await MicInviteService.getInstance().sendMicInvite(myUserId, roomId, userId, seatKey);
 
     sendResponse(res, {
       success: true,

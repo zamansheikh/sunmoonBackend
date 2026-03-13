@@ -77,7 +77,9 @@ export class MgbInvitationTrackingService {
     }
   }
 
-  public async getInviterCurrentProgress(inviterId: string) {
+  public async getInviterCurrentProgress(
+    inviterId: string,
+  ): Promise<IMgbInvitationProgress> {
     const uniqueUserKey = `${this.INVITATION_UNIQUE_USER_KEY_PREFIX}:${inviterId}`;
     const milestoneReachedKey = `${this.INVITATION_MILESTONE_REACHED_KEY_PREFIX}:${inviterId}`;
 
