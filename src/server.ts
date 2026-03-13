@@ -40,6 +40,10 @@ import { upload } from "./core/middlewares/multer";
 import SingletonSocketServer from "./core/sockets/singleton_socket_server";
 import RedisConfig from "./core/config/redis_config";
 import { resetMagicBallJob } from "./core/corn/jobs/magic_ball_jobs";
+import { initializeMagicBallTrackers } from "./services/magic_ball";
+
+// Initialize Magic Ball Trackers
+initializeMagicBallTrackers();
 
 // Initialize dotenv for environment variables
 dotenv.config();

@@ -1,8 +1,6 @@
-import { MAGIC_BALL_CRITERIA_TYPES } from "../../core/Utils/enums";
 import { MAGIC_BALL_CRITERIA } from "../../core/Utils/constants";
-import { MgbInvitationTrackingService } from "./mgb_invitation_tracking_service";
-import { MgbGiftTrackingSystem } from "./mgb_gift_tracking_system";
-import { AudioRoomCache } from "../../core/cache/audio_room_cache";
+import { MAGIC_BALL_CRITERIA_TYPES } from "../../core/Utils/enums";
+import { MgbTrackerRegistry } from "./mgb_tracker_registry";
 
 export interface IMagicBallHostService {
   getAllMagicBall(userId: string): Promise<MagicBallResponse[]>;
@@ -13,52 +11,24 @@ export class MagicBallHostService implements IMagicBallHostService {
 
   async getAllMagicBall(userId: string): Promise<MagicBallResponse[]> {
     const response: MagicBallResponse[] = [];
-
-    // Trackers
-    const invitationProgress =
-      await MgbInvitationTrackingService.getInstance().getInviterCurrentProgress(
-        userId,
-      );
-
-    const globalGiftProgress =
-      await MgbGiftTrackingSystem.getInstance().getGlobalGiftProgress(userId);
-    const roomId = await AudioRoomCache.getInstance().getRoomIdByHostId(userId);
-    const roomGiftProgress = roomId
-      ? await MgbGiftTrackingSystem.getInstance().getRoomGiftProgress(
-          userId,
-          roomId,
-        )
-      : null;
+    const registry = MgbTrackerRegistry.getInstance();
 
     // Iterate over constants instead of database
     for (const [categoryKey, criteria] of Object.entries(MAGIC_BALL_CRITERIA)) {
       const category = categoryKey as MAGIC_BALL_CRITERIA_TYPES;
+      const tracker = registry.getTracker(category);
 
       for (const milestone of criteria.milestones) {
         let myMilestone = 0;
         let isCompleted = false;
 
-        // Process progress based on category type
-        if (category === MAGIC_BALL_CRITERIA_TYPES.SuccessfullMicInvitation) {
-          myMilestone = invitationProgress.uniqueUserCount;
-          isCompleted = invitationProgress.reachedMilestones.includes(
+        if (tracker) {
+          const progress = await tracker.getProgress(
+            userId,
             milestone.milestone,
           );
-        } else if (category === MAGIC_BALL_CRITERIA_TYPES.SendGiftUniqueUser) {
-          myMilestone = globalGiftProgress.uniqueUserCount;
-          isCompleted = globalGiftProgress.reachedMilestones.includes(
-            milestone.milestone,
-          );
-        } else if (
-          category === MAGIC_BALL_CRITERIA_TYPES.SendGiftUniqueUserInRoom
-        ) {
-          // If roomId is provided, show current room progress. Otherwise just show if milestone was ever reached globally
-          if (roomGiftProgress) {
-            myMilestone = roomGiftProgress.uniqueUserCount;
-            isCompleted = roomGiftProgress.reachedMilestones.includes(
-              milestone.milestone,
-            );
-          }
+          myMilestone = progress.myMilestone;
+          isCompleted = progress.isCompleted;
         }
 
         response.push({
@@ -75,6 +45,7 @@ export class MagicBallHostService implements IMagicBallHostService {
     return response;
   }
 }
+
 
 export interface MagicBallResponse {
   logo: string;

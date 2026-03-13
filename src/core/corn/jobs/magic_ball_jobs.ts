@@ -1,17 +1,15 @@
-import { MgbGiftTrackingSystem } from "../../../services/magic_ball/mgb_gift_tracking_system";
-import { MgbInvitationTrackingService } from "../../../services/magic_ball/mgb_invitation_tracking_service";
+import { MgbTrackerRegistry } from "../../../services/magic_ball/mgb_tracker_registry";
 
 export const resetMagicBallJob = async () => {
   try {
     console.log("[CRON] Starting Magic Ball Reset Job...");
 
-    await Promise.all([
-      MgbInvitationTrackingService.getInstance().resetSystem(),
-      MgbGiftTrackingSystem.getInstance().resetSystem(),
-    ]);
+    const trackers = MgbTrackerRegistry.getInstance().getAllTrackers();
+    await Promise.all(trackers.map((tracker) => tracker.resetSystem()));
 
     console.log("[CRON] Magic Ball Reset Job Completed Successfully.");
   } catch (error) {
     console.error("[CRON] Magic Ball Reset Job Failed:", error);
   }
 };
+

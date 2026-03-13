@@ -4,7 +4,9 @@ import { RedisService } from "../../core/redis/redis_service";
 import { MAGIC_BALL_CRITERIA } from "../../core/Utils/constants";
 import { MAGIC_BALL_CRITERIA_TYPES } from "../../core/Utils/enums";
 
-export class MgbInvitationTrackingService {
+import { IMgbProgress, IMgbTracker, MgbTrackerRegistry } from "./mgb_tracker_registry";
+
+export class MgbInvitationTrackingService implements IMgbTracker {
   private static instance: MgbInvitationTrackingService | null = null;
 
   // repository
@@ -25,9 +27,29 @@ export class MgbInvitationTrackingService {
     if (MgbInvitationTrackingService.instance === null) {
       MgbInvitationTrackingService.instance =
         new MgbInvitationTrackingService();
+      // Register with tracker registry
+      MgbTrackerRegistry.getInstance().register(
+        MgbInvitationTrackingService.instance,
+      );
     }
     return MgbInvitationTrackingService.instance;
   }
+
+  getType(): MAGIC_BALL_CRITERIA_TYPES {
+    return MAGIC_BALL_CRITERIA_TYPES.SuccessfullMicInvitation;
+  }
+
+  async getProgress(
+    userId: string,
+    milestoneValue: number,
+  ): Promise<IMgbProgress> {
+    const progress = await this.getInviterCurrentProgress(userId);
+    return {
+      myMilestone: progress.uniqueUserCount,
+      isCompleted: progress.reachedMilestones.includes(milestoneValue),
+    };
+  }
+
 
   public async onInviteSuccess(inviterId: string, inviteeId: string) {
     const uniqueUserKey = `${this.INVITATION_UNIQUE_USER_KEY_PREFIX}:${inviterId}`;

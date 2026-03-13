@@ -4,6 +4,11 @@ import { RedisFolderProvider } from "../../core/redis/redis_folder_provider";
 import { RedisService } from "../../core/redis/redis_service";
 import { MAGIC_BALL_CRITERIA } from "../../core/Utils/constants";
 import { MAGIC_BALL_CRITERIA_TYPES } from "../../core/Utils/enums";
+import {
+  IMgbProgress,
+  IMgbTracker,
+  MgbTrackerRegistry,
+} from "./mgb_tracker_registry";
 
 export class MgbGiftTrackingSystem {
   private static instance: MgbGiftTrackingSystem | null = null;
@@ -30,9 +35,14 @@ export class MgbGiftTrackingSystem {
   public static getInstance(): MgbGiftTrackingSystem {
     if (MgbGiftTrackingSystem.instance === null) {
       MgbGiftTrackingSystem.instance = new MgbGiftTrackingSystem();
+
+      const registry = MgbTrackerRegistry.getInstance();
+      registry.register(new MgbGlobalGiftTracker(MgbGiftTrackingSystem.instance));
+      registry.register(new MgbRoomGiftTracker(MgbGiftTrackingSystem.instance));
     }
     return MgbGiftTrackingSystem.instance;
   }
+
 
   /**
    * Called when a gift is sent. Updates both global and per-room trackers.
@@ -213,4 +223,47 @@ interface IMgbGiftProgress {
     rewardCoin: number;
     milestone: number;
   }[];
+}
+
+class MgbGlobalGiftTracker implements IMgbTracker {
+  constructor(private system: MgbGiftTrackingSystem) {}
+  getType() {
+    return MAGIC_BALL_CRITERIA_TYPES.SendGiftUniqueUser;
+  }
+  async getProgress(
+    userId: string,
+    milestoneValue: number,
+  ): Promise<IMgbProgress> {
+    const progress = await this.system.getGlobalGiftProgress(userId);
+    return {
+      myMilestone: progress.uniqueUserCount,
+      isCompleted: progress.reachedMilestones.includes(milestoneValue),
+    };
+  }
+  async resetSystem() {
+    await this.system.resetSystem();
+  }
+}
+
+class MgbRoomGiftTracker implements IMgbTracker {
+  constructor(private system: MgbGiftTrackingSystem) {}
+  getType() {
+    return MAGIC_BALL_CRITERIA_TYPES.SendGiftUniqueUserInRoom;
+  }
+  async getProgress(
+    userId: string,
+    milestoneValue: number,
+  ): Promise<IMgbProgress> {
+    const roomId = await AudioRoomCache.getInstance().getRoomIdByHostId(userId);
+    if (!roomId) return { myMilestone: 0, isCompleted: false };
+
+    const progress = await this.system.getRoomGiftProgress(userId, roomId);
+    return {
+      myMilestone: progress.uniqueUserCount,
+      isCompleted: progress.reachedMilestones.includes(milestoneValue),
+    };
+  }
+  async resetSystem() {
+    await this.system.resetSystem();
+  }
 }
