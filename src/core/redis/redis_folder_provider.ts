@@ -1,6 +1,8 @@
 export class RedisFolderProvider {
   static readonly RocketServiceFolderPrefix = "rocket_service";
   static readonly MicInviteServiceFolderPrefix = "mic_invite_service";
+  static readonly MgbInvitationTrackingServiceFolderPrefix =
+    "mgb_invitation_tracking_service";
 
   static {
     // Automatically validate that no two prefixes share the same value
