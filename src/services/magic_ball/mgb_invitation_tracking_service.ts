@@ -98,6 +98,14 @@ export class MgbInvitationTrackingService {
     };
   }
 
+  public async resetSystem() {
+    try {
+      await this.redisService.deleteByPattern(`${this.MGBTrackingFolder}:*`);
+    } catch (error) {
+      console.error("Error in MgbInvitationTrackingService.resetSystem:", error);
+    }
+  }
+
   /**
    * Distribute reward function
    * @param userId The user receiving the reward

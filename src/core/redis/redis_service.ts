@@ -152,6 +152,17 @@ export class RedisService {
   }
 
   /**
+   * Delete keys matching a pattern
+   * @param pattern Pattern to match (e.g., prefix:*)
+   */
+  public async deleteByPattern(pattern: string): Promise<void> {
+    const keys = await this.client.keys(pattern);
+    if (keys.length > 0) {
+      await this.client.del(keys);
+    }
+  }
+
+  /**
    * Get the underlying Redis client if needed for advanced operations
    */
   public getClient() {

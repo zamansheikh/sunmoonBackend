@@ -192,6 +192,14 @@ export class MgbGiftTrackingSystem {
     };
   }
 
+  public async resetSystem() {
+    try {
+      await this.redisService.deleteByPattern(`${this.MGBTrackingFolder}:*`);
+    } catch (error) {
+      console.error("Error in MgbGiftTrackingSystem.resetSystem:", error);
+    }
+  }
+
   private async distributeReward(userId: string, amount: number) {
     await this.UserStatsRepository.updateCoins(userId, amount);
   }
