@@ -1,3 +1,4 @@
+import { AudioRoomCache } from "../../core/cache/audio_room_cache";
 import { RepositoryProviders } from "../../core/providers/repository_providers";
 import { RedisFolderProvider } from "../../core/redis/redis_folder_provider";
 import { RedisService } from "../../core/redis/redis_service";
@@ -48,6 +49,9 @@ export class MgbGiftTrackingSystem {
 
       const tasks = [this.trackGlobalUniqueUsers(senderId, otherReceiverIds)];
       if (roomId) {
+        const cachedRoomId =
+          await AudioRoomCache.getInstance().getRoomIdByHostId(senderId);
+        if (!cachedRoomId || cachedRoomId !== roomId) return;
         tasks.push(
           this.trackRoomUniqueUsers(senderId, otherReceiverIds, roomId),
         );

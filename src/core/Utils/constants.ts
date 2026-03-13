@@ -97,41 +97,6 @@ export const MAGIC_BALL_CRITERIA: Record<
       },
     ],
   },
-  [MAGIC_BALL_CRITERIA_TYPES.NewFollower]: {
-    logo: "logo_url",
-    milestones: [
-      {
-        message: "Gain 1 New Follower",
-        rewardCoin: 3000,
-        milestone: 1,
-      },
-      {
-        message: "Gain 10 New Followers",
-        rewardCoin: 12000,
-        milestone: 10,
-      },
-    ],
-  },
-  [MAGIC_BALL_CRITERIA_TYPES.KeepMicOnForDuration]: {
-    logo: "logo_url",
-    milestones: [
-      {
-        message: "Keep Mic On for 10 Minutes",
-        rewardCoin: 3000,
-        milestone: 10,
-      },
-      {
-        message: "Keep Mic On for 30 Minutes",
-        rewardCoin: 12000,
-        milestone: 30,
-      },
-      {
-        message: "Keep Mic On for 60 Minutes",
-        rewardCoin: 30000,
-        milestone: 60,
-      },
-    ],
-  },
 };
 
 // room support constants

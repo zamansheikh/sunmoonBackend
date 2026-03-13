@@ -2,18 +2,16 @@ import { MAGIC_BALL_CRITERIA_TYPES } from "../../core/Utils/enums";
 import { MAGIC_BALL_CRITERIA } from "../../core/Utils/constants";
 import { MgbInvitationTrackingService } from "./mgb_invitation_tracking_service";
 import { MgbGiftTrackingSystem } from "./mgb_gift_tracking_system";
+import { AudioRoomCache } from "../../core/cache/audio_room_cache";
 
 export interface IMagicBallHostService {
-  getAllMagicBall(userId: string, roomId?: string): Promise<MagicBallResponse[]>;
+  getAllMagicBall(userId: string): Promise<MagicBallResponse[]>;
 }
 
 export class MagicBallHostService implements IMagicBallHostService {
   constructor() {}
 
-  async getAllMagicBall(
-    userId: string,
-    roomId?: string,
-  ): Promise<MagicBallResponse[]> {
+  async getAllMagicBall(userId: string): Promise<MagicBallResponse[]> {
     const response: MagicBallResponse[] = [];
 
     // Trackers
@@ -24,7 +22,7 @@ export class MagicBallHostService implements IMagicBallHostService {
 
     const globalGiftProgress =
       await MgbGiftTrackingSystem.getInstance().getGlobalGiftProgress(userId);
-
+    const roomId = await AudioRoomCache.getInstance().getRoomIdByHostId(userId);
     const roomGiftProgress = roomId
       ? await MgbGiftTrackingSystem.getInstance().getRoomGiftProgress(
           userId,

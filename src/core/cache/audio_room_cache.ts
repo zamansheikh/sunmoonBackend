@@ -17,6 +17,7 @@ export class AudioRoomCache {
 
   private cachedRooms = new Map<string, number>();
   private cachedRoomInfo = new Map<string, IBasicRoomInfo>();
+  private cachedHostToRoom = new Map<string, { roomId: string; ttl: number }>();
   private readonly CACHE_TTL = 60 * 60 * 1000; // 1 hour
   public audioRoomRepository = RepositoryProviders.audioRoomRepositoryProvider;
   public roomSupportRepository =
@@ -66,7 +67,26 @@ export class AudioRoomCache {
     return null;
   }
 
+  public async getRoomIdByHostId(hostId: string): Promise<string | null> {
+    const cached = this.cachedHostToRoom.get(hostId);
+    if (cached && cached.ttl > Date.now()) return cached.roomId;
+
+    const roomId = await this.audioRoomRepository.getAudioRoomByHostId(hostId);
+    if (roomId) {
+      this.cachedHostToRoom.set(hostId, {
+        roomId: roomId,
+        ttl: Date.now() + this.CACHE_TTL,
+      });
+      return roomId;
+    }
+    return null;
+  }
+
   public invalidate(roomId: string) {
+    const info = this.cachedRoomInfo.get(roomId);
+    if (info) {
+      this.cachedHostToRoom.delete(info.hostId);
+    }
     this.cachedRooms.delete(roomId);
     this.cachedRoomInfo.delete(roomId);
   }
