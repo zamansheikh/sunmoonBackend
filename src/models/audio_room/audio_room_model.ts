@@ -151,6 +151,7 @@ const AudioRoomSchema = new Schema<IAudioRoomDocument>(
       type: Schema.Types.ObjectId,
       ref: DatabaseNames.User,
       required: true,
+      unique: true,
     },
   },
   { timestamps: true },
