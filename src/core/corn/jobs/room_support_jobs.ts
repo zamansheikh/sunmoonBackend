@@ -1,7 +1,6 @@
 import { AudioRoomCache } from "../../cache/audio_room_cache";
 import { RepositoryProviders } from "../../providers/repository_providers";
 import { ROOM_LEVEL_CRITERIA } from "../../Utils/constants";
-import { socketResponse } from "../../Utils/helper_functions";
 
 export const roomSupportRewardSystem = async () => {
   console.log("room support reward system " + new Date().toLocaleString());

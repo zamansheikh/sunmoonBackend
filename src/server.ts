@@ -39,6 +39,7 @@ import { saveToLocalFileApiFunction } from "./core/Utils/save_file_to_local_sys"
 import { upload } from "./core/middlewares/multer";
 import SingletonSocketServer from "./core/sockets/singleton_socket_server";
 import RedisConfig from "./core/config/redis_config";
+import { resetMagicBallJob } from "./core/corn/jobs/magic_ball_jobs";
 
 // Initialize dotenv for environment variables
 dotenv.config();
@@ -167,6 +168,7 @@ mongoose.connect(MONGOURL).then(async () => {
     cronManager.start();
     // cronManager.register("0 0 * * *", resetRoomXPTrackingSystem); // Everyday at 12:00 AM reset xp tracking system
     cronManager.register("0 0 * * 0", roomSupportRewardSystem); // every week at sunday room support reset
+    cronManager.register("0 0 * * *", resetMagicBallJob); // Everyday at 12:00 AM reset xp tracking system
   });
 });
 
