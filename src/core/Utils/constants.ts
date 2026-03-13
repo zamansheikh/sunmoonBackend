@@ -1,3 +1,5 @@
+import { MAGIC_BALL_CRITERIA_TYPES } from "./enums";
+
 // calc consts
 const MILLION = 1000000;
 const THOUSAND = 1000;
@@ -31,6 +33,41 @@ export const COIN_MIN = 1000;
 export const COIN_MAX = 10000;
 export const XP_MIN = 1000;
 export const XP_MAX = 10000;
+
+// Magic Ball Features
+export interface IMAGIC_BALL_CRITERIA {
+  logo: string;
+  milestones: {
+    message: string;
+    rewardCoin: number;
+    milestone: number;
+  }[];
+}
+export const MAGIC_BALL_CRITERIA: Record<
+  MAGIC_BALL_CRITERIA_TYPES,
+  IMAGIC_BALL_CRITERIA
+> = {
+  [MAGIC_BALL_CRITERIA_TYPES.SuccessfullMicInvitation]: {
+    logo: "logo_url",
+    milestones: [
+      {
+        message: "Successfully Invite 1 User to Mic",
+        rewardCoin: 5000,
+        milestone: 1,
+      },
+      {
+        message: "Successfully Invite 3 User to Mic",
+        rewardCoin: 15000,
+        milestone: 3,
+      },
+      {
+        message: "Successfully Invite 10 User to Mic",
+        rewardCoin: 50000,
+        milestone: 10,
+      },
+    ],
+  },
+};
 
 // room support constants
 export interface ROOM_LEVEL_CRITERIA_INTERFACE {

@@ -93,6 +93,10 @@ export enum RequestTypes {
   recieved = "recieved",
 }
 
+export enum MAGIC_BALL_CRITERIA_TYPES {
+  SuccessfullMicInvitation = "SuccessfullMicInvitation",
+}
+
 export enum GlobalSocketChannels {
   RocketLaunchBanner = "rocket-launch-banner",
   GiftBanner = "gift-banner",
