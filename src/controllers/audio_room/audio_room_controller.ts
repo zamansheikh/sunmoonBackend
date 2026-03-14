@@ -542,4 +542,16 @@ export class AudioRoomController {
       result: result,
     });
   });
+
+  getRocketInfo = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.getRocketInfo(roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Rocket info fetched successfully",
+      result: result,
+    });
+  });
 }

@@ -1,4 +1,5 @@
 import { AudioRoomCache } from "../../core/cache/audio_room_cache";
+import AppError from "../../core/errors/app_errors";
 import { XpHelper } from "../../core/helper_classes/xp_helper";
 import { RepositoryProviders } from "../../core/providers/repository_providers";
 import { RedisFolderProvider } from "../../core/redis/redis_folder_provider";
@@ -12,11 +13,7 @@ import {
   XP_MAX,
   XP_MIN,
 } from "../../core/Utils/constants";
-import {
-  AudioRoomChannels,
-  LaunchGiftTypes,
-
-} from "../../core/Utils/enums";
+import { AudioRoomChannels, LaunchGiftTypes } from "../../core/Utils/enums";
 import { getRandomNumberFromRange } from "../../core/Utils/helper_functions";
 import { IMemberDetails } from "../../models/audio_room/audio_room_model";
 import { IMyBucket } from "../../models/store/my_bucket_model";
@@ -312,46 +309,73 @@ export default class RocketService {
     return coins;
   }
 
+  /**
+   * Fetches the current rocket information for a specific room
+   * @param roomId ID of the audio room
+   * @returns Rocket information including percentage
+   */
+  public async getRocketInfo(roomId: string): Promise<IRocketServiceResponse> {
+    const { fuel, level, milestone } =
+      await this.setRocketDefaultValues(roomId);
+    const fuelPercentage = (fuel / milestone) * 100;
+
+    return {
+      roomId,
+      fuel,
+      level,
+      milestone,
+      percentage: parseFloat(fuelPercentage.toFixed(2)),
+    };
+  }
+
   private async setRocketDefaultValues(roomId: string): Promise<{
     fuel: number;
     level: number;
     milestone: number;
   }> {
-    /**
-     * get the fuel, level, milestone from redis.
-     * if does not exist set the default values
-     * LEVEL -> 1
-     * FUEL -> 0
-     * MILESTONE -> ROCKET_MILESTONES[0] from const
-     * and return the values
-     */
-    const fuelKey = `${RocketService.FUEL_KEY_PREFIX}${roomId}`;
-    const levelKey = `${RocketService.LEVEL_KEY_PREFIX}${roomId}`;
-    const milestoneKey = `${RocketService.ROCKET_MILESTONE_KEY_PREFIX}${roomId}`;
+    try {
+      const isValid = await AudioRoomCache.getInstance().validateRoomId(roomId);
+      if (!isValid) {
+        throw new AppError(404, "Room not found");
+      }
+      /**
+       * get the fuel, level, milestone from redis.
+       * if does not exist set the default values
+       * LEVEL -> 1
+       * FUEL -> 0
+       * MILESTONE -> ROCKET_MILESTONES[0] from const
+       * and return the values
+       */
+      const fuelKey = `${RocketService.FUEL_KEY_PREFIX}${roomId}`;
+      const levelKey = `${RocketService.LEVEL_KEY_PREFIX}${roomId}`;
+      const milestoneKey = `${RocketService.ROCKET_MILESTONE_KEY_PREFIX}${roomId}`;
 
-    let fuel: string | null = await this.redis.get(fuelKey);
-    let level: string | null = await this.redis.get(levelKey);
-    let milestone: string | null = await this.redis.get(milestoneKey);
+      let fuel: string | null = await this.redis.get(fuelKey);
+      let level: string | null = await this.redis.get(levelKey);
+      let milestone: string | null = await this.redis.get(milestoneKey);
 
-    if (!fuel) {
-      await this.redis.set(fuelKey, "0");
-      fuel = "0";
+      if (!fuel) {
+        await this.redis.set(fuelKey, "0");
+        fuel = "0";
+      }
+
+      if (!level) {
+        await this.redis.set(levelKey, "1");
+        level = "1";
+      }
+
+      if (!milestone) {
+        await this.redis.set(milestoneKey, ROCKET_MILESTONES[0]);
+        milestone = ROCKET_MILESTONES[0].toString();
+      }
+
+      return {
+        fuel: parseInt(fuel), // Good idea to parse them here for easier use
+        level: parseInt(level),
+        milestone: parseInt(milestone),
+      };
+    } catch (error) {
+      throw error;
     }
-
-    if (!level) {
-      await this.redis.set(levelKey, "1");
-      level = "1";
-    }
-
-    if (!milestone) {
-      await this.redis.set(milestoneKey, ROCKET_MILESTONES[0]);
-      milestone = ROCKET_MILESTONES[0].toString();
-    }
-
-    return {
-      fuel: parseInt(fuel), // Good idea to parse them here for easier use
-      level: parseInt(level),
-      milestone: parseInt(milestone),
-    };
   }
 }

@@ -1,4 +1,5 @@
 import AppError from "../../core/errors/app_errors";
+import RocketService, { IRocketServiceResponse } from "./rocket_service";
 import { isValidObjectId } from "mongoose";
 import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
 import { AudioRoomHelper } from "../../core/helper_classes/audioRoomHelper";
@@ -127,6 +128,7 @@ export interface IAudioRoomService {
   getMyRecentVisitedRooms(myId: string): Promise<IAudioRoomDocument[]>;
   getRoomVisitors(roomId: string): Promise<IMemberDetails[]>;
   getRoomMessages(roomId: string): Promise<IRoomMessage[]>;
+  getRocketInfo(roomId: string): Promise<IRocketServiceResponse>;
 }
 
 export class AudioRoomService implements IAudioRoomService {
@@ -802,6 +804,10 @@ export class AudioRoomService implements IAudioRoomService {
       throw new AppError(404, "Audio room not found");
     }
     return await this.audioRoomRepository.getAudioRoomById(audioRoomId);
+  }
+
+  async getRocketInfo(roomId: string): Promise<IRocketServiceResponse> {
+    return await RocketService.getInstance().getRocketInfo(roomId);
   }
 
   async updateRoomTitle(
