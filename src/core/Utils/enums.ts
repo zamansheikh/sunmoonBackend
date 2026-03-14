@@ -131,6 +131,7 @@ export enum AudioRoomChannels {
   NewRocketLevel = "new-rocket-level",
   MicInviteRequest = "mic-invite-request",
   RoomData = "room-data",
+  SentAudioGift = "sent-audio-gift",
 }
 
 export enum MagicBallChallengeTypes {

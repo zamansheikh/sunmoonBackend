@@ -60,6 +60,7 @@ export interface IAudioRoom {
   isHostPresent: boolean; // to check if the host is present in the room
   isLocked: boolean; // private or public
   hostId: mongoose.Schema.Types.ObjectId | string; // to track the host
+  membersCount?: number;
 }
 
 export interface IAudioRoomDocument extends IAudioRoom, Document {

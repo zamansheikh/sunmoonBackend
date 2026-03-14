@@ -94,6 +94,7 @@ export interface IUserRepository {
     session?: mongoose.ClientSession,
   ): Promise<IUserDocument | null>;
   validateUserIds(ids: string[]): Promise<boolean>;
+  findUsersByIds(ids: string[]): Promise<IUserDocument[]>;
 }
 
 export default class UserRepository implements IUserRepository {
@@ -522,5 +523,9 @@ export default class UserRepository implements IUserRepository {
       _id: { $in: uniqueIds },
     });
     return count === uniqueIds.length;
+  }
+
+  async findUsersByIds(ids: string[]): Promise<IUserDocument[]> {
+    return await this.UserModel.find({ _id: { $in: ids } });
   }
 }

@@ -191,6 +191,7 @@ export default class SingletonSocketServer {
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
       hostId: room.hostId,
+      membersCount: room.membersCount ?? room.membersArray?.length ?? 0,
     };
   }
 
@@ -212,6 +213,7 @@ export default class SingletonSocketServer {
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
       hostId: room.hostId,
+      membersCount: room.membersCount ?? (room.membersArray ? room.membersArray.length : 0),
     };
   }
 

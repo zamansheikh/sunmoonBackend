@@ -64,6 +64,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         $addFields: {
           membersArray: "$membersArrayInfo", // ← just copy the array reference
           admins: "$adminsInfo",
+          membersCount: { $size: { $ifNull: ["$membersArray", []] } },
         },
       },
       {
@@ -112,6 +113,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         $addFields: {
           membersArray: "$membersArrayInfo", // ← just copy the array reference
           admins: "$adminsInfo",
+          membersCount: { $size: { $ifNull: ["$membersArray", []] } },
         },
       },
       {
@@ -170,6 +172,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         $addFields: {
           membersArray: "$membersArrayInfo",
           admins: "$adminsInfo",
+          membersCount: { $size: { $ifNull: ["$membersArray", []] } },
         },
       },
       {

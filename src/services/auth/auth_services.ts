@@ -8,6 +8,7 @@ import {
   UserRoles,
   WhoCanTextMe,
   WithdrawAccountTypes,
+  AudioRoomChannels,
 } from "../../core/Utils/enums";
 import { uploadFileToCloudinary } from "../../core/Utils/upload_file_cloudinary";
 import { IUserEntity } from "../../entities/user_entity_interface";
@@ -75,6 +76,7 @@ import { RepositoryProviders } from "../../core/providers/repository_providers";
 import { AudioRoomHelper } from "../../core/helper_classes/audioRoomHelper";
 import { AudioRoomCache } from "../../core/cache/audio_room_cache";
 import { MgbGiftTrackingSystem } from "../magic_ball/mgb_gift_tracking_system";
+import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
 
 export default class AuthService implements IAuthService {
   UserRepository: IUserRepository;
@@ -522,6 +524,27 @@ export default class AuthService implements IAuthService {
       );
     }
     await Promise.all(secondaryUpdates);
+
+    // socket response to the room
+    if (roomId && (isValid || (await AudioRoomCache.getInstance().validateRoomId(roomId)))) {
+      const senderBrief = await UserCache.getInstance().getUserBrief(myId);
+      const targetBriefs =
+        await UserCache.getInstance().getUsersBriefs(targetUserIds);
+
+      SingletonSocketServer.getInstance().emitToRoom(
+        roomId,
+        AudioRoomChannels.SentAudioGift,
+        {
+          sender: senderBrief,
+          receivers: targetBriefs,
+          gift: {
+            name: gift.name,
+            previewImage: gift.previewImage,
+          },
+          qty,
+        },
+      );
+    }
 
     return { coinCost, diamonds };
   }

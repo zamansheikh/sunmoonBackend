@@ -4,7 +4,10 @@ import UserRepository from "../../repository/users/user_repository";
 export class UserCache {
   private static instance: UserCache | null = null;
 
-  private cachedUser = new Map<string, number>();
+  private cachedUserBriefs = new Map<
+    string,
+    { name: string; avatar: string; expiry: number }
+  >();
   private readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hour = 1 day
   public userRepository = new UserRepository(User);
 
@@ -17,12 +20,71 @@ export class UserCache {
     return UserCache.instance;
   }
 
+  public async getUserBrief(
+    userId: string,
+  ): Promise<{ name: string; avatar: string } | null> {
+    const cached = this.cachedUserBriefs.get(userId);
+    if (cached && cached.expiry > Date.now())
+      return { name: cached.name, avatar: cached.avatar };
+    const user = await this.userRepository.findUserById(userId);
+    if (!user) return null;
+    const brief = {
+      name: user.name || user.username || "Unknown",
+      avatar: user.avatar || "",
+    };
+    this.cachedUserBriefs.set(userId, {
+      ...brief,
+      expiry: Date.now() + this.CACHE_TTL,
+    });
+    return brief;
+  }
+
+  public async getUsersBriefs(
+    userIds: string[],
+  ): Promise<{ name: string; avatar: string }[]> {
+    const uncachedIds: string[] = [];
+    const results: { name: string; avatar: string }[] = [];
+
+    userIds.forEach((id) => {
+      const cached = this.cachedUserBriefs.get(id);
+      if (cached && cached.expiry > Date.now()) {
+        results.push({ name: cached.name, avatar: cached.avatar });
+      } else {
+        uncachedIds.push(id);
+      }
+    });
+
+    if (uncachedIds.length > 0) {
+      const users = await this.userRepository.findUsersByIds(uncachedIds);
+      users.forEach((user) => {
+        const brief = {
+          name: user.name || user.username || "Unknown",
+          avatar: user.avatar || "",
+        };
+        this.cachedUserBriefs.set((user as any)._id.toString(), {
+          ...brief,
+          expiry: Date.now() + this.CACHE_TTL,
+        });
+        results.push(brief);
+      });
+    }
+
+    return results;
+  }
+
   public async validateUserId(userId: string): Promise<boolean> {
-    const expiry = this.cachedUser.get(userId);
-    if (expiry && expiry > Date.now()) return true;
+    const cached = this.cachedUserBriefs.get(userId);
+    if (cached && cached.expiry > Date.now()) return true;
     const user = await this.userRepository.findUserById(userId);
     if (user) {
-      this.cachedUser.set(userId, Date.now() + this.CACHE_TTL);
+      const brief = {
+        name: user.name || user.username || "Unknown",
+        avatar: user.avatar || "",
+      };
+      this.cachedUserBriefs.set(userId, {
+        ...brief,
+        expiry: Date.now() + this.CACHE_TTL,
+      });
       return true;
     }
     return false;
@@ -30,15 +92,12 @@ export class UserCache {
 
   public async validateUserIds(userIds: string[]): Promise<boolean> {
     const allCached = userIds.every((id) => {
-      const expiry = this.cachedUser.get(id);
-      return expiry && expiry > Date.now();
+      const cached = this.cachedUserBriefs.get(id);
+      return cached && cached.expiry > Date.now();
     });
     if (allCached) return true;
     const isValid = await this.userRepository.validateUserIds(userIds);
     if (isValid) {
-      userIds.forEach((id) =>
-        this.cachedUser.set(id, Date.now() + this.CACHE_TTL),
-      );
       return true;
     }
     return false;
