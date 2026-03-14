@@ -135,7 +135,11 @@ export const userWithEquippedItemsPipeline = (
       currentLevelBackground: 1,
       userId: 1,
       equippedStoreItems: 1,
+      country: 1,
       createdAt: 1,
+      currentBackground: "$currentLevelBackground",
+      currentTag: "$currentLevelTag",
+      currentLevel: "$level",
       // exclude: password, email, etc.
     },
   },

@@ -125,6 +125,8 @@ export interface IAudioRoomService {
     chatPrivacy: "any" | "none" | string[],
   ): Promise<IAudioRoomDocument>;
   getMyRecentVisitedRooms(myId: string): Promise<IAudioRoomDocument[]>;
+  getRoomVisitors(roomId: string): Promise<IMemberDetails[]>;
+  getRoomMessages(roomId: string): Promise<IRoomMessage[]>;
 }
 
 export class AudioRoomService implements IAudioRoomService {
@@ -1336,6 +1338,21 @@ export class AudioRoomService implements IAudioRoomService {
     return roomIds
       .map((id) => rooms.find((room) => room.roomId === id))
       .filter((room): room is IAudioRoomDocument => !!room);
+  }
+
+  async getRoomVisitors(roomId: string): Promise<IMemberDetails[]> {
+    const room = await this.audioRoomRepository.getAudioRoomById(roomId);
+    if (!room) throw new AppError(404, "Audio room not found");
+    const helper = AudioRoomHelper.getInstance();
+    return (room.membersArray as any[]).map((user) =>
+      helper.generateMemberDetails(user),
+    );
+  }
+
+  async getRoomMessages(roomId: string): Promise<IRoomMessage[]> {
+    const room = await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!room) throw new AppError(404, "Audio room not found");
+    return room.messages;
   }
 
   private emitRoomData(room: IAudioRoomDocument) {

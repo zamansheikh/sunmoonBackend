@@ -518,4 +518,28 @@ export class AudioRoomController {
       message: "Mic invite rejected successfully",
     });
   });
+
+  getRoomVisitors = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.getRoomVisitors(roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Room visitors fetched successfully",
+      result: result,
+    });
+  });
+
+  getRoomMessages = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.getRoomMessages(roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Room messages fetched successfully",
+      result: result,
+    });
+  });
 }

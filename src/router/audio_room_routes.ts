@@ -81,7 +81,12 @@ router
   .put(authenticate(), audioRoomController.leaveAudioRoom);
 
 router
+  .route("/:roomId/visitors")
+  .get(audioRoomController.getRoomVisitors);
+
+router
   .route("/:roomId/messages")
+  .get(audioRoomController.getRoomMessages)
   .delete(authenticate(), audioRoomController.clearChatHistory)
   .post(authenticate(), audioRoomController.sendRoomMessage);
 
