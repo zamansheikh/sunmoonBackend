@@ -194,6 +194,27 @@ export default class SingletonSocketServer {
     };
   }
 
+  public roomDataSerializer(room: IAudioRoom) {
+    return {
+      title: room.title,
+      numberOfSeats: room.numberOfSeats,
+      announcement: room.announcement,
+      roomId: room.roomId,
+      roomPhoto: room.roomPhoto,
+      admins: room.admins,
+      hostSeat: room.hostSeat,
+      seats: Object.fromEntries(room.seats),
+      bannedUsers: room.bannedUsers,
+      mutedUsers: Object.fromEntries(room.mutedUsers),
+      chatPrivacy: room.chatPrivacy,
+      allowedUsersToChat: Object.fromEntries(room.allowedUsersToChat),
+      password: room.password,
+      isHostPresent: room.isHostPresent,
+      isLocked: room.isLocked,
+      hostId: room.hostId,
+    };
+  }
+
   private async handleUserConnect(userId: string, socket: Socket) {
     if (this.disconnectedUsers.has(userId)) {
       const { timeOut, roomId } = this.disconnectedUsers.get(userId)!;

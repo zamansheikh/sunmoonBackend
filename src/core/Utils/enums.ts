@@ -130,6 +130,7 @@ export enum AudioRoomChannels {
   LaunchRocket = "rocket-launch",
   NewRocketLevel = "new-rocket-level",
   MicInviteRequest = "mic-invite-request",
+  RoomData = "room-data",
 }
 
 export enum MagicBallChallengeTypes {

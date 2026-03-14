@@ -427,7 +427,9 @@ export class AudioRoomService implements IAudioRoomService {
       },
     });
 
-    return await this.audioRoomRepository.getAudioRoomById(roomId);
+    const finalRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    if (finalRoom) this.emitRoomData(finalRoom);
+    return finalRoom;
   }
 
   async leaveAudioSeat(
@@ -487,8 +489,9 @@ export class AudioRoomService implements IAudioRoomService {
       seatKey,
       member: {},
     });
-
-    return await this.audioRoomRepository.getAudioRoomById(roomId);
+    const finalRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    if (finalRoom) this.emitRoomData(finalRoom);
+    return finalRoom;
   }
 
   async makeAudioAdmin(
@@ -528,6 +531,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       admins: updatedAudioRoom?.admins,
     });
+    if (updatedAudioRoom) this.emitRoomData(updatedAudioRoom);
     return updatedAudioRoom;
   }
 
@@ -565,6 +569,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       admins: updatedAudioRoom?.admins,
     });
+    if (updatedAudioRoom) this.emitRoomData(updatedAudioRoom);
     return updatedAudioRoom;
   }
 
@@ -621,7 +626,9 @@ export class AudioRoomService implements IAudioRoomService {
       seatKey: seatKey,
       member: {},
     });
-    return await this.audioRoomRepository.getAudioRoomById(roomId);
+    const finalRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    if (finalRoom) this.emitRoomData(finalRoom);
+    return finalRoom;
   }
 
   async muteUnmuteUser(
@@ -668,7 +675,9 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.muteUnmuteUser, {
       mutedUsers: Object.fromEntries(audioRoom.mutedUsers),
     });
-    return await this.audioRoomRepository.getAudioRoomById(roomId);
+    const finalRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    if (finalRoom) this.emitRoomData(finalRoom);
+    return finalRoom;
   }
 
   async leaveAudioRoom(
@@ -685,6 +694,7 @@ export class AudioRoomService implements IAudioRoomService {
       userId,
       audioRoom,
     );
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -814,6 +824,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       title: updatedRoom?.title,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -839,6 +850,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       announcement: updatedRoom?.announcement,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -894,6 +906,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       seats: updatedRoom?.seats,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -927,6 +940,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       seats: updatedRoom?.seats,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -957,6 +971,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       seats: updatedRoom?.seats,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -983,6 +998,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       roomPhoto: updatedRoom?.roomPhoto,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -1123,6 +1139,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       bannedUsers: updatedRoom.bannedUsers,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -1166,6 +1183,7 @@ export class AudioRoomService implements IAudioRoomService {
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       bannedUsers: updatedRoom.bannedUsers,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -1251,6 +1269,7 @@ export class AudioRoomService implements IAudioRoomService {
       seats: updatedRoom?.seats,
       numberOfSeats: updatedRoom?.numberOfSeats,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -1298,6 +1317,7 @@ export class AudioRoomService implements IAudioRoomService {
       chatPrivacy: updatedRoom?.chatPrivacy,
       allowedUsersToChat: updatedRoom?.allowedUsersToChat,
     });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }
 
@@ -1316,5 +1336,14 @@ export class AudioRoomService implements IAudioRoomService {
     return roomIds
       .map((id) => rooms.find((room) => room.roomId === id))
       .filter((room): room is IAudioRoomDocument => !!room);
+  }
+
+  private emitRoomData(room: IAudioRoomDocument) {
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(
+      room.roomId,
+      AudioRoomChannels.RoomData,
+      socketInstance.roomDataSerializer(room),
+    );
   }
 }
