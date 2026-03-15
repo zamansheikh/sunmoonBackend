@@ -1376,7 +1376,7 @@ export class AudioRoomService implements IAudioRoomService {
     roomId: string,
     period: RankingPeriods,
   ): Promise<any> {
-    const [rankingData, myContribution] = await Promise.all([
+    const [ranking, myContribution, totalRoomTransaction] = await Promise.all([
       RepositoryProviders.giftRecordRepositoryProvider.getInsideRoomRanking(
         roomId,
         period,
@@ -1386,8 +1386,11 @@ export class AudioRoomService implements IAudioRoomService {
         roomId,
         period,
       ),
+      RepositoryProviders.giftRecordRepositoryProvider.getTotalRoomTransaction(
+        roomId,
+      ),
     ]);
-    const ranking = rankingData.ranking;
+
     const myIndex = ranking.findIndex(
       (r) => r.memberDetails!._id.toString() === myId,
     );
@@ -1405,7 +1408,7 @@ export class AudioRoomService implements IAudioRoomService {
 
     return {
       ranking: ranking,
-      totalRoomTransaction: rankingData.totalRoomTransaction,
+      totalRoomTransaction: totalRoomTransaction,
       myRanking: myRanking,
     };
   }

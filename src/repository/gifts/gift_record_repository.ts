@@ -38,7 +38,8 @@ export interface IGiftRecordRepository {
   getInsideRoomRanking(
     roomId: string,
     period: RankingPeriods,
-  ): Promise<IRoomRanking>;
+  ): Promise<IRanking[]>;
+  getTotalRoomTransaction(roomId: string): Promise<number>;
   getMyRoomContribution(
     myId: string,
     roomId: string,
@@ -450,7 +451,7 @@ export class GiftRecordRepository implements IGiftRecordRepository {
   async getInsideRoomRanking(
     roomId: string,
     period: RankingPeriods,
-  ): Promise<IRoomRanking> {
+  ): Promise<IRanking[]> {
     const now = new Date();
     let startDate: Date;
     let endDate: Date;
@@ -466,7 +467,7 @@ export class GiftRecordRepository implements IGiftRecordRepository {
       endDate = DateHelper.getEndOfMonth(now);
     }
 
-    const aggregationResults = await this.Model.aggregate([
+    const ranking: IRanking[] = await this.Model.aggregate([
       {
         $match: {
           roomId: roomId,
@@ -474,44 +475,43 @@ export class GiftRecordRepository implements IGiftRecordRepository {
         },
       },
       {
-        $facet: {
-          ranking: [
-            {
-              $group: {
-                _id: "$senderId",
-                amount: { $sum: "$totalCoinCost" },
-              },
-            },
-            { $sort: { amount: -1 } },
-            { $limit: 100 },
-            lookupRichUser("_id", "memberDetails"),
-            { $unwind: "$memberDetails" },
-            {
-              $project: {
-                _id: 0,
-                memberDetails: 1,
-                amount: 1,
-              },
-            },
-          ],
-          totalRoomTransaction: [
-            {
-              $group: {
-                _id: null,
-                total: { $sum: "$totalCoinCost" },
-              },
-            },
-          ],
+        $group: {
+          _id: "$senderId",
+          amount: { $sum: "$totalCoinCost" },
+        },
+      },
+      { $sort: { amount: -1 } },
+      { $limit: 100 },
+      lookupRichUser("_id", "memberDetails"),
+      { $unwind: "$memberDetails" },
+      {
+        $project: {
+          _id: 0,
+          memberDetails: 1,
+          amount: 1,
         },
       },
     ]);
 
-    const result = aggregationResults[0];
+    return ranking;
+  }
 
-    return {
-      ranking: result.ranking || [],
-      totalRoomTransaction: result.totalRoomTransaction[0]?.total || 0,
-    };
+  async getTotalRoomTransaction(roomId: string): Promise<number> {
+    const result = await this.Model.aggregate([
+      {
+        $match: {
+          roomId: roomId,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$totalCoinCost" },
+        },
+      },
+    ]);
+
+    return result[0]?.total || 0;
   }
 
   async getMyRoomContribution(
