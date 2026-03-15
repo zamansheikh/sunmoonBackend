@@ -58,6 +58,10 @@ router.route("/:roomId").get(audioRoomController.getAudioRoomById);
 router.route("/:roomId/rocket").get(audioRoomController.getRocketInfo);
 
 router
+  .route("/:roomId/ranking/:period")
+  .get(authenticate(), audioRoomController.getInsideRoomRanking);
+
+router
   .route("/:roomId/join")
   .put(authenticate(), audioRoomController.joinAudioRoom);
 

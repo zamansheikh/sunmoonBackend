@@ -21,6 +21,10 @@ export interface IRanking {
     hostLevel: number;
   };
 }
+export interface IRoomRanking {
+  totalRoomTransaction: number;
+  ranking: IRanking[];
+}
 
 export interface IGiftRecordRepository {
   createGiftRecord(giftRecord: IGiftRecord): Promise<boolean>;
@@ -31,6 +35,15 @@ export interface IGiftRecordRepository {
   getRoomRanking(period: RankingPeriods): Promise<IRanking[]>;
   getMyRoomAmount(myId: string, period: RankingPeriods): Promise<IRanking>;
   getRoomSenderRanking(roomId: string): Promise<IMemberDetails[]>;
+  getInsideRoomRanking(
+    roomId: string,
+    period: RankingPeriods,
+  ): Promise<IRoomRanking>;
+  getMyRoomContribution(
+    myId: string,
+    roomId: string,
+    period: RankingPeriods,
+  ): Promise<IRanking>;
 }
 
 export class GiftRecordRepository implements IGiftRecordRepository {
@@ -432,5 +445,135 @@ export class GiftRecordRepository implements IGiftRecordRepository {
 
     // Return only the memberDetails array (sorted by totalCoins)
     return ranking.map((r) => (r as any).memberDetails as IMemberDetails);
+  }
+
+  async getInsideRoomRanking(
+    roomId: string,
+    period: RankingPeriods,
+  ): Promise<IRoomRanking> {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    if (period === RankingPeriods.Daily) {
+      startDate = DateHelper.getStartOfDay(now);
+      endDate = DateHelper.getEndOfDay(now);
+    } else if (period === RankingPeriods.Weekly) {
+      startDate = DateHelper.getStartOfWeek(now);
+      endDate = DateHelper.getEndOfWeek(now);
+    } else {
+      startDate = DateHelper.getStartOfMonth(now);
+      endDate = DateHelper.getEndOfMonth(now);
+    }
+
+    const aggregationResults = await this.Model.aggregate([
+      {
+        $match: {
+          roomId: roomId,
+          createdAt: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $facet: {
+          ranking: [
+            {
+              $group: {
+                _id: "$senderId",
+                amount: { $sum: "$totalCoinCost" },
+              },
+            },
+            { $sort: { amount: -1 } },
+            { $limit: 100 },
+            lookupRichUser("_id", "memberDetails"),
+            { $unwind: "$memberDetails" },
+            {
+              $project: {
+                _id: 0,
+                memberDetails: 1,
+                amount: 1,
+              },
+            },
+          ],
+          totalRoomTransaction: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: "$totalCoinCost" },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const result = aggregationResults[0];
+
+    return {
+      ranking: result.ranking || [],
+      totalRoomTransaction: result.totalRoomTransaction[0]?.total || 0,
+    };
+  }
+
+  async getMyRoomContribution(
+    myId: string,
+    roomId: string,
+    period: RankingPeriods,
+  ): Promise<IRanking> {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    if (period === RankingPeriods.Daily) {
+      startDate = DateHelper.getStartOfDay(now);
+      endDate = DateHelper.getEndOfDay(now);
+    } else if (period === RankingPeriods.Weekly) {
+      startDate = DateHelper.getStartOfWeek(now);
+      endDate = DateHelper.getEndOfWeek(now);
+    } else {
+      startDate = DateHelper.getStartOfMonth(now);
+      endDate = DateHelper.getEndOfMonth(now);
+    }
+
+    const ranking: IRanking[] = await this.Model.aggregate([
+      {
+        $match: {
+          senderId: new mongoose.Types.ObjectId(myId),
+          roomId: roomId,
+          createdAt: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: "$senderId",
+          amount: { $sum: "$totalCoinCost" },
+        },
+      },
+      lookupRichUser("_id", "memberDetails"),
+      { $unwind: "$memberDetails" },
+      {
+        $project: {
+          _id: 0,
+          memberDetails: 1,
+          amount: 1,
+        },
+      },
+    ]);
+
+    if (ranking.length > 0) {
+      return ranking[0];
+    }
+
+    // Fallback: Fetch user details even if no coins were sent in this period
+    const userDetails = await this.Model.db
+      .model(DatabaseNames.User)
+      .aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(myId) } },
+        ...userWithEquippedItemsPipeline("dummy").slice(1),
+      ]);
+
+    return {
+      amount: 0,
+      memberDetails: userDetails[0] || ({} as any),
+    };
   }
 }

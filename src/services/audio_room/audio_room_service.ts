@@ -7,7 +7,11 @@ import {
   ALLOWED_MESSAGES_COUNT,
   ROCKET_MILESTONES,
 } from "../../core/Utils/constants";
-import { ActivityZoneState, AudioRoomChannels } from "../../core/Utils/enums";
+import {
+  ActivityZoneState,
+  AudioRoomChannels,
+  RankingPeriods,
+} from "../../core/Utils/enums";
 import { getEquippedItemObjects } from "../../core/Utils/helper_functions";
 import {
   IAudioRoom,
@@ -22,6 +26,7 @@ import { IStoreCategoryRepository } from "../../repository/store/store_category_
 import { IUserRepository } from "../../repository/users/user_repository";
 import { IRecentVisitedRoomRepository } from "../../repository/audio_room/recent_visited_room_reposiory";
 import { RepositoryProviders } from "../../core/providers/repository_providers";
+import { IRanking } from "../../repository/gifts/gift_record_repository";
 
 export interface IAudioRoomService {
   createAudioRoom(audioRoom: Partial<IAudioRoom>): Promise<IAudioRoomDocument>;
@@ -129,6 +134,11 @@ export interface IAudioRoomService {
   getRoomVisitors(roomId: string): Promise<IMemberDetails[]>;
   getRoomMessages(roomId: string): Promise<IRoomMessage[]>;
   getRocketInfo(roomId: string): Promise<IRocketServiceResponse>;
+  getInsideRoomRanking(
+    myId: string,
+    roomId: string,
+    period: RankingPeriods,
+  ): Promise<any>;
 }
 
 export class AudioRoomService implements IAudioRoomService {
@@ -1359,6 +1369,45 @@ export class AudioRoomService implements IAudioRoomService {
     const room = await this.audioRoomRepository.checkRoomExisistance(roomId);
     if (!room) throw new AppError(404, "Audio room not found");
     return room.messages;
+  }
+
+  async getInsideRoomRanking(
+    myId: string,
+    roomId: string,
+    period: RankingPeriods,
+  ): Promise<any> {
+    const [rankingData, myContribution] = await Promise.all([
+      RepositoryProviders.giftRecordRepositoryProvider.getInsideRoomRanking(
+        roomId,
+        period,
+      ),
+      RepositoryProviders.giftRecordRepositoryProvider.getMyRoomContribution(
+        myId,
+        roomId,
+        period,
+      ),
+    ]);
+    const ranking = rankingData.ranking;
+    const myIndex = ranking.findIndex(
+      (r) => r.memberDetails!._id.toString() === myId,
+    );
+
+    const myRanking = {
+      amount: myContribution.amount,
+      memberDetails: myContribution.memberDetails,
+      rank:
+        myIndex !== -1
+          ? myIndex + 1
+          : ranking.length >= 100
+            ? "100+"
+            : ranking.length + 1,
+    };
+
+    return {
+      ranking: ranking,
+      totalRoomTransaction: rankingData.totalRoomTransaction,
+      myRanking: myRanking,
+    };
   }
 
   private emitRoomData(room: IAudioRoomDocument) {

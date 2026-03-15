@@ -11,7 +11,6 @@ import { ActivityZoneState } from "../../core/Utils/enums";
 import { isValidObjectId } from "mongoose";
 import { MicInviteService } from "../../services/audio_room/mic_invite_service";
 
-
 export class AudioRoomController {
   Service: IAudioRoomService;
   constructor(Service: IAudioRoomService) {
@@ -486,7 +485,12 @@ export class AudioRoomController {
     validateFieldExistance(userId, "userId");
     validateFieldExistance(seatKey, "seatKey");
 
-    await MicInviteService.getInstance().sendMicInvite(myUserId, roomId, userId, seatKey);
+    await MicInviteService.getInstance().sendMicInvite(
+      myUserId,
+      roomId,
+      userId,
+      seatKey,
+    );
 
     sendResponse(res, {
       success: true,
@@ -551,6 +555,24 @@ export class AudioRoomController {
       success: true,
       statusCode: 200,
       message: "Rocket info fetched successfully",
+      result: result,
+    });
+  });
+
+  getInsideRoomRanking = catchAsync(async (req: Request, res: Response) => {
+    const myId = req.user!.id;
+    const { roomId, period } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(period, "period");
+    const result = await this.Service.getInsideRoomRanking(
+      myId,
+      roomId,
+      period as any,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Room ranking fetched successfully",
       result: result,
     });
   });
