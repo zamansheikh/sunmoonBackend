@@ -111,6 +111,16 @@ export interface IAudioRoomService {
     targetId: string,
     roomId: string,
   ): Promise<IAudioRoomDocument>;
+  banFromChat(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument>;
+  unbanFromChat(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument>;
   updateRoomPassword({
     myId,
     roomId,
@@ -205,6 +215,7 @@ export class AudioRoomService implements IAudioRoomService {
       isHostPresent: true,
       isLocked: false,
       hostId: hostId!,
+      bannedFromMessages: [],
     };
 
     //socket instance
@@ -737,6 +748,13 @@ export class AudioRoomService implements IAudioRoomService {
       throw new AppError(403, "You are not allowed to chat");
     }
 
+    if (
+      audioRoom.bannedFromMessages &&
+      audioRoom.bannedFromMessages.some((id) => id.toString() === myId)
+    ) {
+      throw new AppError(403, "You are banned from sending messages in this room");
+    }
+
     const user = await this.userRepository.findUserById(myId);
     if (!user) {
       throw new AppError(404, "User not found");
@@ -1200,6 +1218,93 @@ export class AudioRoomService implements IAudioRoomService {
     const socketInstance = SingletonSocketServer.getInstance();
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       bannedUsers: updatedRoom.bannedUsers,
+    });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
+    return updatedRoom;
+  }
+
+  async banFromChat(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument> {
+    if (myId === targetId) {
+      throw new AppError(403, "You cannot ban yourself");
+    }
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1, targetId);
+
+    const targetUser = await this.userRepository.findUserById(targetId);
+    if (!targetUser) {
+      throw new AppError(404, "User not found");
+    }
+
+    if (!audioRoom.members.has(targetId)) {
+      throw new AppError(400, "User is not a member of this room");
+    }
+
+    if (
+      audioRoom.bannedFromMessages &&
+      audioRoom.bannedFromMessages.some((id) => id.toString() === targetId)
+    ) {
+      throw new AppError(400, "User is already banned from chat");
+    }
+
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $addToSet: {
+        bannedFromMessages: targetId,
+      },
+    });
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
+      bannedFromMessages: updatedRoom.bannedFromMessages,
+    });
+    if (updatedRoom) this.emitRoomData(updatedRoom);
+    return updatedRoom;
+  }
+
+  async unbanFromChat(
+    myId: string,
+    targetId: string,
+    roomId: string,
+  ): Promise<IAudioRoomDocument> {
+    if (myId === targetId) {
+      throw new AppError(403, "You cannot unban yourself");
+    }
+    const audioRoom =
+      await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1, targetId);
+
+    if (
+      !audioRoom.bannedFromMessages ||
+      !audioRoom.bannedFromMessages.some((id) => id.toString() === targetId)
+    ) {
+      throw new AppError(400, "User is not banned from chat");
+    }
+
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $pull: {
+        bannedFromMessages: targetId,
+      },
+    });
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
+      bannedFromMessages: updatedRoom.bannedFromMessages,
     });
     if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;

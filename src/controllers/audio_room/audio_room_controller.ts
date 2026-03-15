@@ -381,6 +381,34 @@ export class AudioRoomController {
     });
   });
 
+  banFromChat = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const { roomId, targetId } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(targetId, "targetId");
+    const result = await this.Service.banFromChat(myUserId, targetId, roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "User banned from chat successfully",
+      result: result,
+    });
+  });
+
+  unbanFromChat = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const { roomId, targetId } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(targetId, "targetId");
+    const result = await this.Service.unbanFromChat(myUserId, targetId, roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "User unbanned from chat successfully",
+      result: result,
+    });
+  });
+
   updateRoomPassword = catchAsync(async (req: Request, res: Response) => {
     const myUserId = req.user!.id;
     const roomId = req.params.roomId;

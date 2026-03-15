@@ -86,9 +86,7 @@ router
   .route("/:roomId/leave")
   .put(authenticate(), audioRoomController.leaveAudioRoom);
 
-router
-  .route("/:roomId/visitors")
-  .get(audioRoomController.getRoomVisitors);
+router.route("/:roomId/visitors").get(audioRoomController.getRoomVisitors);
 
 router
   .route("/:roomId/messages")
@@ -128,6 +126,14 @@ router
 router
   .route("/:roomId/unban-user/:targetId")
   .put(authenticate(), audioRoomController.unbanUser);
+
+router
+  .route("/:roomId/ban-from-chat/:targetId")
+  .put(authenticate(), audioRoomController.banFromChat);
+
+router
+  .route("/:roomId/unban-from-chat/:targetId")
+  .put(authenticate(), audioRoomController.unbanFromChat);
 
 router
   .route("/:roomId/update-password")

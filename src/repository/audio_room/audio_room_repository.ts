@@ -60,10 +60,12 @@ export class AudioRoomRepository implements IAudioRoomRepository {
       },
       lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
       lookupEnrichedUsersArray("admins", "adminsInfo"),
+      lookupEnrichedUsersArray("bannedFromMessages", "bannedFromMessagesInfo"),
       {
         $addFields: {
           membersArray: "$membersArrayInfo", // ← just copy the array reference
           admins: "$adminsInfo",
+          bannedFromMessages: "$bannedFromMessagesInfo",
           membersCount: { $size: { $ifNull: ["$membersArray", []] } },
         },
       },
@@ -71,6 +73,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         $project: {
           membersArrayInfo: 0,
           adminsInfo: 0,
+          bannedFromMessagesInfo: 0,
         },
       },
     ]);
@@ -108,11 +111,13 @@ export class AudioRoomRepository implements IAudioRoomRepository {
       },
       lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
       lookupEnrichedUsersArray("admins", "adminsInfo"),
+      lookupEnrichedUsersArray("bannedFromMessages", "bannedFromMessagesInfo"),
 
       {
         $addFields: {
           membersArray: "$membersArrayInfo", // ← just copy the array reference
           admins: "$adminsInfo",
+          bannedFromMessages: "$bannedFromMessagesInfo",
           membersCount: { $size: { $ifNull: ["$membersArray", []] } },
         },
       },
@@ -120,6 +125,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         $project: {
           membersArrayInfo: 0,
           adminsInfo: 0,
+          bannedFromMessagesInfo: 0,
         },
       },
     ]);
@@ -168,10 +174,12 @@ export class AudioRoomRepository implements IAudioRoomRepository {
       },
       lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
       lookupEnrichedUsersArray("admins", "adminsInfo"),
+      lookupEnrichedUsersArray("bannedFromMessages", "bannedFromMessagesInfo"),
       {
         $addFields: {
           membersArray: "$membersArrayInfo",
           admins: "$adminsInfo",
+          bannedFromMessages: "$bannedFromMessagesInfo",
           membersCount: { $size: { $ifNull: ["$membersArray", []] } },
         },
       },
@@ -179,6 +187,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         $project: {
           membersArrayInfo: 0,
           adminsInfo: 0,
+          bannedFromMessagesInfo: 0,
         },
       },
     ]);
