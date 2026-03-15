@@ -540,7 +540,10 @@ export default class AuthService implements IAuthService {
           gift: {
             name: gift.name,
             previewImage: gift.previewImage,
+            coinPrice: gift.coinPrice,
+            diamonds: gift.diamonds,
           },
+          totalCoinCost: gift.coinPrice * qty * targetUserIds.length,
           qty,
         },
       );
