@@ -54,7 +54,6 @@ import {
   getEquippedItemObjects,
   getNextSalaryDate,
   isTheDateFromThisMonth,
-
 } from "../../core/Utils/helper_functions";
 import { IRoomBonusRecords } from "../../models/room/bonus_records_model";
 import { IRoomBonusRecordsRepository } from "../../repository/room/room_bonus_records_repository";
@@ -526,7 +525,10 @@ export default class AuthService implements IAuthService {
     await Promise.all(secondaryUpdates);
 
     // socket response to the room
-    if (roomId && (isValid || (await AudioRoomCache.getInstance().validateRoomId(roomId)))) {
+    if (
+      roomId &&
+      (isValid || (await AudioRoomCache.getInstance().validateRoomId(roomId)))
+    ) {
       const senderBrief = await UserCache.getInstance().getUserBrief(myId);
       const targetBriefs =
         await UserCache.getInstance().getUsersBriefs(targetUserIds);
@@ -540,6 +542,7 @@ export default class AuthService implements IAuthService {
           gift: {
             name: gift.name,
             previewImage: gift.previewImage,
+            svgaImage: gift.svgaImage,
             coinPrice: gift.coinPrice,
             diamonds: gift.diamonds,
           },
@@ -1001,4 +1004,3 @@ export default class AuthService implements IAuthService {
     return items;
   }
 }
-
