@@ -45,6 +45,7 @@ export interface IGiftRecordRepository {
     roomId: string,
     period: RankingPeriods,
   ): Promise<IRanking>;
+  getMyReceivedAmountInRoom(myId: string, roomId: string): Promise<number>;
 }
 
 export class GiftRecordRepository implements IGiftRecordRepository {
@@ -575,5 +576,27 @@ export class GiftRecordRepository implements IGiftRecordRepository {
       amount: 0,
       memberDetails: userDetails[0] || ({} as any),
     };
+  }
+
+  async getMyReceivedAmountInRoom(
+    myId: string,
+    roomId: string,
+  ): Promise<number> {
+    const result = await this.Model.aggregate([
+      {
+        $match: {
+          receiverId: new mongoose.Types.ObjectId(myId),
+          roomId: roomId,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$totalDiamonds" },
+        },
+      },
+    ]);
+
+    return result[0]?.total || 0;
   }
 }
