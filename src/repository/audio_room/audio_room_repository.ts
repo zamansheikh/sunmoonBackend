@@ -62,11 +62,94 @@ export class AudioRoomRepository implements IAudioRoomRepository {
       lookupEnrichedUsersArray("admins", "adminsInfo"),
       lookupEnrichedUsersArray("bannedFromMessages", "bannedFromMessagesInfo"),
       {
+        $lookup: {
+          from: DatabaseNames.GiftRecords,
+          let: { currentRoomId: "$roomId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$roomId", "$$currentRoomId"] } } },
+            {
+              $group: {
+                _id: "$receiverId",
+                total: { $sum: "$totalDiamonds" },
+              },
+            },
+          ],
+          as: "giftTotals",
+        },
+      },
+      {
         $addFields: {
           membersArray: "$membersArrayInfo", // ← just copy the array reference
           admins: "$adminsInfo",
           bannedFromMessages: "$bannedFromMessagesInfo",
           membersCount: { $size: { $ifNull: ["$membersArray", []] } },
+          "hostSeat.recievedGiftValue": {
+            $ifNull: [
+              {
+                $arrayElemAt: [
+                  {
+                    $map: {
+                      input: {
+                        $filter: {
+                          input: "$giftTotals",
+                          as: "gt",
+                          cond: { $eq: ["$$gt._id", "$hostSeat.member._id"] },
+                        },
+                      },
+                      in: "$$this.total",
+                    },
+                  },
+                  0,
+                ],
+              },
+              0,
+            ],
+          },
+          seats: {
+            $arrayToObject: {
+              $map: {
+                input: { $objectToArray: "$seats" },
+                as: "seatEntry",
+                in: {
+                  k: "$$seatEntry.k",
+                  v: {
+                    $mergeObjects: [
+                      "$$seatEntry.v",
+                      {
+                        recievedGiftValue: {
+                          $ifNull: [
+                            {
+                              $arrayElemAt: [
+                                {
+                                  $map: {
+                                    input: {
+                                      $filter: {
+                                        input: "$giftTotals",
+                                        as: "gt",
+                                        cond: {
+                                          $eq: [
+                                            "$$gt._id",
+                                            "$$seatEntry.v.member._id",
+                                          ],
+                                        },
+                                      },
+                                    },
+                                    in: "$$this.total",
+                                  },
+                                },
+                                0,
+                              ],
+                            },
+                            0,
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
         },
       },
       {
@@ -74,6 +157,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
           membersArrayInfo: 0,
           adminsInfo: 0,
           bannedFromMessagesInfo: 0,
+          giftTotals: 0,
         },
       },
     ]);

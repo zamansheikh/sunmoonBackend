@@ -5,6 +5,7 @@ import { IAudioRoomService } from "../../services/audio_room/audio_room_service"
 export interface IAudioSeat {
   member?: IMemberDetails;
   available: boolean;
+  recievedGiftValue?: number;
 }
 
 export interface IRoomMessage {
@@ -32,6 +33,7 @@ export interface IMemberDetails {
   currentLevel: number;
   _id: mongoose.Schema.Types.ObjectId | string;
   equippedStoreItems?: Record<string, string>;
+  recievedGiftValue?: number;
 }
 
 export interface IBannedUser {

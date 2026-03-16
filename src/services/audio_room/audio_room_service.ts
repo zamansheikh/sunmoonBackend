@@ -752,7 +752,10 @@ export class AudioRoomService implements IAudioRoomService {
       audioRoom.bannedFromMessages &&
       audioRoom.bannedFromMessages.some((id) => id.toString() === myId)
     ) {
-      throw new AppError(403, "You are banned from sending messages in this room");
+      throw new AppError(
+        403,
+        "You are banned from sending messages in this room",
+      );
     }
 
     const user = await this.userRepository.findUserById(myId);
