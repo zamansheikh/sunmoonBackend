@@ -93,7 +93,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
                         $filter: {
                           input: "$giftTotals",
                           as: "gt",
-                          cond: { $eq: ["$$gt._id", "$hostSeat.member._id"] },
+                          cond: { $eq: ["$$gt._id", "$hostId._id"] },
                         },
                       },
                       in: "$$this.total",
