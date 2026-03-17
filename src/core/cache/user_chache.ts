@@ -6,7 +6,7 @@ export class UserCache {
 
   private cachedUserBriefs = new Map<
     string,
-    { name: string; avatar: string; expiry: number }
+    { _id: string; name: string; avatar: string; expiry: number }
   >();
   private readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hour = 1 day
   public userRepository = new UserRepository(User);
@@ -22,13 +22,14 @@ export class UserCache {
 
   public async getUserBrief(
     userId: string,
-  ): Promise<{ name: string; avatar: string } | null> {
+  ): Promise<{ _id: string; name: string; avatar: string } | null> {
     const cached = this.cachedUserBriefs.get(userId);
     if (cached && cached.expiry > Date.now())
-      return { name: cached.name, avatar: cached.avatar };
+      return { _id: cached._id, name: cached.name, avatar: cached.avatar };
     const user = await this.userRepository.findUserById(userId);
     if (!user) return null;
     const brief = {
+      _id: (user as any)._id.toString(),
       name: user.name || user.username || "Unknown",
       avatar: user.avatar || "",
     };
@@ -41,14 +42,18 @@ export class UserCache {
 
   public async getUsersBriefs(
     userIds: string[],
-  ): Promise<{ name: string; avatar: string }[]> {
+  ): Promise<{ _id: string; name: string; avatar: string }[]> {
     const uncachedIds: string[] = [];
-    const results: { name: string; avatar: string }[] = [];
+    const results: { _id: string; name: string; avatar: string }[] = [];
 
     userIds.forEach((id) => {
       const cached = this.cachedUserBriefs.get(id);
       if (cached && cached.expiry > Date.now()) {
-        results.push({ name: cached.name, avatar: cached.avatar });
+        results.push({
+          _id: cached._id,
+          name: cached.name,
+          avatar: cached.avatar,
+        });
       } else {
         uncachedIds.push(id);
       }
@@ -58,6 +63,7 @@ export class UserCache {
       const users = await this.userRepository.findUsersByIds(uncachedIds);
       users.forEach((user) => {
         const brief = {
+          _id: (user as any)._id.toString(),
           name: user.name || user.username || "Unknown",
           avatar: user.avatar || "",
         };
@@ -78,6 +84,7 @@ export class UserCache {
     const user = await this.userRepository.findUserById(userId);
     if (user) {
       const brief = {
+        _id: (user as any)._id.toString(),
         name: user.name || user.username || "Unknown",
         avatar: user.avatar || "",
       };
