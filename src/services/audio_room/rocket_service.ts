@@ -15,7 +15,7 @@ import {
 } from "../../core/Utils/constants";
 import { AudioRoomChannels, LaunchGiftTypes } from "../../core/Utils/enums";
 import { getRandomNumberFromRange } from "../../core/Utils/helper_functions";
-import { IMemberDetails } from "../../models/audio_room/audio_room_model";
+import { IAudioRoomDocument, IMemberDetails } from "../../models/audio_room/audio_room_model";
 import { IMyBucket } from "../../models/store/my_bucket_model";
 import { IStoreItemDocument } from "../../models/store/store_item_model";
 
@@ -55,6 +55,8 @@ export default class RocketService {
   private myBucketRepository = RepositoryProviders.myBucketRepositoryProvider;
   private userStatsRepository = RepositoryProviders.userStatsRepositoryProvider;
   private userRepository = RepositoryProviders.userRepositoryProvider;
+  private audioRoomRepository =
+    RepositoryProviders.audioRoomRepositoryProvider;
 
   private redis = RedisService.getInstance();
 
@@ -117,11 +119,19 @@ export default class RocketService {
    * @param fuel // the amount of fuel gifted
    * @param level // current level of the room
    */
-  private async launchRocket(roomId: string, fuel: number, level: number) {
+  private async launchRocket(
+    roomId: string,
+    fuel: number,
+    level: number,
+    room?: IAudioRoomDocument,
+  ) {
+    if (!room) {
+      room = await this.audioRoomRepository.getAudioRoomById(roomId);
+    }
     // calculate the remaining fuel
     const remainingFuel = fuel - ROCKET_MILESTONES[level - 2];
     // reward the users
-    const rewardedUsers = await this.rewardUsers(roomId, level);
+    const rewardedUsers = await this.rewardUsers(room, level);
     // notifying the app about the rocket launch (scope: room)
     const socketServer = SingletonSocketServer.getInstance();
     socketServer.emitToRoom(roomId, AudioRoomChannels.LaunchRocket, {
@@ -137,13 +147,11 @@ export default class RocketService {
       milestone: ROCKET_MILESTONES[level - 1],
     } as IRocketServiceResponse);
     // banner notification (scope: global)
-    const basicRoomInfo =
-      await AudioRoomCache.getInstance().getBasicRoomInfo(roomId);
     socketServer.emitToAll(AudioRoomChannels.GlobalBanner, {
       roomId: roomId,
-      message: `Rocket in ${basicRoomInfo?.title || "Room"} is about to launch`,
+      message: `Rocket in ${room.title || "Room"} is about to launch`,
       rocketLevel: level,
-      roomPhoto: basicRoomInfo?.roomPhoto || "",
+      roomPhoto: room.roomPhoto || "",
     });
     // update the rocket informations (update level, update milestone, update fuel)
     const fuelKey = `${RocketService.FUEL_KEY_PREFIX}${roomId}`;
@@ -165,7 +173,7 @@ export default class RocketService {
 
     // recursive call (if the remaining fuel is greater than the next milestone)
     if (remainingFuel > ROCKET_MILESTONES[level - 1]) {
-      await this.launchRocket(roomId, remainingFuel, level + 1);
+      await this.launchRocket(roomId, remainingFuel, level + 1, room);
       return;
     }
     // fuel notification (scope: room)
@@ -180,15 +188,21 @@ export default class RocketService {
     } as IRocketServiceResponse);
   }
 
-  private async rewardUsers(roomId: string, level: number) {
+  private async rewardUsers(room: IAudioRoomDocument, level: number) {
     // the number of users eligible for reward recieve
     let rewardableUserCount = REWARD_NUMBERS[level - 1];
     // sort the users based on gift sent
-    const topSenders: IMemberDetails[] =
-      await this.giftRecordRepository.getRoomSenderRanking(roomId);
+    const members = (room.membersArray as unknown as IMemberDetails[]) || [];
+
+    // randomize the order
+    for (let i = members.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [members[i], members[j]] = [members[j], members[i]];
+    }
+
     // adjust the number if the number of room users is less than the number of users eligible for reward
-    if (topSenders.length < rewardableUserCount) {
-      rewardableUserCount = topSenders.length;
+    if (members.length < rewardableUserCount) {
+      rewardableUserCount = members.length;
     }
     // to store the rewarded user informations
     const rewardedUsers: IRewarededUser[] = [];
@@ -199,7 +213,7 @@ export default class RocketService {
      * nth user recieves -> only coins
      */
     for (let i = 0; i < rewardableUserCount; i++) {
-      const user = topSenders[i];
+      const user = members[i];
       const rewards: ILaunchGifts[] = [];
       if (i === 0) {
         // first user extra reward
