@@ -8,7 +8,7 @@ export interface IFamilyMember {
   familyId: Types.ObjectId | string;
   userId: Types.ObjectId | string;
   role: FamilyMemberRole;
-  giftsSent: number;
+  giftsSent?: number;
 }
 
 /**
@@ -50,16 +50,15 @@ const familyMemberSchema = new Schema<IFamilyMemberDocument>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Define compound unique index for familyId and userId
 familyMemberSchema.index({ familyId: 1, userId: 1 }, { unique: true });
 
-const FamilyMemberModel = mongoose.model<IFamilyMemberDocument, IFamilyMemberModel>(
-  DatabaseNames.FamilyMember,
-  familyMemberSchema,
-  DatabaseNames.FamilyMember
-);
+const FamilyMemberModel = mongoose.model<
+  IFamilyMemberDocument,
+  IFamilyMemberModel
+>(DatabaseNames.FamilyMember, familyMemberSchema, DatabaseNames.FamilyMember);
 
 export default FamilyMemberModel;

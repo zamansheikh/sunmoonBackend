@@ -6,7 +6,14 @@ export class UserCache {
 
   private cachedUserBriefs = new Map<
     string,
-    { _id: string; name: string; avatar: string; expiry: number; familyId?: string }
+    {
+      _id: string;
+      name: string;
+      avatar: string;
+      expiry: number;
+      level: number;
+      familyId?: string;
+    }
   >();
   private readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hour = 1 day
   public userRepository = new UserRepository(User);
@@ -22,16 +29,29 @@ export class UserCache {
 
   public async getUserBrief(
     userId: string,
-  ): Promise<{ _id: string; name: string; avatar: string; familyId?: string } | null> {
+  ): Promise<{
+    _id: string;
+    name: string;
+    avatar: string;
+    level: number;
+    familyId?: string;
+  } | null> {
     const cached = this.cachedUserBriefs.get(userId);
     if (cached && cached.expiry > Date.now())
-      return { _id: cached._id, name: cached.name, avatar: cached.avatar, familyId: cached.familyId };
+      return {
+        _id: cached._id,
+        name: cached.name,
+        avatar: cached.avatar,
+        level: cached.level,
+        familyId: cached.familyId,
+      };
     const user = await this.userRepository.findUserById(userId);
     if (!user) return null;
     const brief = {
       _id: (user as any)._id.toString(),
       name: user.name || user.username || "Unknown",
       avatar: user.avatar || "",
+      level: user.level || 0,
       familyId: user.familyId,
     };
     this.cachedUserBriefs.set(userId, {
@@ -43,9 +63,23 @@ export class UserCache {
 
   public async getUsersBriefs(
     userIds: string[],
-  ): Promise<{ _id: string; name: string; avatar: string; familyId?: string }[]> {
+  ): Promise<
+    {
+      _id: string;
+      name: string;
+      avatar: string;
+      level: number;
+      familyId?: string;
+    }[]
+  > {
     const uncachedIds: string[] = [];
-    const results: { _id: string; name: string; avatar: string; familyId?: string }[] = [];
+    const results: {
+      _id: string;
+      name: string;
+      avatar: string;
+      level: number;
+      familyId?: string;
+    }[] = [];
 
     userIds.forEach((id) => {
       const cached = this.cachedUserBriefs.get(id);
@@ -54,6 +88,7 @@ export class UserCache {
           _id: cached._id,
           name: cached.name,
           avatar: cached.avatar,
+          level: cached.level,
           familyId: cached.familyId,
         });
       } else {
@@ -68,6 +103,7 @@ export class UserCache {
           _id: (user as any)._id.toString(),
           name: user.name || user.username || "Unknown",
           avatar: user.avatar || "",
+          level: user.level || 0,
           familyId: user.familyId,
         };
         this.cachedUserBriefs.set((user as any)._id.toString(), {
@@ -90,6 +126,8 @@ export class UserCache {
         _id: (user as any)._id.toString(),
         name: user.name || user.username || "Unknown",
         avatar: user.avatar || "",
+        level: user.level || 0,
+        familyId: user.familyId,
       };
       this.cachedUserBriefs.set(userId, {
         ...brief,

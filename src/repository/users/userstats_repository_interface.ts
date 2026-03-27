@@ -46,4 +46,9 @@ export default interface IUserStatsRepository {
     diamondsToAdd: number, // the amount of diamonds need to be added
     session?: ClientSession, // session for transaction if any
   ): Promise<IUSerStatsDocument | null>;
+  balanceDeduction(
+    userId: string,
+    amount: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument | null>;
 }

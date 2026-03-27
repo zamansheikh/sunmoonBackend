@@ -7,10 +7,12 @@ import { DatabaseNames, FamilyJoinMode } from "../../core/Utils/enums";
 export interface IFamily {
   name: string;
   introduction: string;
+  coverPhoto: string;
   joinMode?: FamilyJoinMode;
   minLevel?: number;
-  ownerId: Types.ObjectId | string;
+  leaderId: Types.ObjectId | string;
   memberCount?: number;
+  memberLimit?: number;
   totalGifts?: number;
   lastUpdatedAt?: Date;
   lastEmptyAt?: Date;
@@ -34,12 +36,13 @@ const familySchema = new Schema<IFamilyDocument>(
     name: {
       type: String,
       required: true,
-      unique: true,
-      index: true,
     },
     introduction: {
       type: String,
       required: true,
+    },
+    coverPhoto: {
+      type: String,
     },
     joinMode: {
       type: String,
@@ -50,20 +53,24 @@ const familySchema = new Schema<IFamilyDocument>(
       type: Number,
       default: 0,
     },
-    ownerId: {
+    leaderId: {
       type: Schema.Types.ObjectId,
       ref: DatabaseNames.User,
       required: true,
+      unique: true,
+      index: true,
     },
     memberCount: {
       type: Number,
       default: 0,
-      index: true,
+    },
+    memberLimit: {
+      type: Number,
+      default: 1000,
     },
     totalGifts: {
       type: Number,
       default: 0,
-      index: true,
     }, // cached sum
     lastUpdatedAt: {
       type: Date,
@@ -72,11 +79,6 @@ const familySchema = new Schema<IFamilyDocument>(
     lastEmptyAt: {
       type: Date,
     }, // for auto-deletion
-    createdAt: {
-      type: Date,
-      default: Date.now,
-      expires: "30d",
-    }, // optional soft TTL
   },
   {
     timestamps: true,

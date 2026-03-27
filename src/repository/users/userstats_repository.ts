@@ -75,6 +75,23 @@ export default class UserStatsRepository implements IUserStatsRepository {
     return updated;
   }
 
+  async balanceDeduction(
+    userId: string,
+    amount: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument | null> {
+    const updated = await this.model
+      .findOneAndUpdate(
+        { userId, coins: { $gte: amount } },
+        { $inc: { coins: -amount } },
+        { new: true },
+      )
+      .session(session || null);
+    if (!updated)
+      throw new AppError(StatusCodes.BAD_REQUEST, "not enough coins");
+    return updated;
+  }
+
   async updateStars(
     userId: string,
     stars: number,

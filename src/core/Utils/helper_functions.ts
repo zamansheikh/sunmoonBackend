@@ -220,6 +220,18 @@ export function validateNumber(number: any, fieldName: string) {
     );
 }
 
+export function validateEnum(value: any, enumObject: any, fieldName: string) {
+  if (!value) return;
+  if (!Object.values(enumObject).includes(value)) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      `Invalid ${fieldName}: ${value}. Expected one of: ${Object.values(
+        enumObject,
+      ).join(", ")}`,
+    );
+  }
+}
+
 export async function getEquippedItemObjects(
   repository: IMyBucketRepository,
   catRepository: IStoreCategoryRepository,
@@ -378,8 +390,6 @@ export function validateGiftAudioRocket(
   }
 }
 
-
-
 export function isTheDateFromThisMonth(date: Date): boolean {
   const today = new Date();
   return (
@@ -400,8 +410,6 @@ export function socketResponse(
     data,
   });
 }
-
-
 
 export function getRandomNumberFromRange(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;

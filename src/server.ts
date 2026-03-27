@@ -29,6 +29,7 @@ import RankingRouter from "./router/ranking_routes";
 import RoomSupportRouter from "./router/room_support_router";
 import ReportRouter from "./router/report_routes";
 import MagicBallHostRouter from "./router/magic_ball_host_routes";
+import FamilyRouter from "./router/family_router";
 import path from "path";
 
 // error handlers
@@ -128,6 +129,7 @@ app.use("/api/ranking", RankingRouter);
 app.use("/api/room-support", RoomSupportRouter);
 app.use("/api/reports", ReportRouter);
 app.use("/api/magic-ball", MagicBallHostRouter);
+app.use("/api/family", FamilyRouter);
 
 app.post(
   "/api/upload-file-local",

@@ -66,15 +66,7 @@ export class XpHelper {
     const cached = this.svipMultiplierCache.get(userId);
     if (cached && cached.expiry > Date.now()) return cached.value;
 
-    const svipPackages = (
-      await this.bucketRepository.getAllPremiumItems(userId)
-    )
-      .map((item) => (item.itemId as IStoreItem).name)
-      .filter((name) => name.includes("SVIP"))
-      .map((name) => parseInt(name.split("SVIP-")[1]) || 0);
-
-    const highestSvip =
-      svipPackages.length === 0 ? 0 : Math.max(...svipPackages);
+    const highestSvip = await this.getHighestSvipLevel(userId);
 
     let multiplier = 1;
 
@@ -88,6 +80,19 @@ export class XpHelper {
     });
 
     return multiplier;
+  }
+
+  public async getHighestSvipLevel(userId: string): Promise<number> {
+    const svipPackages = (
+      await this.bucketRepository.getAllPremiumItems(userId)
+    )
+      .map((item) => (item.itemId as IStoreItem).name)
+      .filter((name) => name.includes("SVIP"))
+      .map((name) => parseInt(name.split("SVIP-")?.[1] || "0") || 0);
+
+    const highestSvip =
+      svipPackages.length === 0 ? 0 : Math.max(...svipPackages);
+    return highestSvip;
   }
 
   private determineUserLevelFromXp(xpCount: number): number {

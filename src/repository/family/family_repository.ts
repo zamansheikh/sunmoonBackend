@@ -6,6 +6,7 @@ import {
 
 export interface IFamilyRepository {
   create(data: IFamily): Promise<IFamilyDocument>;
+  getByLeaderId(leaderId: string): Promise<IFamilyDocument | null>;
 }
 
 export class FamilyRepository implements IFamilyRepository {
@@ -17,5 +18,8 @@ export class FamilyRepository implements IFamilyRepository {
   async create(data: IFamily): Promise<IFamilyDocument> {
     const family = new this.model(data);
     return await family.save();
+  }
+  async getByLeaderId(leaderId: string): Promise<IFamilyDocument | null> {
+    return await this.model.findOne({ leaderId });
   }
 }
