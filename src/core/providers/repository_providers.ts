@@ -18,6 +18,10 @@ import UserRepository from "../../repository/users/user_repository";
 import UserStatsRepository from "../../repository/users/userstats_repository";
 import { MagicBallModel } from "../../models/magic_ball/magic_ball_model";
 import { MagicBallRepository } from "../../repository/magic_ball/magic_ball_repository";
+import { FamilyRepository } from "../../repository/family/family_repository";
+import FamilyModel from "../../models/family/family_model";
+import { FamilyMemberRepository } from "../../repository/family/family_member_repository";
+import FamilyMemberModel from "../../models/family/family_member_model";
 
 export class RepositoryProviders {
   static readonly giftRecordRepositoryProvider = new GiftRecordRepository(
@@ -55,5 +59,10 @@ export class RepositoryProviders {
 
   static readonly magicBallRepositoryProvider = new MagicBallRepository(
     MagicBallModel,
+  );
+
+  static readonly familyRepositoryProvider = new FamilyRepository(FamilyModel);
+  static readonly familyMemberRepositoryProvider = new FamilyMemberRepository(
+    FamilyMemberModel,
   );
 }

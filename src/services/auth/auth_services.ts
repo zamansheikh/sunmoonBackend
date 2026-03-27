@@ -522,6 +522,7 @@ export default class AuthService implements IAuthService {
         }),
       );
     }
+    
     await Promise.all(secondaryUpdates);
 
     // socket response to the room

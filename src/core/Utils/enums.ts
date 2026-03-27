@@ -56,6 +56,8 @@ export enum DatabaseNames {
   RoomSupport = "room_supports",
   RoomSupportHistory = "room_support_histories",
   MagicBall = "magic_balls",
+  Family = "families",
+  FamilyMember = "family_members",
 }
 
 export enum ReelStatus {
@@ -332,4 +334,16 @@ export enum RankingPeriods {
   Daily = "daily",
   Weekly = "weekly",
   Monthly = "monthly",
+}
+
+export enum FamilyJoinMode {
+  Free = "free",
+  Approval = "approval",
+}
+
+export enum FamilyMemberRole {
+  Leader = "leader",
+  CoLeader = "co-leader",
+  Elder = "elder",
+  Member = "member",
 }
