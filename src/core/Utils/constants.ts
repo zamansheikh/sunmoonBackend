@@ -4,6 +4,10 @@ import { MAGIC_BALL_CRITERIA_TYPES } from "./enums";
 const MILLION = 1000000;
 const THOUSAND = 1000;
 
+export const FAMILY_CREATE_PRICE = 10 * MILLION;
+export const FAMILY_UPDATE_PRICE = 1 * MILLION;
+
+
 // audio room
 export const USER_POPULATED_INFORMATIONS =
   "name avatar uid userId country currentLevelBackground currentLevelTag level";

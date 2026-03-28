@@ -10,6 +10,7 @@ import {
 } from "../core/Utils/helper_functions";
 import { FamilyJoinMode } from "../core/Utils/enums";
 import { IFamily } from "../models/family/family_model";
+import AppError from "../core/errors/app_errors";
 
 export default class FamilyController {
   Service: IFamilyService;
@@ -48,6 +49,33 @@ export default class FamilyController {
       success: true,
       result: family,
       message: "Family created successfully",
+    });
+  });
+
+  updateFamily = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.user!;
+    const { familyId } = req.params;
+    const { name, introduction, joinMode, minLevel, memberLimit, coverPhoto } =
+      req.body;
+    if (
+      !name &&
+      !introduction &&
+      !joinMode &&
+      !minLevel &&
+      !memberLimit &&
+      !coverPhoto
+    ) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "No field to update");
+    }
+    if (joinMode) {
+      validateEnum(joinMode, FamilyJoinMode, "joinMode");
+    }
+    const family = await this.Service.updateFamilyInformation(id, req.body);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: family,
+      message: "Family updated successfully",
     });
   });
 }

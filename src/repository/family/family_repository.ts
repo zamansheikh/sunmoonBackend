@@ -7,6 +7,11 @@ import {
 export interface IFamilyRepository {
   create(data: IFamily): Promise<IFamilyDocument>;
   getByLeaderId(leaderId: string): Promise<IFamilyDocument | null>;
+  getById(id: string): Promise<IFamilyDocument | null>;
+  update(
+    id: string,
+    data: Partial<IFamily>,
+  ): Promise<IFamilyDocument | null>;
 }
 
 export class FamilyRepository implements IFamilyRepository {
@@ -21,5 +26,14 @@ export class FamilyRepository implements IFamilyRepository {
   }
   async getByLeaderId(leaderId: string): Promise<IFamilyDocument | null> {
     return await this.model.findOne({ leaderId });
+  }
+  async getById(id: string): Promise<IFamilyDocument | null> {
+    return await this.model.findById(id);
+  }
+  async update(
+    id: string,
+    data: Partial<IFamily>,
+  ): Promise<IFamilyDocument | null> {
+    return await this.model.findByIdAndUpdate(id, data, { new: true });
   }
 }

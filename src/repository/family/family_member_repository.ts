@@ -2,6 +2,7 @@ import { IFamilyMember, IFamilyMemberDocument, IFamilyMemberModel } from "../../
 
 export interface IFamilyMemberRepository {
     create(data:IFamilyMember):Promise<IFamilyMemberDocument>;
+    getByUserId(userId: string): Promise<IFamilyMemberDocument | null>;
 }
 
 export class FamilyMemberRepository implements IFamilyMemberRepository {
@@ -13,5 +14,8 @@ export class FamilyMemberRepository implements IFamilyMemberRepository {
     async create(data:IFamilyMember):Promise<IFamilyMemberDocument>{
         const familyMember = new this.model(data);
         return await familyMember.save();
+    }
+    async getByUserId(userId: string): Promise<IFamilyMemberDocument | null> {
+        return await this.model.findOne({ userId });
     }
 }

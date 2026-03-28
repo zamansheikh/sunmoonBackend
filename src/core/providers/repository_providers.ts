@@ -22,6 +22,8 @@ import { FamilyRepository } from "../../repository/family/family_repository";
 import FamilyModel from "../../models/family/family_model";
 import { FamilyMemberRepository } from "../../repository/family/family_member_repository";
 import FamilyMemberModel from "../../models/family/family_member_model";
+import { FamilyJoinRequestRepository } from "../../repository/family/family_join_request_repository";
+import FamilyJoinRequestModel from "../../models/family/family_join_request_model";
 
 export class RepositoryProviders {
   static readonly giftRecordRepositoryProvider = new GiftRecordRepository(
@@ -65,4 +67,6 @@ export class RepositoryProviders {
   static readonly familyMemberRepositoryProvider = new FamilyMemberRepository(
     FamilyMemberModel,
   );
+  static readonly familyJoinRequestRepositoryProvider =
+    new FamilyJoinRequestRepository(FamilyJoinRequestModel);
 }

@@ -58,6 +58,7 @@ export enum DatabaseNames {
   MagicBall = "magic_balls",
   Family = "families",
   FamilyMember = "family_members",
+  FamilyJoinRequest = "family_join_requests",
 }
 
 export enum ReelStatus {
