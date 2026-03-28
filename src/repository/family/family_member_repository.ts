@@ -1,7 +1,7 @@
 import { IFamilyMember, IFamilyMemberDocument, IFamilyMemberModel } from "../../models/family/family_member_model";
 
 export interface IFamilyMemberRepository {
-    create(data:IFamilyMember):Promise<IFamilyMemberDocument>;
+    create(data:IFamilyMember, session?: any):Promise<IFamilyMemberDocument>;
     getByUserId(userId: string): Promise<IFamilyMemberDocument | null>;
 }
 
@@ -11,9 +11,9 @@ export class FamilyMemberRepository implements IFamilyMemberRepository {
     constructor(model:IFamilyMemberModel){
         this.model = model;
     }
-    async create(data:IFamilyMember):Promise<IFamilyMemberDocument>{
+    async create(data:IFamilyMember, session?: any):Promise<IFamilyMemberDocument>{
         const familyMember = new this.model(data);
-        return await familyMember.save();
+        return await familyMember.save({ session });
     }
     async getByUserId(userId: string): Promise<IFamilyMemberDocument | null> {
         return await this.model.findOne({ userId });

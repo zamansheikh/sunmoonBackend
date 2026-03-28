@@ -13,14 +13,19 @@ import { StatusCodes } from "http-status-codes";
 import { XpHelper } from "../../core/helper_classes/xp_helper";
 import { IUserRepository } from "../../repository/users/user_repository";
 import IUserStatsRepository from "../../repository/users/userstats_repository_interface";
-import { IFamilyMember } from "../../models/family/family_member_model";
+import {
+  IFamilyJoinRequestDocument,
+  IFamilyJoinRequest,
+} from "../../models/family/family_join_request_model";
 import { IFamilyJoinRequestRepository } from "../../repository/family/family_join_request_repository";
 import { isValidMongooseToken } from "../../core/Utils/helper_functions";
+import mongoose from "mongoose";
 
 import {
   FAMILY_CREATE_PRICE,
   FAMILY_UPDATE_PRICE,
 } from "../../core/Utils/constants";
+import { IFamilyMember } from "../../models/family/family_member_model";
 
 export interface IFamilyService {
   createFamily(data: IFamily): Promise<IFamilyDocument>;
@@ -28,8 +33,14 @@ export interface IFamilyService {
     myId: string,
     data: Partial<IFamily>,
   ): Promise<IFamilyDocument>;
-  joinFamily(userId: string, familyId: string): Promise<IFamilyDocument | any>;
   getFamilyJoinStatus(userId: string): Promise<IFamilyDocument | null>;
+  getFamilyJoinRequests(userId: string): Promise<IFamilyJoinRequestDocument[]>;
+  approveFamilyJoinRequest(
+    requestId: string,
+  ): Promise<IFamilyJoinRequestDocument>;
+  rejectFamilyJoinRequest(
+    requestId: string,
+  ): Promise<IFamilyJoinRequestDocument>;
 }
 
 export class FamilyService implements IFamilyService {
@@ -158,14 +169,20 @@ export class FamilyService implements IFamilyService {
       throw new AppError(StatusCodes.BAD_REQUEST, "Invalid userId or familyId");
     }
 
-    const [user, family, member] = await Promise.all([
+    const [user, family, member, joinRequest] = await Promise.all([
       this.userRepository.findUserById(userId),
       this.familyRepository.getById(familyId),
       this.familyMemberRepository.getByUserId(userId),
+      this.familyJoinRequestRepository.getByUserId(userId),
     ]);
 
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
     if (!family) throw new AppError(StatusCodes.NOT_FOUND, "Family not found");
+    if (joinRequest)
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "You have already sent a join request to a family",
+      );
 
     //step2: check minimum join level
     if (family.minLevel && user.level! < family.minLevel) {
@@ -244,6 +261,85 @@ export class FamilyService implements IFamilyService {
     }
 
     throw new AppError(StatusCodes.BAD_REQUEST, "Invalid join mode");
+  }
+
+  async getFamilyJoinRequests(
+    userId: string,
+  ): Promise<IFamilyJoinRequestDocument[]> {
+    const user = await this.userRepository.findUserById(userId);
+    if (!user || !user.familyId) return [];
+
+    return await this.familyJoinRequestRepository.findAllByFamily(
+      user.familyId.toString(),
+      StatusTypes.pending,
+    );
+  }
+
+  async approveFamilyJoinRequest(
+    requestId: string,
+  ): Promise<IFamilyJoinRequestDocument> {
+    //step1: validate requestId
+    if (!isValidMongooseToken(requestId)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid requestId");
+    }
+    //step2: fetch the request within session
+    const request = await this.familyJoinRequestRepository.findById(requestId);
+    if (!request) {
+      throw new AppError(StatusCodes.NOT_FOUND, "Join request not found");
+    }
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const { userId, familyId } = request;
+
+      //step3: delete the request
+      await this.familyJoinRequestRepository.delete(requestId, session);
+
+      //step4: create family member and update user/family
+      const familyMember: IFamilyMember = {
+        familyId: familyId.toString(),
+        userId: userId.toString(),
+        role: FamilyMemberRole.Member,
+      };
+
+      await Promise.all([
+        this.familyMemberRepository.create(familyMember, session),
+        this.userRepository.findUserByIdAndUpdate(
+          userId.toString(),
+          { familyId: familyId.toString() },
+          session,
+        ),
+        this.familyRepository.update(
+          familyId.toString(),
+          { $inc: { memberCount: 1 } } as any,
+          session,
+        ),
+      ]);
+
+      await session.commitTransaction();
+      return request;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+  async rejectFamilyJoinRequest(
+    requestId: string,
+  ): Promise<IFamilyJoinRequestDocument> {
+    //step1: check if the request with the id actually exists
+    const request = await this.familyJoinRequestRepository.findById(requestId);
+    if (!request) {
+      throw new AppError(StatusCodes.NOT_FOUND, "Join request not found");
+    }
+
+    //step2: delete the request
+    await this.familyJoinRequestRepository.delete(requestId);
+
+    return request;
   }
 
   async getFamilyJoinStatus(userId: string): Promise<IFamilyDocument | null> {

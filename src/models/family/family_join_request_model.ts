@@ -8,14 +8,12 @@ export interface IFamilyJoinRequest {
 }
 
 export interface IFamilyJoinRequestDocument
-  extends IFamilyJoinRequest,
-    mongoose.Document {
+  extends IFamilyJoinRequest, mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface IFamilyJoinRequestModel
-  extends Model<IFamilyJoinRequestDocument> {}
+export interface IFamilyJoinRequestModel extends Model<IFamilyJoinRequestDocument> {}
 
 const FamilyJoinRequestSchema = new Schema<IFamilyJoinRequestDocument>(
   {
@@ -23,10 +21,12 @@ const FamilyJoinRequestSchema = new Schema<IFamilyJoinRequestDocument>(
       type: Schema.Types.ObjectId,
       required: true,
       ref: DatabaseNames.Family,
+      index: true,
     },
     userId: {
       type: Schema.Types.ObjectId,
       required: true,
+      unique: true,
       ref: DatabaseNames.User,
     },
     status: {
@@ -37,8 +37,10 @@ const FamilyJoinRequestSchema = new Schema<IFamilyJoinRequestDocument>(
   },
   {
     timestamps: true,
-  }
+  },
 );
+
+FamilyJoinRequestSchema.index({ familyId: 1, userId: 1 }, { unique: true });
 
 const FamilyJoinRequestModel = mongoose.model<
   IFamilyJoinRequestDocument,
@@ -46,7 +48,7 @@ const FamilyJoinRequestModel = mongoose.model<
 >(
   DatabaseNames.FamilyJoinRequest,
   FamilyJoinRequestSchema,
-  DatabaseNames.FamilyJoinRequest
+  DatabaseNames.FamilyJoinRequest,
 );
 
 export default FamilyJoinRequestModel;
