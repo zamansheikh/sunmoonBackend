@@ -19,12 +19,16 @@ export default class StoreController {
   //   📌 store categories
   createCategory = catchAsync(async (req: Request, res: Response) => {
     const { title, isPremium } = req.body;
+    console.log("title and  isPremium -> ", title, isPremium);
+
     validateFieldExistance(title, "title");
     const category = await this.Service.createCategory(title, isPremium);
+    console.log("category -> ", category);
+
     sendResponse(res, {
       statusCode: 200,
       success: true,
-      result: category,
+      result: "I am okay",
     });
   });
 
@@ -80,7 +84,7 @@ export default class StoreController {
     const { name, validity, categoryId, price } = req.body;
     const item = await this.Service.createStoreItemSingle(
       { name, validity, categoryId, price },
-      file!
+      file!,
     );
     sendResponse(res, {
       statusCode: 200,
@@ -103,7 +107,7 @@ export default class StoreController {
     }
     const item = await this.Service.createStoreItemBatch(
       { name, validity, categoryId, price },
-      premiumFiles
+      premiumFiles,
     );
     sendResponse(res, {
       statusCode: 200,
@@ -143,7 +147,7 @@ export default class StoreController {
     const item = await this.Service.updateStoreItemSingle(
       id,
       { name, validity, categoryId, price },
-      req.file as Express.Multer.File
+      req.file as Express.Multer.File,
     );
     sendResponse(res, {
       statusCode: 200,
@@ -174,7 +178,7 @@ export default class StoreController {
     const item = await this.Service.updateStoreItemBatch(
       id,
       { name, validity, categoryId, price },
-      premiumFiles
+      premiumFiles,
     );
     sendResponse(res, {
       statusCode: 200,
@@ -211,7 +215,7 @@ export default class StoreController {
 
   buyStoreItem = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.user!;
-    const {itemId} = req.body;
+    const { itemId } = req.body;
     validateFieldExistance(itemId, "itemId");
     const item = await this.Service.buyStoreItem(id, itemId);
     sendResponse(res, {
@@ -243,5 +247,5 @@ export default class StoreController {
       success: true,
       result: item,
     });
-  })
+  });
 }
