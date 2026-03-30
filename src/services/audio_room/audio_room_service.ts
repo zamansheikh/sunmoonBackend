@@ -1455,7 +1455,7 @@ export class AudioRoomService implements IAudioRoomService {
     const roomIds = recentVisits.map((v) => v.roomId);
 
     // Fetch all rooms in a SINGLE database round-trip
-    const rooms = await this.audioRoomRepository.getRoomsByRoomIds(roomIds);
+    const rooms = await this.audioRoomRepository.getRoomsByRoomIds(roomIds); 
 
     // Map back to guarantee the original chronological order from recentVisits
     // and filter out any rooms that might have been deleted (not found in bulk fetch)

@@ -80,12 +80,16 @@ export const userWithEquippedItemsPipeline = (
                         $cond: {
                           if: "$svgaFile",
                           then: {
-                            $arrayToObject: [
-                              {
-                                k: { $ifNull: ["$category.title", "Unknown"] },
-                                v: "$svgaFile",
+                            $arrayToObject: {
+                              $map: {
+                                input: [1],
+                                as: "dummy",
+                                in: {
+                                  k: { $ifNull: ["$category.title", "Unknown"] },
+                                  v: "$svgaFile",
+                                },
                               },
-                            ],
+                            },
                           },
                           else: {},
                         },
