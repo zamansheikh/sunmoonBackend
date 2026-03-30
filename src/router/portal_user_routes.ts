@@ -53,9 +53,10 @@ const sharedPowerService = new SharedPowerService(
 );
 const portalUserControllers = new PortalUserControllers(sharedPowerService);
 
+router.post("/auth", portalUserControllers.loginPortalUser);
+
 router
   .route("/auth")
-  .post(portalUserControllers.loginPortalUser)
   .put(
     authenticate([
       UserRoles.SubAdmin,

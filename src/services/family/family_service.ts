@@ -25,7 +25,10 @@ import {
   FAMILY_CREATE_PRICE,
   FAMILY_UPDATE_PRICE,
 } from "../../core/Utils/constants";
-import { IFamilyMember } from "../../models/family/family_member_model";
+import {
+  IFamilyMember,
+  IFamilyMemberDocument,
+} from "../../models/family/family_member_model";
 
 export interface IFamilyService {
   createFamily(data: IFamily): Promise<IFamilyDocument>;
@@ -33,14 +36,22 @@ export interface IFamilyService {
     myId: string,
     data: Partial<IFamily>,
   ): Promise<IFamilyDocument>;
-  getFamilyJoinStatus(userId: string): Promise<IFamilyDocument | null>;
+  getFamilyJoinStatus(userId: string): Promise<any>;
   getFamilyJoinRequests(userId: string): Promise<IFamilyJoinRequestDocument[]>;
   approveFamilyJoinRequest(
+    userId: string,
     requestId: string,
   ): Promise<IFamilyJoinRequestDocument>;
   rejectFamilyJoinRequest(
+    userId: string,
     requestId: string,
   ): Promise<IFamilyJoinRequestDocument>;
+  joinFamily(userId: string, familyId: string): Promise<any>;
+  changeMemberRole(
+    callerId: string,
+    memberId: string,
+    newRole: FamilyMemberRole,
+  ): Promise<IFamilyMemberDocument>;
 }
 
 export class FamilyService implements IFamilyService {
@@ -184,15 +195,7 @@ export class FamilyService implements IFamilyService {
         "You have already sent a join request to a family",
       );
 
-    //step2: check minimum join level
-    if (family.minLevel && user.level! < family.minLevel) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        `At least level ${family.minLevel} is required to join this family`,
-      );
-    }
-
-    //step3: check if user already member of another family
+    //step2: check if user already member of another family
     if (user.familyId || member) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
@@ -200,7 +203,15 @@ export class FamilyService implements IFamilyService {
       );
     }
 
-    //check if user is already the leader of a family (edge case if cache/user doc out of sync)
+    //step3: check minimum join level
+    if (family.minLevel && user.level! < family.minLevel) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `At least level ${family.minLevel} is required to join this family`,
+      );
+    }
+
+    //step4: check if user is already the leader of a family (edge case if cache/user doc out of sync)
     const familyAsLeader = await this.familyRepository.getByLeaderId(userId);
     if (familyAsLeader) {
       throw new AppError(
@@ -209,7 +220,7 @@ export class FamilyService implements IFamilyService {
       );
     }
 
-    //check member limit
+    //step5: check member limit
     if (
       family.memberCount &&
       family.memberLimit &&
@@ -218,7 +229,7 @@ export class FamilyService implements IFamilyService {
       throw new AppError(StatusCodes.BAD_REQUEST, "Family is full");
     }
 
-    //step4: check for family join type
+    //step6: check for family join type
     if (family.joinMode === FamilyJoinMode.Free) {
       //simply create a family Member document and he joined
       const familyMember: IFamilyMember = {
@@ -230,7 +241,7 @@ export class FamilyService implements IFamilyService {
       await Promise.all([
         this.familyMemberRepository.create(familyMember),
         this.userRepository.findUserByIdAndUpdate(userId, { familyId }),
-        //increment member count
+        //step7: increment member count
         this.familyRepository.update(familyId, {
           $inc: { memberCount: 1 },
         } as any),
@@ -238,7 +249,7 @@ export class FamilyService implements IFamilyService {
 
       return { family, status: "joined" };
     } else if (family.joinMode === FamilyJoinMode.Approval) {
-      //check if request already exists
+      //step8: check if request already exists
       const existingRequest = await this.familyJoinRequestRepository.findByUser(
         userId,
         familyId,
@@ -251,7 +262,7 @@ export class FamilyService implements IFamilyService {
         );
       }
 
-      //create the approval request
+      //step9: create the approval request
       await this.familyJoinRequestRepository.create({
         familyId,
         userId,
@@ -276,6 +287,7 @@ export class FamilyService implements IFamilyService {
   }
 
   async approveFamilyJoinRequest(
+    userId: string,
     requestId: string,
   ): Promise<IFamilyJoinRequestDocument> {
     //step1: validate requestId
@@ -287,6 +299,14 @@ export class FamilyService implements IFamilyService {
     if (!request) {
       throw new AppError(StatusCodes.NOT_FOUND, "Join request not found");
     }
+
+    //step3: check for authorize the caller - must be a leader or co-leader of the same family
+    await this.checkLeadershipPrivileges(
+      userId,
+      request.familyId.toString(),
+      "Only leader or co-leader can approve join requests",
+    );
+
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -328,6 +348,7 @@ export class FamilyService implements IFamilyService {
   }
 
   async rejectFamilyJoinRequest(
+    userId: string,
     requestId: string,
   ): Promise<IFamilyJoinRequestDocument> {
     //step1: check if the request with the id actually exists
@@ -336,16 +357,139 @@ export class FamilyService implements IFamilyService {
       throw new AppError(StatusCodes.NOT_FOUND, "Join request not found");
     }
 
-    //step2: delete the request
+    //step2: check for authorize the caller - must be a leader or co-leader of the same family
+    await this.checkLeadershipPrivileges(
+      userId,
+      request.familyId.toString(),
+      "Only leader or co-leader can reject join requests",
+    );
+
+    //step3: delete the request
     await this.familyJoinRequestRepository.delete(requestId);
 
     return request;
   }
 
-  async getFamilyJoinStatus(userId: string): Promise<IFamilyDocument | null> {
-    const user = await this.userRepository.findUserById(userId);
-    if (!user || !user.familyId) return null;
+  async getFamilyJoinStatus(userId: string): Promise<any> {
+    if (!isValidMongooseToken(userId)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid userId");
+    }
 
-    return await this.familyRepository.getById(user.familyId.toString());
+    // 1. Check if user is already a member of a family
+    const member = await this.familyMemberRepository.getByUserId(userId);
+    if (member) {
+      const family = await this.familyRepository.getById(
+        member.familyId.toString(),
+      );
+      return {
+        status: "joined",
+        familyId: family?._id,
+        familyName: family?.name,
+      };
+    }
+
+    // 2. Check if user has a join request
+    const request = await this.familyJoinRequestRepository.getByUserId(userId);
+    if (request) {
+      const family = await this.familyRepository.getById(
+        request.familyId.toString(),
+      );
+      return {
+        status: "pending",
+        familyId: family?._id,
+        familyName: family?.name,
+      };
+    }
+
+    // 3. Neither found
+    return {
+      status: "none",
+      familyId: null,
+    };
+  }
+
+  async changeMemberRole(
+    callerId: string,
+    memberId: string,
+    newRole: FamilyMemberRole,
+  ): Promise<IFamilyMemberDocument> {
+    //step 0: validate inputs
+    if (!isValidMongooseToken(memberId)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid member ID");
+    }
+
+    //step1: check if newRole is allowed (cannot assign 'leader' role)
+    const allowedRoles = [
+      FamilyMemberRole.CoLeader,
+      FamilyMemberRole.Elder,
+      FamilyMemberRole.Member,
+    ];
+
+    if (!allowedRoles.includes(newRole)) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Invalid role. Only Co-Leader, Elder, and Member roles can be assigned.",
+      );
+    }
+
+    //step2: check if caller is the leader
+    const caller = await this.familyMemberRepository.getByUserId(callerId);
+    if (!caller || caller.role !== FamilyMemberRole.Leader) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Only the family leader can change member roles",
+      );
+    }
+
+    //step3: fetch target member and verify family
+    const targetMember =
+      await this.familyMemberRepository.getByUserId(memberId);
+    if (
+      !targetMember ||
+      targetMember.familyId.toString() !== caller.familyId.toString()
+    ) {
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        "Member not found in your family",
+      );
+    }
+
+    //step4: prevent changing leader role (the leader role is unique and handled via transfer)
+    if (targetMember.role === FamilyMemberRole.Leader) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Cannot change the leader's role",
+      );
+    }
+
+    //step5: update role
+    const updatedMember = await this.familyMemberRepository.update(memberId, {
+      role: newRole,
+    });
+
+    if (!updatedMember) {
+      throw new AppError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        "Failed to update member role",
+      );
+    }
+
+    return updatedMember;
+  }
+
+  private async checkLeadershipPrivileges(
+    userId: string,
+    familyId: string,
+    actionMessage: string,
+  ): Promise<void> {
+    const member = await this.familyMemberRepository.getByUserId(userId);
+    if (
+      !member ||
+      member.familyId.toString() !== familyId.toString() ||
+      (member.role !== FamilyMemberRole.Leader &&
+        member.role !== FamilyMemberRole.CoLeader)
+    ) {
+      throw new AppError(StatusCodes.FORBIDDEN, actionMessage);
+    }
   }
 }

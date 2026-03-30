@@ -3,6 +3,7 @@ import { IFamilyMember, IFamilyMemberDocument, IFamilyMemberModel } from "../../
 export interface IFamilyMemberRepository {
     create(data:IFamilyMember, session?: any):Promise<IFamilyMemberDocument>;
     getByUserId(userId: string): Promise<IFamilyMemberDocument | null>;
+    update(userId: string, data: Partial<IFamilyMember>): Promise<IFamilyMemberDocument | null>;
 }
 
 export class FamilyMemberRepository implements IFamilyMemberRepository {
@@ -17,5 +18,9 @@ export class FamilyMemberRepository implements IFamilyMemberRepository {
     }
     async getByUserId(userId: string): Promise<IFamilyMemberDocument | null> {
         return await this.model.findOne({ userId });
+    }
+
+    async update(userId: string, data: Partial<IFamilyMember>): Promise<IFamilyMemberDocument | null> {
+        return await this.model.findOneAndUpdate({ userId }, data, { new: true });
     }
 }

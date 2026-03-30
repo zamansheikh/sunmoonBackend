@@ -69,9 +69,10 @@ const adminUserService = new AdminUserService(
 );
 const adminUserController = new AdminUserController(adminUserService);
 
+router.post("/auth", adminUserController.registerAdmin);
+
 router
   .route("/auth")
-  .post(adminUserController.registerAdmin)
   .put(
     authenticate([UserRoles.Admin]),
     upload.single("avatar"),
