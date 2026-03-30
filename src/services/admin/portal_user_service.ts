@@ -290,9 +290,7 @@ export default class SharedPowerService implements ISharedPowerService {
   ): Promise<IUSerStatsDocument | IPortalUserDocument> {
     // blocking unconventional transactions
     if (
-      (role == UserRoles.Admin &&
-        !(userRole == UserRoles.Merchant || userRole == UserRoles.SubAdmin)) ||
-      (role == UserRoles.SubAdmin && userRole != UserRoles.Reseller) ||
+      (role == UserRoles.Admin && userRole != UserRoles.Merchant) ||
       (role == UserRoles.Merchant &&
         !(userRole == UserRoles.Reseller || userRole == UserRoles.User)) ||
       (role == UserRoles.Reseller && userRole != UserRoles.User)
@@ -317,11 +315,7 @@ export default class SharedPowerService implements ISharedPowerService {
 
     // fetching target profile
     let targetProfile;
-    if (
-      userRole == UserRoles.Merchant ||
-      userRole == UserRoles.Reseller ||
-      userRole == UserRoles.SubAdmin
-    )
+    if (userRole == UserRoles.Merchant || userRole == UserRoles.Reseller)
       targetProfile = await this.PortalUserRepository.getPortalUserById(userId);
     else targetProfile = await this.UserRepository.findUserById(userId);
     if (!targetProfile)
@@ -347,11 +341,7 @@ export default class SharedPowerService implements ISharedPowerService {
     else await this.PortalUserRepository.updateCoin(myId, -coins, session);
 
     // adding coin to targetProfile
-    if (
-      userRole == UserRoles.Merchant ||
-      userRole == UserRoles.Reseller ||
-      userRole == UserRoles.SubAdmin
-    ) {
+    if (userRole == UserRoles.Merchant || userRole == UserRoles.Reseller) {
       returnBody = await this.PortalUserRepository.updateCoin(
         userId,
         coins,

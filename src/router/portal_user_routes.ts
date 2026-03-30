@@ -107,12 +107,7 @@ router
 router
   .route("/users/assign-coin")
   .put(
-    authenticate([
-      UserRoles.Admin,
-      UserRoles.SubAdmin,
-      UserRoles.Merchant,
-      UserRoles.Reseller,
-    ]),
+    authenticate([UserRoles.Admin, UserRoles.Merchant, UserRoles.Reseller]),
     portalUserControllers.assignCoinToUser,
   );
 
