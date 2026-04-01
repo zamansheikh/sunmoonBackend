@@ -50,6 +50,17 @@ export function isVideoFile(filename: string): boolean {
   return ext ? videoExtensions.includes(`.${ext}`) : false;
 }
 
+export function isImageFile(filename: string): boolean {
+  const imageExtensions = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"];
+  const ext = filename.toLowerCase().split(".").pop();
+  return ext ? imageExtensions.includes(`.${ext}`) : false;
+}
+
+export function isSvgaFile(filename: string): boolean {
+  const ext = filename.toLowerCase().split(".").pop();
+  return ext === "svga";
+}
+
 export function validatePromoteUserPermission(permissions: string[]): void {
   validatePermissions(permissions);
 }

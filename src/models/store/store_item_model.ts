@@ -4,6 +4,7 @@ import { DatabaseNames } from "../../core/Utils/enums";
 export interface IBundle {
   categoryName: string;
   svgaFile: string;
+  previewFile: string;
   fileType: string;
 }
 
@@ -14,6 +15,7 @@ export interface IStoreItem {
   isPremium?: boolean;
   price: number;
   svgaFile?: string;
+  previewFile?: string;
   bundleFiles?: IBundle[];
   deleteStatus?: boolean;
   totalSold?: number;
@@ -33,6 +35,10 @@ export const bundleSchema = new mongoose.Schema<IBundle>({
     required: true,
   },
   svgaFile: {
+    type: String,
+    required: true,
+  },
+  previewFile: {
     type: String,
     required: true,
   },
@@ -69,6 +75,9 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
     svgaFile: {
       type: String,
     },
+    previewFile: {
+      type: String,
+    },
     bundleFiles: [bundleSchema],
     deleteStatus: {
       type: Boolean,
@@ -80,17 +89,17 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
     },
     expireAt: {
       type: Date,
-      default: () =>  new Date(2100, 0, 1),   // deleted at year 2100 default
+      default: () => new Date(2100, 0, 1), // deleted at year 2100 default
       index: { expires: 0 }, // expire at the date stored in expireAt
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const StoreItemModel = mongoose.model<IStoreItemDocument>(
   DatabaseNames.StoreItem,
   storeItemSchema,
-  DatabaseNames.StoreItem
+  DatabaseNames.StoreItem,
 );
 
 export default StoreItemModel;

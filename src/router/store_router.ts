@@ -41,7 +41,10 @@ router
   .route("/items/single")
   .post(
     authenticate([UserRoles.Admin]),
-    upload.single("svgaFile"),
+    upload.fields([
+      { name: "svgaFile", maxCount: 1 },
+      { name: "previewFile", maxCount: 1 },
+    ]),
     controller.createStoreItemSingle
   );
 router

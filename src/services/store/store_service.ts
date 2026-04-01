@@ -44,7 +44,8 @@ export interface IStoreService {
   // 📌 store items
   createStoreItemSingle(
     item: IStoreItem,
-    file: Express.Multer.File
+    svgaFile: Express.Multer.File,
+    previewFile: Express.Multer.File
   ): Promise<IStoreItemDocument>;
   createStoreItemBatch(
     item: IStoreItem,
@@ -158,9 +159,13 @@ export default class StoreService implements IStoreService {
   // 📌 store items
   async createStoreItemSingle(
     item: IStoreItem,
-    file: Express.Multer.File
+    svgaFile: Express.Multer.File,
+    previewFile: Express.Multer.File
   ): Promise<IStoreItemDocument> {
-    const url = await saveFileToLocal(file, {
+    const svgaUrl = await saveFileToLocal(svgaFile, {
+      folder: "store_items",
+    });
+    const previewUrl = await saveFileToLocal(previewFile, {
       folder: "store_items",
     });
     let itemToCreate: IStoreItem = {
@@ -169,7 +174,8 @@ export default class StoreService implements IStoreService {
       categoryId: item.categoryId,
       isPremium: false,
       price: item.price,
-      svgaFile: url,
+      svgaFile: svgaUrl,
+      previewFile: previewUrl,
     };
     return await this.ItemRepository.createStoreItem(itemToCreate);
   }

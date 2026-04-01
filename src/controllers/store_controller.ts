@@ -2,7 +2,13 @@ import { Request, Response } from "express";
 import catchAsync from "../core/Utils/catch_async";
 import { IPremiumFiles, IStoreService } from "../services/store/store_service";
 import sendResponse from "../core/Utils/send_response";
-import { validateFieldExistance } from "../core/Utils/helper_functions";
+import {
+  isImageFile,
+  isSvgaFile,
+  validateFieldExistance,
+} from "../core/Utils/helper_functions";
+import { StatusCodes } from "http-status-codes";
+import AppError from "../core/errors/app_errors";
 import {
   validateCreateStoreItem,
   ValidateStoreItemBatch,
@@ -75,12 +81,25 @@ export default class StoreController {
   // 📌 store items
   createStoreItemSingle = catchAsync(async (req: Request, res: Response) => {
     validateCreateStoreItem(req.body);
-    const file = req.file;
-    validateFieldExistance(file, "file");
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const svgaFile = files["svgaFile"]?.[0];
+    const previewFile = files["previewFile"]?.[0];
+
+    validateFieldExistance(svgaFile, "svgaFile");
+    validateFieldExistance(previewFile, "previewFile");
+
+    if (!isSvgaFile(svgaFile!.originalname)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "svgaFile must be a .svga file");
+    }
+    if (!isImageFile(previewFile!.originalname)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "previewFile must be an image");
+    }
+
     const { name, validity, categoryId, price } = req.body;
     const item = await this.Service.createStoreItemSingle(
       { name, validity, categoryId, price },
-      file!,
+      svgaFile!,
+      previewFile!,
     );
     sendResponse(res, {
       statusCode: 200,
