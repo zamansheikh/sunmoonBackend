@@ -254,8 +254,10 @@ export async function getEquippedItemObjects(
     if (
       typeof equippedBucket[i].itemId == "string" ||
       equippedBucket[i].itemId instanceof Types.ObjectId
-    )
-      throw new AppError(StatusCodes.CONFLICT, "itemId is not populated");
+    ) {
+      console.error("itemId is not populated");
+      continue;
+    }
     const item = equippedBucket[i].itemId as IStoreItem;
     if (!item) continue;
     if (item.bundleFiles && item.bundleFiles.length > 0) {
@@ -267,8 +269,10 @@ export async function getEquippedItemObjects(
       const category = await catRepository.getCategoryById(
         item.categoryId as string,
       );
-      if (!category)
-        throw new AppError(StatusCodes.NOT_FOUND, "category not found");
+      if (!category) {
+        console.error("category not found");
+        continue;
+      }
       equippedFeatures[category.title] = item.svgaFile;
     }
   }
@@ -286,8 +290,10 @@ export async function checkPremiumItem(
   if (
     typeof equippedBucket[0].itemId == "string" ||
     equippedBucket[0].itemId instanceof Types.ObjectId
-  )
-    throw new AppError(StatusCodes.CONFLICT, "itemId is not populated");
+  ) {
+    console.log("itemId is not populated");
+    return false;
+  }
   const item = equippedBucket[0].itemId as IStoreItem;
   if (item.isPremium && item.name == "SVIP") return true;
   return false;

@@ -103,7 +103,7 @@ export default class MyBucketRepository implements IMyBucketRepository {
     update: Partial<IMyBucket>,
     session?: ClientSession,
   ): Promise<UpdateResult> {
-    return await this.Model.updateOne(filter, update, { session });
+    return await this.Model.updateMany(filter, update, { session });
   }
 
   async getEquippedBuckets(id: string): Promise<IMyBucketDocument[]> {

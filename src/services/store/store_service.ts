@@ -456,6 +456,12 @@ export default class StoreService implements IStoreService {
       }
     }
 
+    // if this items has been used by some users, we need to deselect them
+    await this.BucketRepository.updateBucketUseStatus(
+      { itemId: id, useStatus: true },
+      { useStatus: false },
+    );
+
     return await this.ItemRepository.deleteStoreItemHard(id);
   }
 
