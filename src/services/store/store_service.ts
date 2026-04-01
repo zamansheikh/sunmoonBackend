@@ -29,54 +29,62 @@ import {
 export interface IPremiumFiles {
   categoryName: string;
   svgaFile: Express.Multer.File;
+  previewFile: Express.Multer.File;
 }
 
 export interface IStoreService {
   // 📌 store categories
   createCategory(
     title: string,
-    isPremium?: boolean
+    isPremium?: boolean,
   ): Promise<IStoreCategoryDocument>;
   getCategoryById(id: string): Promise<IStoreCategoryDocument>;
   getAllCategories(): Promise<IStoreCategoryDocument[]>;
   updateCategory(id: string, title: string): Promise<IStoreCategoryDocument>;
   deleteCategory(id: string): Promise<IStoreCategoryDocument>;
+  categoryDeleteEffectedItems(id: string): Promise<{
+    categoryItemCount: number;
+    categoryItemNames: string[];
+    premiumItemCount: number;
+    premiumItems: string[];
+  }>;
   // 📌 store items
   createStoreItemSingle(
     item: IStoreItem,
     svgaFile: Express.Multer.File,
-    previewFile: Express.Multer.File
+    previewFile: Express.Multer.File,
   ): Promise<IStoreItemDocument>;
   createStoreItemBatch(
     item: IStoreItem,
-    files: IPremiumFiles[]
+    files: IPremiumFiles[],
   ): Promise<IStoreItemDocument>;
   getStoreItemById(id: string): Promise<IStoreItemDocument>;
   getAllStoreItems(
     category: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }>;
   updateStoreItemSingle(
     id: string,
     item: Partial<IStoreItem>,
-    file?: Express.Multer.File
+    svgaFile?: Express.Multer.File,
+    previewFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument>;
   updateStoreItemBatch(
     id: string,
     item: Partial<IStoreItem>,
-    files?: IPremiumFiles[]
+    files?: IPremiumFiles[],
   ): Promise<IStoreItemDocument>;
   deleteStoreItem(id: string): Promise<IStoreItemDocument>;
   changeItemCategory(
     itemId: string,
-    newCategory: string
+    newCategory: string,
   ): Promise<IStoreItemDocument>;
   // 📌 my buckets
   buyStoreItem(ownerId: string, itemId: string): Promise<IStoreItemDocument>;
   getMyBucket(
     ownerId: string,
     category: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; buckets: IMyBucketDocument[] }>;
   userGiftItem(ownerId: string, bucketId: string): Promise<IMyBucketDocument>;
 }
@@ -92,7 +100,7 @@ export default class StoreService implements IStoreService {
     itemRepository: IStoreItemRepository,
     userRepository: IUserRepository,
     userStatsRepository: IUserStatsRepository,
-    bucketRepository: IMyBucketRepository
+    bucketRepository: IMyBucketRepository,
   ) {
     this.CategoryRepository = categoryRepository;
     this.ItemRepository = itemRepository;
@@ -104,7 +112,7 @@ export default class StoreService implements IStoreService {
   //  📌 store categories
   async createCategory(
     title: string,
-    isPremium?: boolean
+    isPremium?: boolean,
   ): Promise<IStoreCategoryDocument> {
     if (isPremium) {
       const existingPremium =
@@ -114,7 +122,7 @@ export default class StoreService implements IStoreService {
       if (existingPremium)
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "Premium category already exists"
+          "Premium category already exists",
         );
     }
     return await this.CategoryRepository.createCategory(title, isPremium);
@@ -125,7 +133,7 @@ export default class StoreService implements IStoreService {
     if (!category) {
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Category with id ${id} not found`
+        `Category with id ${id} not found`,
       );
     }
     return category;
@@ -137,7 +145,7 @@ export default class StoreService implements IStoreService {
 
   async updateCategory(
     id: string,
-    title: string
+    title: string,
   ): Promise<IStoreCategoryDocument> {
     const category = await this.CategoryRepository.getCategoryById(id);
     if (!category)
@@ -148,11 +156,37 @@ export default class StoreService implements IStoreService {
     return updated;
   }
 
+  async categoryDeleteEffectedItems(id: string): Promise<{
+    categoryItemCount: number;
+    categoryItemNames: string[];
+    premiumItemCount: number;
+    premiumItems: string[];
+  }> {
+    const category = await this.CategoryRepository.getCategoryById(id);
+    if (!category)
+      throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
+    const normalItems = await this.ItemRepository.getAllStoreItemByCategory(id);
+    const premiumItems =
+      await this.ItemRepository.getStoreItemsByBundleCategoryName(
+        category.title,
+      );
+    return {
+      categoryItemCount: normalItems.length,
+      categoryItemNames: normalItems.map((item) => item.name),
+      premiumItemCount: premiumItems.length,
+      premiumItems: premiumItems.map((item) => item.name),
+    };
+  }
+
   async deleteCategory(id: string): Promise<IStoreCategoryDocument> {
     const existingCategory = await this.CategoryRepository.getCategoryById(id);
     if (!existingCategory)
       throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
+    // deleting the items being effected
     await this.ItemRepository.deleteByCategory(id);
+    await this.ItemRepository.deleteByBundleCategoryName(
+      existingCategory.title,
+    );
     return await this.CategoryRepository.deleteCategory(id);
   }
 
@@ -160,7 +194,7 @@ export default class StoreService implements IStoreService {
   async createStoreItemSingle(
     item: IStoreItem,
     svgaFile: Express.Multer.File,
-    previewFile: Express.Multer.File
+    previewFile: Express.Multer.File,
   ): Promise<IStoreItemDocument> {
     const svgaUrl = await saveFileToLocal(svgaFile, {
       folder: "store_items",
@@ -182,24 +216,28 @@ export default class StoreService implements IStoreService {
 
   async createStoreItemBatch(
     item: IStoreItem,
-    files: IPremiumFiles[]
+    files: IPremiumFiles[],
   ): Promise<IStoreItemDocument> {
     // chhecking category validity
     const exisitngCategory = await this.CategoryRepository.getCategoryById(
-      item.categoryId.toString()
+      item.categoryId.toString(),
     );
 
-    if(!exisitngCategory) throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
-    if(!exisitngCategory.isPremium) throw new AppError(StatusCodes.BAD_REQUEST, "This is not a premium category");
+    if (!exisitngCategory)
+      throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
+    if (!exisitngCategory.isPremium)
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "This is not a premium category",
+      );
 
     // checking category name validity
     for (let i = 0; i < files.length; i++) {
       const fileSize = files[i].svgaFile.size;
       const extension = files[i].svgaFile.originalname.split(".").pop();
       const categoryName = files[i].categoryName;
-      const isValidCategory = await this.CategoryRepository.isValidCategory(
-        categoryName
-      );
+      const isValidCategory =
+        await this.CategoryRepository.isValidCategory(categoryName);
       // if (fileSize > 10485760)
       //   throw new AppError(
       //     StatusCodes.BAD_REQUEST,
@@ -210,19 +248,23 @@ export default class StoreService implements IStoreService {
       if (!isValidCategory)
         throw new AppError(
           StatusCodes.NOT_FOUND,
-          `category -> ${categoryName} is not valid name`
+          `category -> ${categoryName} is not valid name`,
         );
     }
     // to upload and get the links
     let premimumURLs: IBundle[] = [];
     for (let i = 0; i < files.length; i++) {
       const extension = files[i].svgaFile.originalname.split(".").pop();
-      const url = await saveFileToLocal(files[i].svgaFile, {
+      const svgaUrl = await saveFileToLocal(files[i].svgaFile, {
+        folder: "store_items",
+      });
+      const previewUrl = await saveFileToLocal(files[i].previewFile, {
         folder: "store_items",
       });
       premimumURLs.push({
         categoryName: files[i].categoryName,
-        svgaFile: url,
+        svgaFile: svgaUrl,
+        previewFile: previewUrl,
         fileType: extension ?? "",
       });
     }
@@ -242,14 +284,14 @@ export default class StoreService implements IStoreService {
     if (!item)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Store item with id ${id} not found`
+        `Store item with id ${id} not found`,
       );
     return item;
   }
 
   async getAllStoreItems(
     category: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }> {
     return await this.ItemRepository.getAllStoreItems(category, query);
   }
@@ -257,51 +299,64 @@ export default class StoreService implements IStoreService {
   async updateStoreItemSingle(
     id: string,
     item: Partial<IStoreItem>,
-    file?: Express.Multer.File
+    svgaFile?: Express.Multer.File,
+    previewFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument> {
     const existingItem = await this.ItemRepository.getStoreItemById(id);
     if (!existingItem)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Store item with id ${id} not found`
+        `Store item with id ${id} not found`,
       );
     if (existingItem.isPremium)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "This api is not for premium items"
+        "This api is not for premium items",
       );
 
-    if (file) {
+    if (svgaFile) {
       // deleting the previous file
       const deleteStatus = await deleteLocalFile(existingItem.svgaFile!);
       if (!deleteStatus)
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          "Failed to delete file"
+          "Failed to delete file",
         );
-      const url = await saveFileToLocal(file, {
+      const url = await saveFileToLocal(svgaFile, {
         folder: "store_items",
       });
       item.svgaFile = url;
     }
+
+    if (previewFile) {
+      // deleting the previous file
+      if (existingItem.previewFile) {
+        await deleteLocalFile(existingItem.previewFile);
+      }
+      const url = await saveFileToLocal(previewFile, {
+        folder: "store_items",
+      });
+      item.previewFile = url;
+    }
+
     return await this.ItemRepository.updateStoreItem(id, item);
   }
 
   async updateStoreItemBatch(
     id: string,
     item: Partial<IStoreItem>,
-    files?: IPremiumFiles[]
+    files?: IPremiumFiles[],
   ): Promise<IStoreItemDocument> {
     let existingItem = await this.ItemRepository.getStoreItemById(id);
     if (!existingItem)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Store item with id ${id} not found`
+        `Store item with id ${id} not found`,
       );
     if (!existingItem.isPremium)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "This api is not for single items"
+        "This api is not for single items",
       );
 
     let urlsBeDeleted = [];
@@ -313,8 +368,9 @@ export default class StoreService implements IStoreService {
           files![j].categoryName
         ) {
           urlsBeDeleted.push(existingItem.bundleFiles![i].svgaFile);
+          urlsBeDeleted.push(existingItem.bundleFiles![i].previewFile);
           existingItem.bundleFiles = existingItem.bundleFiles?.filter(
-            (f) => f.categoryName !== files![j].categoryName
+            (f) => f.categoryName !== files![j].categoryName,
           );
         }
       }
@@ -322,23 +378,26 @@ export default class StoreService implements IStoreService {
 
     for (let i = 0; i < urlsBeDeleted.length; i++) {
       const deleteFile = await deleteLocalFile(urlsBeDeleted[i]);
-      if (!deleteFile)
-        throw new AppError(
-          StatusCodes.INTERNAL_SERVER_ERROR,
-          "Failed to delete image from cloudinary"
-        );
+      if (!deleteFile) {
+        console.error(`Failed to delete file: ${urlsBeDeleted[i]}`);
+        continue;
+      }
     }
 
     let newFilesToBeAdded: IBundle[] = [];
 
     for (let i = 0; i < files!.length; i++) {
       const extenstion = files![i].svgaFile.originalname.split(".").pop();
-      let url = await saveFileToLocal(files![i].svgaFile, {
+      let svgaUrl = await saveFileToLocal(files![i].svgaFile, {
+        folder: "store_items",
+      });
+      let previewUrl = await saveFileToLocal(files![i].previewFile, {
         folder: "store_items",
       });
       newFilesToBeAdded.push({
         categoryName: files![i].categoryName,
-        svgaFile: url,
+        svgaFile: svgaUrl,
+        previewFile: previewUrl,
         fileType: extenstion ?? "",
       });
     }
@@ -354,7 +413,7 @@ export default class StoreService implements IStoreService {
 
     const updated = await this.ItemRepository.updateStoreItem(
       id,
-      profileToBeUpdated
+      profileToBeUpdated,
     );
     return updated;
   }
@@ -365,7 +424,7 @@ export default class StoreService implements IStoreService {
 
   async changeItemCategory(
     itemId: string,
-    newCategory: string
+    newCategory: string,
   ): Promise<IStoreItemDocument> {
     return await this.ItemRepository.updateStoreItem(itemId, {
       categoryId: newCategory,
@@ -375,7 +434,7 @@ export default class StoreService implements IStoreService {
   // 📌 my buckets
   async buyStoreItem(
     ownerId: string,
-    itemId: string
+    itemId: string,
   ): Promise<IStoreItemDocument> {
     const user = await this.UserRepository.findUserById(ownerId);
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
@@ -387,7 +446,7 @@ export default class StoreService implements IStoreService {
     if (item.price > stats.coins!)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `for item price ${item.price} having  ${stats.coins} coins is not enough`
+        `for item price ${item.price} having  ${stats.coins} coins is not enough`,
       );
 
     // starting transaction
@@ -402,11 +461,9 @@ export default class StoreService implements IStoreService {
           itemId: item._id as string,
           ownerId: ownerId,
           categoryId: item.categoryId,
-          expireAt: new Date(
-            Date.now() + item.validity * 24 * 60 * 60 * 1000
-          ), // validity in days
+          expireAt: new Date(Date.now() + item.validity * 24 * 60 * 60 * 1000), // validity in days
         },
-        session
+        session,
       );
       await session.commitTransaction();
       return item;
@@ -421,13 +478,12 @@ export default class StoreService implements IStoreService {
   async getMyBucket(
     ownerId: string,
     category: string,
-    query: Record<string, any>
+    query: Record<string, any>,
   ): Promise<{ pagination: IPagination; buckets: IMyBucketDocument[] }> {
     const owener = await this.UserRepository.findUserById(ownerId);
     if (!owener) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
-    const existingCategory = await this.CategoryRepository.getCategoryById(
-      category
-    );
+    const existingCategory =
+      await this.CategoryRepository.getCategoryById(category);
     if (!existingCategory)
       throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
     return await this.BucketRepository.getAllBuckets(ownerId, category, query);
@@ -435,7 +491,7 @@ export default class StoreService implements IStoreService {
 
   async userGiftItem(
     ownerId: string,
-    bucketId: string
+    bucketId: string,
   ): Promise<IMyBucketDocument> {
     const owner = await this.UserRepository.findUserById(ownerId);
     const bucket = await this.BucketRepository.getBucketsById(bucketId);
@@ -444,7 +500,7 @@ export default class StoreService implements IStoreService {
     if (bucket.ownerId.toString() != ownerId)
       throw new AppError(
         StatusCodes.UNAUTHORIZED,
-        "You are not the owner of this bucket"
+        "You are not the owner of this bucket",
       );
     if (bucket.useStatus) {
       const updated = await this.BucketRepository.updateBucket(bucketId, {
@@ -453,7 +509,7 @@ export default class StoreService implements IStoreService {
       return updated;
     }
     const item = await this.ItemRepository.getStoreItemById(
-      bucket.itemId.toString()
+      bucket.itemId.toString(),
     );
     if (!item) throw new AppError(StatusCodes.NOT_FOUND, "Item not found");
     const premiumCategory =
@@ -471,7 +527,7 @@ export default class StoreService implements IStoreService {
         await this.BucketRepository.updateBucketUseStatus(
           { ownerId: ownerId, useStatus: true },
           { useStatus: false },
-          session
+          session,
         );
       } else {
         // deselect premium items
@@ -483,13 +539,13 @@ export default class StoreService implements IStoreService {
               categoryId: premiumCategory!._id,
             },
             { useStatus: false },
-            session
+            session,
           );
         // deselecting all the items in a single category
         await this.BucketRepository.updateBucketUseStatus(
           { ownerId: ownerId, useStatus: true, categoryId: bucket.categoryId },
           { useStatus: false },
-          session
+          session,
         );
       }
       const updated = await this.BucketRepository.updateBucket(bucketId, {

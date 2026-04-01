@@ -78,6 +78,17 @@ export default class StoreController {
     });
   });
 
+  categoryDeleteEffectedItems = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    validateFieldExistance(id, "_id");
+    const items = await this.Service.categoryDeleteEffectedItems(id);
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      result: items,
+    });
+  });
+
   // 📌 store items
   createStoreItemSingle = catchAsync(async (req: Request, res: Response) => {
     validateCreateStoreItem(req.body);
@@ -107,17 +118,36 @@ export default class StoreController {
       result: item,
     });
   });
+
+  
   createStoreItemBatch = catchAsync(async (req: Request, res: Response) => {
-    ValidateStoreItemBatch(req.body, req.files as Express.Multer.File[]);
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    ValidateStoreItemBatch(req.body, files);
     const { name, validity, categoryId, price, categoryNames } = req.body;
-    const files = req.files as Express.Multer.File[];
+
+    const svgaFiles = files["svgaFile"] || [];
+    const previewFiles = files["previewFile"] || [];
+
     let categories = categoryNames.split(",");
     categories = categories.map((cat: string) => cat.trim());
     let premiumFiles: IPremiumFiles[] = [];
-    for (let i = 0; i < files.length; i++) {
+    for (let i = 0; i < svgaFiles.length; i++) {
+      if (!isSvgaFile(svgaFiles[i].originalname)) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          `svgaFile[${i}] must be a .svga file`,
+        );
+      }
+      if (!isImageFile(previewFiles[i].originalname)) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          `previewFile[${i}] must be an image`,
+        );
+      }
       premiumFiles.push({
         categoryName: categories[i],
-        svgaFile: files[i],
+        svgaFile: svgaFiles[i],
+        previewFile: previewFiles[i],
       });
     }
     const item = await this.Service.createStoreItemBatch(
@@ -159,10 +189,23 @@ export default class StoreController {
     validateFieldExistance(id, "_id");
     validateUpdateStoreItem(req.body);
     const { name, validity, categoryId, price } = req.body;
+
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const svgaFile = files?.["svgaFile"]?.[0];
+    const previewFile = files?.["previewFile"]?.[0];
+
+    if (svgaFile && !isSvgaFile(svgaFile.originalname)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "svgaFile must be a .svga file");
+    }
+    if (previewFile && !isImageFile(previewFile.originalname)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "previewFile must be an image");
+    }
+
     const item = await this.Service.updateStoreItemSingle(
       id,
       { name, validity, categoryId, price },
-      req.file as Express.Multer.File,
+      svgaFile,
+      previewFile,
     );
     sendResponse(res, {
       statusCode: 200,
@@ -174,18 +217,33 @@ export default class StoreController {
   updateStoreItemBatch = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
     validateFieldExistance(id, "_id");
-    ValidateStoreItemUpdateBatch(req.body, req.files as Express.Multer.File[]);
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    ValidateStoreItemUpdateBatch(req.body, files);
     const { name, validity, categoryId, price, categoryNames } = req.body;
     let premiumFiles: IPremiumFiles[] = [];
 
     if (categoryNames) {
       let names = categoryNames.split(",");
       names = names.map((cat: string) => cat.trim());
-      const files = req.files as Express.Multer.File[];
-      for (let i = 0; i < files.length; i++) {
+      const svgaFiles = files["svgaFile"] || [];
+      const previewFiles = files["previewFile"] || [];
+      for (let i = 0; i < svgaFiles.length; i++) {
+        if (!isSvgaFile(svgaFiles[i].originalname)) {
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            `svgaFile[${i}] must be a .svga file`,
+          );
+        }
+        if (!isImageFile(previewFiles[i].originalname)) {
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            `previewFile[${i}] must be an image`,
+          );
+        }
         premiumFiles.push({
           categoryName: names[i],
-          svgaFile: files[i],
+          svgaFile: svgaFiles[i],
+          previewFile: previewFiles[i],
         });
       }
     }

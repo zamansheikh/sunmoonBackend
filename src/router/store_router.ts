@@ -35,6 +35,9 @@ router
   .get(authenticate(), controller.getCategoryById)
   .put(authenticate([UserRoles.Admin]), controller.updateCategory)
   .delete(authenticate([UserRoles.Admin]), controller.deleteCategory);
+router
+  .route("/categories/effected-items/:id")
+  .get(authenticate([UserRoles.Admin]), controller.categoryDeleteEffectedItems);
 
 // 📌 store item
 router
@@ -51,7 +54,10 @@ router
   .route("/items/batch")
   .post(
     authenticate([UserRoles.Admin]),
-    upload.array("svgaFile", 10),
+    upload.fields([
+      { name: "svgaFile", maxCount: 10 },
+      { name: "previewFile", maxCount: 10 },
+    ]),
     controller.createStoreItemBatch
   );
 router
@@ -62,7 +68,10 @@ router
   .route("/items/single/:id")
   .put(
     authenticate([UserRoles.Admin]),
-    upload.single("svgaFile"),
+    upload.fields([
+      { name: "svgaFile", maxCount: 1 },
+      { name: "previewFile", maxCount: 1 },
+    ]),
     controller.updateStoreItemSingle
   );
 router

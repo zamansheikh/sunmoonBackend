@@ -24,7 +24,7 @@ export function validateUpdateStoreItem(body: any) {
 
 export function ValidateStoreItemBatch(
   body: any,
-  files: Express.Multer.File[],
+  files: { svgaFile?: Express.Multer.File[]; previewFile?: Express.Multer.File[] },
 ) {
   const { name, validity, categoryId, price, categoryNames } = body;
   if (!name || !validity || !categoryId || !price)
@@ -45,19 +45,28 @@ export function ValidateStoreItemBatch(
     validateNumber(parts[1], "SVIP level");
   }
 
-  if (!files || files.length < 1)
-    throw new AppError(StatusCodes.BAD_REQUEST, "files are required");
+  const { svgaFile, previewFile } = files;
+  if (!svgaFile || svgaFile.length < 1)
+    throw new AppError(StatusCodes.BAD_REQUEST, "svgaFiles are required");
+  if (!previewFile || previewFile.length < 1)
+    throw new AppError(StatusCodes.BAD_REQUEST, "previewFiles are required");
+
   const categories = categoryNames.split(",");
-  if (categories.length !== files.length)
+  if (categories.length !== svgaFile.length)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "categoryNames and files must be the same length",
+      "categoryNames and svgaFiles must be the same length",
+    );
+  if (categories.length !== previewFile.length)
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "categoryNames and previewFiles must be the same length",
     );
 }
 
 export function ValidateStoreItemUpdateBatch(
   body: any,
-  files: Express.Multer.File[],
+  files: { svgaFile?: Express.Multer.File[]; previewFile?: Express.Multer.File[] },
 ) {
   const { name, validity, categoryId, price, categoryNames } = body;
   if (!name && !validity && !categoryId && !price)
@@ -67,14 +76,23 @@ export function ValidateStoreItemUpdateBatch(
     );
   if (validity) validateNumber(validity, "validity");
   if (price) validateNumber(price, "price");
-  if (files && files.length != 0 && !categoryNames)
+
+  const { svgaFile, previewFile } = files;
+
+  if (svgaFile && svgaFile.length != 0 && !categoryNames)
     throw new AppError(StatusCodes.BAD_REQUEST, "categoryNames are required");
+
   if (categoryNames) {
     const categories = categoryNames.split(",");
-    if (categories.length !== files.length)
+    if (svgaFile && categories.length !== svgaFile.length)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "categoryNames and files must be the same length",
+        "categoryNames and svgaFiles must be the same length",
+      );
+    if (previewFile && categories.length !== previewFile.length)
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "categoryNames and previewFiles must be the same length",
       );
   }
 }

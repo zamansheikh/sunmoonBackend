@@ -28,8 +28,12 @@ export interface IStoreItemRepository {
   ): Promise<UpdateResult>;
   createNewBundles(id: string, bundle: IBundle[]): Promise<IStoreItemDocument>;
   deleteByCategory(categoryId: string): Promise<DeleteResult>;
+  deleteByBundleCategoryName(categoryName: string): Promise<DeleteResult>;
   updateSoldCount(itemId: string): Promise<void>;
   getAllStoreItemByCategory(categoryId: string): Promise<IStoreItemDocument[]>; // no pagination
+  getStoreItemsByBundleCategoryName(
+    categoryName: string
+  ): Promise<IStoreItemDocument[]>;
 }
 
 export default class StoreItemRepository implements IStoreItemRepository {
@@ -134,11 +138,27 @@ export default class StoreItemRepository implements IStoreItemRepository {
     return await this.Model.deleteMany({ categoryId });
   }
 
+  async deleteByBundleCategoryName(categoryName: string): Promise<DeleteResult> {
+    return await this.Model.deleteMany({
+      "bundleFiles.categoryName": categoryName,
+    });
+  }
+
   async updateSoldCount(itemId: string): Promise<void> {
     await this.Model.findByIdAndUpdate(itemId, { $inc: { totalSold: 1 } });
   }
 
-  async getAllStoreItemByCategory(categoryId: string): Promise<IStoreItemDocument[]> {
+  async getAllStoreItemByCategory(
+    categoryId: string
+  ): Promise<IStoreItemDocument[]> {
     return await this.Model.find({ categoryId: categoryId });
+  }
+
+  async getStoreItemsByBundleCategoryName(
+    categoryName: string
+  ): Promise<IStoreItemDocument[]> {
+    return await this.Model.find({
+      "bundleFiles.categoryName": categoryName,
+    });
   }
 }
