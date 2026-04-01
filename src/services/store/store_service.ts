@@ -79,6 +79,10 @@ export interface IStoreService {
     itemId: string,
     newCategory: string,
   ): Promise<IStoreItemDocument>;
+  getEffectedBucketSummary(itemId: string): Promise<{
+    itemName: string;
+    userCount: number;
+  }>;
   // 📌 my buckets
   buyStoreItem(ownerId: string, itemId: string): Promise<IStoreItemDocument>;
   getMyBucket(
@@ -418,8 +422,41 @@ export default class StoreService implements IStoreService {
     return updated;
   }
 
+  async getEffectedBucketSummary(itemId: string) {
+    const item = await this.ItemRepository.getStoreItemById(itemId);
+    if (!item)
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        `Store item with id ${itemId} not found`,
+      );
+    const userCount = await this.BucketRepository.countUsersByItemId(itemId);
+    return {
+      itemName: item.name,
+      userCount: userCount,
+    };
+  }
+
   async deleteStoreItem(id: string): Promise<IStoreItemDocument> {
-    throw new AppError(StatusCodes.NOT_IMPLEMENTED, "Method not implemented.");
+    const existingItem = await this.ItemRepository.getStoreItemById(id);
+    if (!existingItem)
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        `Store item with id ${id} not found`,
+      );
+
+    // cleaning files
+    if (existingItem.svgaFile) await deleteLocalFile(existingItem.svgaFile);
+    if (existingItem.previewFile)
+      await deleteLocalFile(existingItem.previewFile);
+
+    if (existingItem.bundleFiles) {
+      for (const bundle of existingItem.bundleFiles) {
+        await deleteLocalFile(bundle.svgaFile);
+        await deleteLocalFile(bundle.previewFile);
+      }
+    }
+
+    return await this.ItemRepository.deleteStoreItemHard(id);
   }
 
   async changeItemCategory(

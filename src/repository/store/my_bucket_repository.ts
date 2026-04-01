@@ -36,6 +36,7 @@ export interface IMyBucketRepository {
     items: IMyBucketDocument[];
   }>;
   getAllPremiumItems(userId: string): Promise<IMyBucketDocument[]>;
+  countUsersByItemId(itemId: string): Promise<number>;
 }
 
 export default class MyBucketRepository implements IMyBucketRepository {
@@ -139,5 +140,9 @@ export default class MyBucketRepository implements IMyBucketRepository {
       ownerId: userId,
       categoryId: { $in: categoryIds },
     }).populate("itemId categoryId");
+  }
+
+  async countUsersByItemId(itemId: string): Promise<number> {
+    return await this.Model.countDocuments({ itemId: itemId });
   }
 }

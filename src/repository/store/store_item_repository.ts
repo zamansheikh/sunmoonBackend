@@ -22,6 +22,7 @@ export interface IStoreItemRepository {
     item: Partial<IStoreItem>
   ): Promise<IStoreItemDocument>;
   deleteStoreItem(id: string, days: number): Promise<IStoreItemDocument>;
+  deleteStoreItemHard(id: string): Promise<IStoreItemDocument>;
   updateBundleCategoryTitle(
     oldTitle: string,
     newTitle: string
@@ -73,6 +74,15 @@ export default class StoreItemRepository implements IStoreItemRepository {
       { expireAt: newDate, deleteStatus: true },
       { new: true }
     );
+    if (!deleted)
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        `Store item with id ${id} not found`
+      );
+    return deleted;
+  }
+  async deleteStoreItemHard(id: string): Promise<IStoreItemDocument> {
+    const deleted = await this.Model.findByIdAndDelete(id);
     if (!deleted)
       throw new AppError(
         StatusCodes.NOT_FOUND,

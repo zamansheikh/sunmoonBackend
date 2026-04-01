@@ -260,6 +260,17 @@ export default class StoreController {
     });
   });
 
+  getEffectedBucketSummary = catchAsync(async (req: Request, res: Response) => {
+    const { itemId } = req.params;
+    validateFieldExistance(itemId, "itemId");
+    const summary = await this.Service.getEffectedBucketSummary(itemId);
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      result: summary,
+    });
+  });
+
   deleteStoreItem = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
     validateFieldExistance(id, "_id");

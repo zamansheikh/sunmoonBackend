@@ -61,6 +61,9 @@ router
     controller.createStoreItemBatch
   );
 router
+  .route("/items/effected-buckets/:itemId")
+  .get(authenticate([UserRoles.Admin]), controller.getEffectedBucketSummary);
+router
   .route("/items/:id")
   .get(authenticate(), controller.getStoreItemById)
   .delete(authenticate([UserRoles.Admin]), controller.deleteStoreItem);
