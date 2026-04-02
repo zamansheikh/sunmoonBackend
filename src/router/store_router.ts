@@ -40,58 +40,59 @@ router
   .get(authenticate([UserRoles.Admin]), controller.categoryDeleteEffectedItems);
 
 // 📌 store item
-router
-  .route("/items/single")
-  .post(
-    authenticate([UserRoles.Admin]),
-    upload.fields([
-      { name: "svgaFile", maxCount: 1 },
-      { name: "previewFile", maxCount: 1 },
-    ]),
-    controller.createStoreItemSingle
-  );
-router
-  .route("/items/batch")
-  .post(
-    authenticate([UserRoles.Admin]),
-    upload.fields([
-      { name: "svgaFile", maxCount: 10 },
-      { name: "previewFile", maxCount: 10 },
-    ]),
-    controller.createStoreItemBatch
-  );
+router.route("/items/single").post(
+  authenticate([UserRoles.Admin]),
+  upload.fields([
+    { name: "svgaFile", maxCount: 1 },
+    { name: "previewFile", maxCount: 1 },
+  ]),
+  controller.createStoreItemSingle,
+);
+router.route("/items/batch").post(
+  authenticate([UserRoles.Admin]),
+  upload.fields([
+    { name: "svgaFile", maxCount: 10 },
+    { name: "previewFile", maxCount: 10 },
+  ]),
+  controller.createStoreItemBatch,
+);
 router
   .route("/items/effected-buckets/:itemId")
   .get(authenticate([UserRoles.Admin]), controller.getEffectedBucketSummary);
+router.route("/items/vip").get(authenticate(), controller.getVIPStoreItems);
+router.route("/items/svip").get(authenticate(), controller.getSVIPStoreItems);
+router.route("/items").get(authenticate(), controller.getAllStoreItems);
 router
   .route("/items/:id")
   .get(authenticate(), controller.getStoreItemById)
   .delete(authenticate([UserRoles.Admin]), controller.deleteStoreItem);
-router
-  .route("/items/single/:id")
-  .put(
-    authenticate([UserRoles.Admin]),
-    upload.fields([
-      { name: "svgaFile", maxCount: 1 },
-      { name: "previewFile", maxCount: 1 },
-    ]),
-    controller.updateStoreItemSingle
-  );
+router.route("/items/single/:id").put(
+  authenticate([UserRoles.Admin]),
+  upload.fields([
+    { name: "svgaFile", maxCount: 1 },
+    { name: "previewFile", maxCount: 1 },
+  ]),
+  controller.updateStoreItemSingle,
+);
 router
   .route("/items/batch/:id")
   .put(
     authenticate([UserRoles.Admin]),
     upload.array("svgaFile", 10),
-    controller.updateStoreItemBatch
+    controller.updateStoreItemBatch,
   );
 router
   .route("/items/category/:category")
-  .get(authenticate(), controller.getAllStoreItems)
+  .get(authenticate(), controller.getStoreItemsByCategory)
   .put(authenticate([UserRoles.Admin]), controller.changeItemCategory);
 
-  // 📌 my buckets
-router.route("/bucket").post(authenticate(), controller.buyStoreItem).put(authenticate(), controller.useGiftItem);
-router.route("/bucket/category/:category").get(authenticate(), controller.getMyBucket);
-
+// 📌 my buckets
+router
+  .route("/bucket")
+  .post(authenticate(), controller.buyStoreItem)
+  .put(authenticate(), controller.useGiftItem);
+router
+  .route("/bucket/category/:category")
+  .get(authenticate(), controller.getMyBucket);
 
 export default router;

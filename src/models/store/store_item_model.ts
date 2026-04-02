@@ -8,15 +8,22 @@ export interface IBundle {
   fileType: string;
 }
 
+export interface IPrices {
+  validity: number;
+  price: number;
+}
+
 export interface IStoreItem {
   name: string;
-  validity: number;
+  logo?: string;
+  background?: string;
   categoryId: mongoose.Schema.Types.ObjectId | string;
   isPremium?: boolean;
-  price: number;
+  prices: IPrices[];
   svgaFile?: string;
   previewFile?: string;
   bundleFiles?: IBundle[];
+  privilege?: string[];
   deleteStatus?: boolean;
   totalSold?: number;
   expireAt?: Date;
@@ -48,6 +55,20 @@ export const bundleSchema = new mongoose.Schema<IBundle>({
   },
 });
 
+export const priceSchema = new mongoose.Schema<IPrices>(
+  {
+    validity: {
+      type: Number,
+      required: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+    },
+  },
+  { _id: false },
+);
+
 const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
   {
     name: {
@@ -55,9 +76,11 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
       required: true,
       trim: true,
     },
-    validity: {
-      type: Number,
-      required: true,
+    logo: {
+      type: String,
+    },
+    background: {
+      type: String,
     },
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -68,10 +91,7 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
       type: Boolean,
       default: false,
     },
-    price: {
-      type: Number,
-      required: true,
-    },
+    prices: [priceSchema],
     svgaFile: {
       type: String,
     },
@@ -79,6 +99,10 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
       type: String,
     },
     bundleFiles: [bundleSchema],
+    privilege: {
+      type: [String],
+      default: [],
+    },
     deleteStatus: {
       type: Boolean,
       default: false,

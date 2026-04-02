@@ -12,37 +12,45 @@ export function validateCreateStoreItem(body: any) {
   validateNumber(price, "price");
 }
 export function validateUpdateStoreItem(body: any) {
-  const { name, validity, categoryId, price } = body;
-  if (!name && !validity && !categoryId && !price)
+  const { name, categoryId, prices } = body;
+  if (!name && !categoryId && !prices)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, validity, categoryId, price at least one is required",
+      "name, categoryId, prices at least one is required",
     );
-  if (validity) validateNumber(validity, "validity");
-  if (price) validateNumber(price, "price");
+  if (prices) {
+    validatePrices(prices);
+  }
 }
 
 export function ValidateStoreItemBatch(
   body: any,
-  files: { svgaFile?: Express.Multer.File[]; previewFile?: Express.Multer.File[] },
+  files: {
+    svgaFile?: Express.Multer.File[];
+    previewFile?: Express.Multer.File[];
+  },
 ) {
-  const { name, validity, categoryId, price, categoryNames } = body;
-  if (!name || !validity || !categoryId || !price)
+  const { name, categoryId, prices, categoryNames, privilege } = body;
+  if (!name || !categoryId || !prices)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, validity, categoryId, price are required",
+      "name, categoryId, prices, privilege are required",
     );
-  validateNumber(validity, "validity");
-  validateNumber(price, "price");
+  if (privilege) {
+    validateArray(privilege, "privilege");
+  }
 
-  if (name != "VIP" && !name.startsWith("SVIP"))
-    throw new AppError(StatusCodes.BAD_REQUEST, "Invalid name");
+  //check if prices is the right type of IPrices
+  validatePrices(prices);
 
-  if (name.startsWith("SVIP")) {
+  if (name.startsWith("VIP") || name.startsWith("SVIP")) {
     const parts = name.split("-");
-    if (parts.length != 2)
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid name");
-    validateNumber(parts[1], "SVIP level");
+    if (parts.length !== 2 || (parts[1] !== "1" && parts[1] !== "2")) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "VIP or SVIP names must include a valid level suffix (-1 or -2), e.g., VIP-1 or SVIP-2",
+      );
+    }
   }
 
   const { svgaFile, previewFile } = files;
@@ -66,16 +74,23 @@ export function ValidateStoreItemBatch(
 
 export function ValidateStoreItemUpdateBatch(
   body: any,
-  files: { svgaFile?: Express.Multer.File[]; previewFile?: Express.Multer.File[] },
+  files: {
+    svgaFile?: Express.Multer.File[];
+    previewFile?: Express.Multer.File[];
+  },
 ) {
-  const { name, validity, categoryId, price, categoryNames } = body;
-  if (!name && !validity && !categoryId && !price)
+  const { name, categoryId, prices, categoryNames, privilege } = body;
+  if (!name && !categoryId && !prices)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, validity, categoryId, price are required",
+      "name, categoryId, prices at least one is required",
     );
-  if (validity) validateNumber(validity, "validity");
-  if (price) validateNumber(price, "price");
+  if (privilege) {
+    validateArray(privilege, "privilege");
+  }
+  if (prices) {
+    validatePrices(prices);
+  }
 
   const { svgaFile, previewFile } = files;
 
@@ -97,22 +112,72 @@ export function ValidateStoreItemUpdateBatch(
   }
 }
 
-export function validateArray(arr: any) {
-  if (!Array.isArray(arr))
-    throw new AppError(StatusCodes.BAD_REQUEST, "Invalid array provided");
-  if (arr.length < 1)
-    throw new AppError(StatusCodes.BAD_REQUEST, "Array cannot be empty");
+export function validateArray(arr: any, fieldName: string) {
+  let parsedArr = arr;
+  if (typeof arr === "string") {
+    try {
+      parsedArr = JSON.parse(arr);
+    } catch (error) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `${fieldName} must be a valid JSON string or array`,
+      );
+    }
+  }
+
+  if (!Array.isArray(parsedArr))
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      `${fieldName} must be an array`,
+    );
+  if (parsedArr.length < 1)
+    throw new AppError(StatusCodes.BAD_REQUEST, `${fieldName} cannot be empty`);
 }
 
-export function validateNumber(num: any, filedName: string) {
+export function validateNumber(num: any, fieldName: string) {
   if (isNaN(Number(num)))
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      `${filedName} must be a number`,
+      `${fieldName} must be a number`,
     );
-  if (num < 0)
+  if (Number(num) < 0)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      `${filedName} must be a number`,
+      `${fieldName} must be a positive number`,
     );
+}
+
+export function validatePrices(prices: any) {
+  let parsedPrices = prices;
+  if (typeof prices === "string") {
+    try {
+      parsedPrices = JSON.parse(prices);
+    } catch (error) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "prices must be a valid JSON string or array",
+      );
+    }
+  }
+
+  if (!Array.isArray(parsedPrices)) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "prices must be an array");
+  }
+
+  parsedPrices.forEach((p: any) => {
+    if (typeof p !== "object" || p === null) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Each price item must be an object",
+      );
+    }
+    if (p.validity === undefined || p.price === undefined) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Each price must have validity and price",
+      );
+    }
+    validateNumber(p.validity, "validity");
+    validateNumber(p.price, "price");
+  });
 }

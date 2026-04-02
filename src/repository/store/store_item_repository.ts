@@ -7,6 +7,7 @@ import {
   IStoreItemDocument,
   IStoreItemModel,
 } from "../../models/store/store_item_model";
+import { DatabaseNames } from "../../core/Utils/enums";
 import { DeleteResult, UpdateResult } from "mongoose";
 import { promises } from "dns";
 
@@ -17,6 +18,7 @@ export interface IStoreItemRepository {
     category: string,
     query: Record<string, any>
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }>;
+  getAllStoreItemsByCategoryGrouped(): Promise<Record<string, IStoreItemDocument[]>>;
   updateStoreItem(
     id: string,
     item: Partial<IStoreItem>
@@ -64,6 +66,56 @@ export default class StoreItemRepository implements IStoreItemRepository {
     const items = await res.exec();
     const pagination = await res.countTotal();
     return { pagination, items };
+  }
+
+  async getAllStoreItemsByCategoryGrouped(): Promise<
+    Record<string, IStoreItemDocument[]>
+  > {
+    const results = await this.Model.db
+      .collection(DatabaseNames.StoreCategory)
+      .aggregate([
+        {
+          $match: {
+           isPremium: false,
+          },
+        },
+        {
+          $lookup: {
+            from: DatabaseNames.StoreItem,
+            localField: "_id",
+            foreignField: "categoryId",
+            pipeline: [
+                   {
+                $match: {
+                  deleteStatus: false,
+                },
+              },
+            ],
+            as: "items",
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            categories: {
+              $push: {
+                k: "$title",
+                v: "$items",
+              },
+            },
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: {
+              $arrayToObject: "$categories",
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    return results[0] || {};
   }
 
   async deleteStoreItem(id: string, days: number): Promise<IStoreItemDocument> {

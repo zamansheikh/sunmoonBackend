@@ -78,20 +78,28 @@ export default class StoreController {
     });
   });
 
-  categoryDeleteEffectedItems = catchAsync(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    validateFieldExistance(id, "_id");
-    const items = await this.Service.categoryDeleteEffectedItems(id);
-    sendResponse(res, {
-      statusCode: 200,
-      success: true,
-      result: items,
-    });
-  });
+  categoryDeleteEffectedItems = catchAsync(
+    async (req: Request, res: Response) => {
+      const { id } = req.params;
+      validateFieldExistance(id, "_id");
+      const items = await this.Service.categoryDeleteEffectedItems(id);
+      sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        result: items,
+      });
+    },
+  );
 
   // 📌 store items
   createStoreItemSingle = catchAsync(async (req: Request, res: Response) => {
+    if (typeof req.body.privilege === "string") {
+      req.body.privilege = JSON.parse(req.body.privilege);
+    }
+    const { name, validity, categoryId, price, privilege } = req.body;
+
     validateCreateStoreItem(req.body);
+
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const svgaFile = files["svgaFile"]?.[0];
     const previewFile = files["previewFile"]?.[0];
@@ -100,15 +108,20 @@ export default class StoreController {
     validateFieldExistance(previewFile, "previewFile");
 
     if (!isSvgaFile(svgaFile!.originalname)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "svgaFile must be a .svga file");
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "svgaFile must be a .svga file",
+      );
     }
     if (!isImageFile(previewFile!.originalname)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "previewFile must be an image");
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "previewFile must be an image",
+      );
     }
 
-    const { name, validity, categoryId, price } = req.body;
     const item = await this.Service.createStoreItemSingle(
-      { name, validity, categoryId, price },
+      { name, categoryId, prices: [{ validity, price }], privilege },
       svgaFile!,
       previewFile!,
     );
@@ -119,11 +132,17 @@ export default class StoreController {
     });
   });
 
-  
   createStoreItemBatch = catchAsync(async (req: Request, res: Response) => {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    if (typeof req.body.prices === "string") {
+      req.body.prices = JSON.parse(req.body.prices);
+    }
+    if (typeof req.body.privilege === "string") {
+      req.body.privilege = JSON.parse(req.body.privilege);
+    }
+    const { name, categoryId, prices, categoryNames, privilege } = req.body;
+
     ValidateStoreItemBatch(req.body, files);
-    const { name, validity, categoryId, price, categoryNames } = req.body;
 
     const svgaFiles = files["svgaFile"] || [];
     const previewFiles = files["previewFile"] || [];
@@ -151,7 +170,7 @@ export default class StoreController {
       });
     }
     const item = await this.Service.createStoreItemBatch(
-      { name, validity, categoryId, price },
+      { name, categoryId, prices, privilege },
       premiumFiles,
     );
     sendResponse(res, {
@@ -172,11 +191,38 @@ export default class StoreController {
     });
   });
 
+  getVIPStoreItems = catchAsync(async (req: Request, res: Response) => {
+    const items = await this.Service.getVIPStoreItems();
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      result: items,
+    });
+  });
+
+  getSVIPStoreItems = catchAsync(async (req: Request, res: Response) => {
+    const items = await this.Service.getSVIPStoreItems();
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      result: items,
+    });
+  });
+
   getAllStoreItems = catchAsync(async (req: Request, res: Response) => {
+    const items = await this.Service.getAllStoreItems();
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      result: items,
+    });
+  });
+
+  getStoreItemsByCategory = catchAsync(async (req: Request, res: Response) => {
     const { category } = req.params;
     const { query } = req;
     validateFieldExistance(category, "categoryId");
-    const items = await this.Service.getAllStoreItems(category, query);
+    const items = await this.Service.getStoreItemsByCategory(category, query);
     sendResponse(res, {
       statusCode: 200,
       success: true,
@@ -187,23 +233,36 @@ export default class StoreController {
   updateStoreItemSingle = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
     validateFieldExistance(id, "_id");
+    if (typeof req.body.prices === "string") {
+      req.body.prices = JSON.parse(req.body.prices);
+    }
+
+    if (typeof req.body.privilege === "string") {
+      req.body.privilege = JSON.parse(req.body.privilege);
+    }
+    const { name, categoryId, prices, privilege } = req.body;
     validateUpdateStoreItem(req.body);
-    const { name, validity, categoryId, price } = req.body;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const svgaFile = files?.["svgaFile"]?.[0];
     const previewFile = files?.["previewFile"]?.[0];
 
     if (svgaFile && !isSvgaFile(svgaFile.originalname)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "svgaFile must be a .svga file");
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "svgaFile must be a .svga file",
+      );
     }
     if (previewFile && !isImageFile(previewFile.originalname)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "previewFile must be an image");
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "previewFile must be an image",
+      );
     }
 
     const item = await this.Service.updateStoreItemSingle(
       id,
-      { name, validity, categoryId, price },
+      { name, categoryId, prices, privilege },
       svgaFile,
       previewFile,
     );
@@ -218,8 +277,15 @@ export default class StoreController {
     const { id } = req.params;
     validateFieldExistance(id, "_id");
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    if (typeof req.body.prices === "string") {
+      req.body.prices = JSON.parse(req.body.prices);
+    }
+    if (typeof req.body.privilege === "string") {
+      req.body.privilege = JSON.parse(req.body.privilege);
+    }
+    const { name, categoryId, prices, categoryNames, privilege } = req.body;
     ValidateStoreItemUpdateBatch(req.body, files);
-    const { name, validity, categoryId, price, categoryNames } = req.body;
+
     let premiumFiles: IPremiumFiles[] = [];
 
     if (categoryNames) {
@@ -250,7 +316,7 @@ export default class StoreController {
 
     const item = await this.Service.updateStoreItemBatch(
       id,
-      { name, validity, categoryId, price },
+      { name, categoryId, prices, privilege },
       premiumFiles,
     );
     sendResponse(res, {
@@ -299,9 +365,9 @@ export default class StoreController {
 
   buyStoreItem = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.user!;
-    const { itemId } = req.body;
+    const { itemId, priceIndex } = req.body;
     validateFieldExistance(itemId, "itemId");
-    const item = await this.Service.buyStoreItem(id, itemId);
+    const item = await this.Service.buyStoreItem(id, itemId, priceIndex ? Number(priceIndex) : 0);
     sendResponse(res, {
       statusCode: 200,
       success: true,

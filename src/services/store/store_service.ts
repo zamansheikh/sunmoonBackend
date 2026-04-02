@@ -59,7 +59,10 @@ export interface IStoreService {
     files: IPremiumFiles[],
   ): Promise<IStoreItemDocument>;
   getStoreItemById(id: string): Promise<IStoreItemDocument>;
-  getAllStoreItems(
+  getVIPStoreItems(): Promise<IStoreItemDocument[]>;
+  getSVIPStoreItems(): Promise<IStoreItemDocument[]>;
+  getAllStoreItems(): Promise<Record<string, IStoreItemDocument[]>>;
+  getStoreItemsByCategory(
     category: string,
     query: Record<string, any>,
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }>;
@@ -84,7 +87,11 @@ export interface IStoreService {
     userCount: number;
   }>;
   // 📌 my buckets
-  buyStoreItem(ownerId: string, itemId: string): Promise<IStoreItemDocument>;
+  buyStoreItem(
+    ownerId: string,
+    itemId: string,
+    priceIndex?: number,
+  ): Promise<IStoreItemDocument>;
   getMyBucket(
     ownerId: string,
     category: string,
@@ -118,17 +125,6 @@ export default class StoreService implements IStoreService {
     title: string,
     isPremium?: boolean,
   ): Promise<IStoreCategoryDocument> {
-    if (isPremium) {
-      const existingPremium =
-        await this.CategoryRepository.getCategoryConditionally({
-          isPremium: true,
-        });
-      if (existingPremium)
-        throw new AppError(
-          StatusCodes.BAD_REQUEST,
-          "Premium category already exists",
-        );
-    }
     return await this.CategoryRepository.createCategory(title, isPremium);
   }
 
@@ -200,6 +196,13 @@ export default class StoreService implements IStoreService {
     svgaFile: Express.Multer.File,
     previewFile: Express.Multer.File,
   ): Promise<IStoreItemDocument> {
+    const category = await this.CategoryRepository.getCategoryById(
+      item.categoryId.toString(),
+    );
+    if (!category)
+      throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
+    if (category.isPremium)
+      throw new AppError(StatusCodes.BAD_REQUEST, "This is a premium category");
     const svgaUrl = await saveFileToLocal(svgaFile, {
       folder: "store_items",
     });
@@ -208,10 +211,9 @@ export default class StoreService implements IStoreService {
     });
     let itemToCreate: IStoreItem = {
       name: item.name,
-      validity: item.validity,
       categoryId: item.categoryId,
       isPremium: false,
-      price: item.price,
+      prices: item.prices,
       svgaFile: svgaUrl,
       previewFile: previewUrl,
     };
@@ -274,11 +276,11 @@ export default class StoreService implements IStoreService {
     }
     let itemToCreate: IStoreItem = {
       name: item.name,
-      validity: item.validity,
       categoryId: item.categoryId,
       isPremium: true,
-      price: item.price,
+      prices: item.prices,
       bundleFiles: premimumURLs,
+      privilege: item.privilege,
     };
     return await this.ItemRepository.createStoreItem(itemToCreate);
   }
@@ -293,7 +295,27 @@ export default class StoreService implements IStoreService {
     return item;
   }
 
-  async getAllStoreItems(
+  async getAllStoreItems(): Promise<Record<string, IStoreItemDocument[]>> {
+    return await this.ItemRepository.getAllStoreItemsByCategoryGrouped();
+  }
+
+  async getVIPStoreItems(): Promise<IStoreItemDocument[]> {
+    const category = await this.CategoryRepository.getCategoryByTitle("VIP");
+    if (!category) return [];
+    return await this.ItemRepository.getAllStoreItemByCategory(
+      (category as any)._id.toString(),
+    );
+  }
+
+  async getSVIPStoreItems(): Promise<IStoreItemDocument[]> {
+    const category = await this.CategoryRepository.getCategoryByTitle("SVIP");
+    if (!category) return [];
+    return await this.ItemRepository.getAllStoreItemByCategory(
+      (category as any)._id.toString(),
+    );
+  }
+
+  async getStoreItemsByCategory(
     category: string,
     query: Record<string, any>,
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }> {
@@ -408,11 +430,11 @@ export default class StoreService implements IStoreService {
 
     let profileToBeUpdated: IStoreItem = {
       name: item.name || existingItem.name,
-      validity: item.validity || existingItem.validity,
       categoryId: item.categoryId || existingItem.categoryId,
       isPremium: true,
-      price: item.price || existingItem.price,
+      prices: item.prices || existingItem.prices,
       bundleFiles: [...existingItem.bundleFiles!, ...newFilesToBeAdded],
+      privilege: item.privilege || existingItem.privilege,
     };
 
     const updated = await this.ItemRepository.updateStoreItem(
@@ -478,6 +500,7 @@ export default class StoreService implements IStoreService {
   async buyStoreItem(
     ownerId: string,
     itemId: string,
+    priceIndex: number = 0,
   ): Promise<IStoreItemDocument> {
     const user = await this.UserRepository.findUserById(ownerId);
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
@@ -486,10 +509,24 @@ export default class StoreService implements IStoreService {
       throw new AppError(StatusCodes.NOT_FOUND, "User stats not found");
     const item = await this.ItemRepository.getStoreItemById(itemId);
     if (!item) throw new AppError(StatusCodes.NOT_FOUND, "Item not found");
-    if (item.price > stats.coins!)
+
+    if (!item.prices || item.prices.length === 0)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `for item price ${item.price} having  ${stats.coins} coins is not enough`,
+        "Item has no pricing options",
+      );
+    if (priceIndex < 0 || priceIndex >= item.prices.length)
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Invalid price option selected",
+      );
+
+    const selectedPrice = item.prices[priceIndex];
+
+    if (selectedPrice.price > stats.coins!)
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `for item price ${selectedPrice.price} having ${stats.coins} coins is not enough`,
       );
 
     // starting transaction
@@ -497,14 +534,20 @@ export default class StoreService implements IStoreService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      await this.userStatsRepository.updateCoins(ownerId, -item.price, session);
+      await this.userStatsRepository.updateCoins(
+        ownerId,
+        -selectedPrice.price,
+        session,
+      );
       await this.ItemRepository.updateSoldCount(itemId);
       await this.BucketRepository.createNewBucket(
         {
           itemId: item._id as string,
           ownerId: ownerId,
           categoryId: item.categoryId,
-          expireAt: new Date(Date.now() + item.validity * 24 * 60 * 60 * 1000), // validity in days
+          expireAt: new Date(
+            Date.now() + selectedPrice.validity * 24 * 60 * 60 * 1000,
+          ), // validity in days
         },
         session,
       );
