@@ -8,7 +8,7 @@ import {
   IStoreItemModel,
 } from "../../models/store/store_item_model";
 import { DatabaseNames } from "../../core/Utils/enums";
-import { DeleteResult, UpdateResult } from "mongoose";
+import { ClientSession, DeleteResult, UpdateResult } from "mongoose";
 import { promises } from "dns";
 
 export interface IStoreItemRepository {
@@ -32,7 +32,7 @@ export interface IStoreItemRepository {
   createNewBundles(id: string, bundle: IBundle[]): Promise<IStoreItemDocument>;
   deleteByCategory(categoryId: string): Promise<DeleteResult>;
   deleteByBundleCategoryName(categoryName: string): Promise<DeleteResult>;
-  updateSoldCount(itemId: string): Promise<void>;
+  updateSoldCount(itemId: string, session?: ClientSession): Promise<void>;
   getAllStoreItemByCategory(categoryId: string): Promise<IStoreItemDocument[]>; // no pagination
   getStoreItemsByBundleCategoryName(
     categoryName: string
@@ -206,8 +206,8 @@ export default class StoreItemRepository implements IStoreItemRepository {
     });
   }
 
-  async updateSoldCount(itemId: string): Promise<void> {
-    await this.Model.findByIdAndUpdate(itemId, { $inc: { totalSold: 1 } });
+  async updateSoldCount(itemId: string, session?: ClientSession): Promise<void> {
+    await this.Model.findByIdAndUpdate(itemId, { $inc: { totalSold: 1 } }).session(session || null);
   }
 
   async getAllStoreItemByCategory(

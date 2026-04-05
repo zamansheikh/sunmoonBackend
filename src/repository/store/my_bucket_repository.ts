@@ -23,6 +23,7 @@ export interface IMyBucketRepository {
   updateBucket(
     id: string,
     data: Partial<IMyBucket>,
+    session?: ClientSession,
   ): Promise<IMyBucketDocument>;
   deleteBucket(id: string): Promise<IMyBucketDocument>;
   updateBucketUseStatus(
@@ -37,6 +38,11 @@ export interface IMyBucketRepository {
   }>;
   getAllPremiumItems(userId: string): Promise<IMyBucketDocument[]>;
   countUsersByItemId(itemId: string): Promise<number>;
+  findBucketByOwnerAndItem(
+    ownerId: string,
+    itemId: string,
+    session?: ClientSession,
+  ): Promise<IMyBucketDocument | null>;
 }
 
 export default class MyBucketRepository implements IMyBucketRepository {
@@ -76,9 +82,11 @@ export default class MyBucketRepository implements IMyBucketRepository {
   async updateBucket(
     id: string,
     data: Partial<IMyBucket>,
+    session?: ClientSession,
   ): Promise<IMyBucketDocument> {
     const updated = await this.Model.findByIdAndUpdate(id, data, {
       new: true,
+      session,
     }).populate("itemId categoryId");
     if (!updated)
       throw new AppError(
@@ -144,5 +152,13 @@ export default class MyBucketRepository implements IMyBucketRepository {
 
   async countUsersByItemId(itemId: string): Promise<number> {
     return await this.Model.countDocuments({ itemId: itemId });
+  }
+
+  async findBucketByOwnerAndItem(
+    ownerId: string,
+    itemId: string,
+    session?: ClientSession,
+  ): Promise<IMyBucketDocument | null> {
+    return await this.Model.findOne({ ownerId, itemId }).session(session || null);
   }
 }

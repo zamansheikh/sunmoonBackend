@@ -504,12 +504,14 @@ export default class StoreService implements IStoreService {
     itemId: string,
     priceIndex: number = 0,
   ): Promise<IStoreItemDocument> {
-    const user = await this.UserRepository.findUserById(ownerId);
+    const [user, stats, item] = await Promise.all([
+      this.UserRepository.findUserById(ownerId),
+      this.userStatsRepository.getUserStats(ownerId),
+      this.ItemRepository.getStoreItemById(itemId),
+    ]);
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
-    const stats = await this.userStatsRepository.getUserStats(ownerId);
     if (!stats)
       throw new AppError(StatusCodes.NOT_FOUND, "User stats not found");
-    const item = await this.ItemRepository.getStoreItemById(itemId);
     if (!item) throw new AppError(StatusCodes.NOT_FOUND, "Item not found");
 
     if (!item.prices || item.prices.length === 0)
@@ -536,23 +538,43 @@ export default class StoreService implements IStoreService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      await this.userStatsRepository.updateCoins(
-        ownerId,
-        -selectedPrice.price,
-        session,
+      // Parallelize update operations and lookup within transaction
+      const [_, __, existingBucket] = await Promise.all([
+        this.userStatsRepository.updateCoins(
+          ownerId,
+          -selectedPrice.price,
+          session,
+        ),
+        this.ItemRepository.updateSoldCount(itemId, session),
+        // check if the user already owns this item
+        this.BucketRepository.findBucketByOwnerAndItem(
+          ownerId,
+          item._id as string,
+          session,
+        ),
+      ]);
+
+      const newExpiry = new Date(
+        Date.now() + selectedPrice.validity * 24 * 60 * 60 * 1000,
       );
-      await this.ItemRepository.updateSoldCount(itemId);
-      await this.BucketRepository.createNewBucket(
-        {
-          itemId: item._id as string,
-          ownerId: ownerId,
-          categoryId: item.categoryId,
-          expireAt: new Date(
-            Date.now() + selectedPrice.validity * 24 * 60 * 60 * 1000,
-          ), // validity in days
-        },
-        session,
-      );
+
+      if (existingBucket) {
+        await this.BucketRepository.updateBucket(
+          existingBucket._id as string,
+          { expireAt: newExpiry },
+          session,
+        );
+      } else {
+        await this.BucketRepository.createNewBucket(
+          {
+            itemId: item._id as string,
+            ownerId: ownerId,
+            categoryId: item.categoryId,
+            expireAt: newExpiry,
+          },
+          session,
+        );
+      }
       await session.commitTransaction();
       return item;
     } catch (error) {
