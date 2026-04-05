@@ -36,7 +36,6 @@ export interface IStoreService {
   // 📌 store categories
   createCategory(
     title: string,
-    isPremium?: boolean,
   ): Promise<IStoreCategoryDocument>;
   getCategoryById(id: string): Promise<IStoreCategoryDocument>;
   getAllCategories(): Promise<IStoreCategoryDocument[]>;
@@ -123,9 +122,12 @@ export default class StoreService implements IStoreService {
   //  📌 store categories
   async createCategory(
     title: string,
-    isPremium?: boolean,
   ): Promise<IStoreCategoryDocument> {
-    return await this.CategoryRepository.createCategory(title, isPremium);
+    const calculatedPremium = title === "VIP" || title === "SVIP";
+    return await this.CategoryRepository.createCategory(
+      title,
+      calculatedPremium,
+    );
   }
 
   async getCategoryById(id: string): Promise<IStoreCategoryDocument> {

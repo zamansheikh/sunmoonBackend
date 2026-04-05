@@ -24,9 +24,9 @@ export default class StoreController {
 
   //   📌 store categories
   createCategory = catchAsync(async (req: Request, res: Response) => {
-    const { title, isPremium } = req.body;
+    const { title } = req.body;
     validateFieldExistance(title, "title");
-    const category = await this.Service.createCategory(title, isPremium);
+    const category = await this.Service.createCategory(title);
     sendResponse(res, {
       statusCode: 200,
       success: true,
