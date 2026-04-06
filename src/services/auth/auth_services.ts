@@ -49,7 +49,6 @@ import { IMyBucketRepository } from "../../repository/store/my_bucket_repository
 import { IStoreCategoryRepository } from "../../repository/store/store_category_repository";
 import { IStoreItem } from "../../models/store/store_item_model";
 import {
-  checkPremiumItem,
   determineUserLevelFromXp,
   getEquippedItemObjects,
   getNextSalaryDate,
@@ -522,7 +521,7 @@ export default class AuthService implements IAuthService {
         }),
       );
     }
-    
+
     await Promise.all(secondaryUpdates);
 
     // socket response to the room
@@ -942,9 +941,7 @@ export default class AuthService implements IAuthService {
   }
 
   async isPremiumUser(userId: string): Promise<boolean> {
-    const user = await this.UserRepository.findUserById(userId);
-    if (!user) throw new AppError(StatusCodes.NOT_FOUND, "user not found");
-    return await checkPremiumItem(this.BucketRepository, userId);
+    throw new AppError(StatusCodes.NOT_IMPLEMENTED, "not implemented");
   }
 
   // async updateMyXp(userId: string, isMyRoom: boolean): Promise<{ XP: number }> {

@@ -249,7 +249,12 @@ export async function getEquippedItemObjects(
   userId: string,
 ): Promise<Record<string, any>> {
   const equippedBucket = await repository.getEquippedBuckets(userId);
+  if (!equippedBucket || equippedBucket.length === 0) {
+    return {};
+  }
   let equippedFeatures: Record<string, any> = {};
+  let privileges: string[] = [];
+
   for (let i = 0; i < equippedBucket.length; i++) {
     if (
       typeof equippedBucket[i].itemId == "string" ||
@@ -260,6 +265,11 @@ export async function getEquippedItemObjects(
     }
     const item = equippedBucket[i].itemId as IStoreItem;
     if (!item) continue;
+
+    if (item.privilege && item.privilege.length > 0) {
+      privileges.push(...item.privilege);
+    }
+
     if (item.bundleFiles && item.bundleFiles.length > 0) {
       for (let j = 0; j < item.bundleFiles.length; j++) {
         equippedFeatures[item.bundleFiles[j].categoryName] =
@@ -276,28 +286,34 @@ export async function getEquippedItemObjects(
       equippedFeatures[category.title] = item.svgaFile;
     }
   }
+
+  if (privileges.length > 0) {
+    // Remove duplicates recursively across all items
+    equippedFeatures["privilege"] = Array.from(new Set(privileges));
+  }
+
   return equippedFeatures;
 }
 
-export async function checkPremiumItem(
-  repository: IMyBucketRepository,
-  userId: string,
-): Promise<boolean> {
-  const equippedBucket = await repository.getEquippedBuckets(userId);
+// export async function checkPremiumItem(
+//   repository: IMyBucketRepository,
+//   userId: string,
+// ): Promise<boolean> {
+//   const equippedBucket = await repository.getEquippedBuckets(userId);
 
-  if (equippedBucket.length != 1) return false;
+//   if (equippedBucket.length != 1) return false;
 
-  if (
-    typeof equippedBucket[0].itemId == "string" ||
-    equippedBucket[0].itemId instanceof Types.ObjectId
-  ) {
-    console.log("itemId is not populated");
-    return false;
-  }
-  const item = equippedBucket[0].itemId as IStoreItem;
-  if (item.isPremium && item.name == "SVIP") return true;
-  return false;
-}
+//   if (
+//     typeof equippedBucket[0].itemId == "string" ||
+//     equippedBucket[0].itemId instanceof Types.ObjectId
+//   ) {
+//     console.log("itemId is not populated");
+//     return false;
+//   }
+//   const item = equippedBucket[0].itemId as IStoreItem;
+//   if (item.isPremium && item.name == "SVIP") return true;
+//   return false;
+// }
 
 export function determineUserLevel(coins: number): number {
   for (let i = 0; i < userLevels.length; i++) {

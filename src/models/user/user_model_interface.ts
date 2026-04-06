@@ -50,7 +50,7 @@ export interface UserData {
   };
   stats?: IUserStats;
   verified: boolean;
-  equippedStoreItems?: Record<string, string>;
+  equippedStoreItems?: Record<string, any>;
   familyId?: string;
 }
 

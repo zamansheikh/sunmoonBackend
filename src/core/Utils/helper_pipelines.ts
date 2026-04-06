@@ -61,9 +61,9 @@ export const userWithEquippedItemsPipeline = (
               // The transformation you want
               {
                 $project: {
-                  transformedItem: {
+                  mapped: {
                     $cond: {
-                      if: { $gt: [{ $size: "$bundleFiles" }, 0] },
+                      if: { $gt: [{ $size: { $ifNull: ["$bundleFiles", []] } }, 0] },
                       then: {
                         $arrayToObject: {
                           $map: {
@@ -96,10 +96,8 @@ export const userWithEquippedItemsPipeline = (
                       },
                     },
                   },
+                  privilege: { $ifNull: ["$privilege", []] },
                 },
-              },
-              {
-                $replaceRoot: { newRoot: "$transformedItem" },
               },
             ],
             as: "equippedItem",
@@ -112,7 +110,7 @@ export const userWithEquippedItemsPipeline = (
           },
         },
         {
-          $replaceRoot: { newRoot: "$equippedItem" },
+          $replaceRoot: { newRoot: { $ifNull: ["$equippedItem", { mapped: {}, privilege: [] }] } },
         },
       ],
       as: "equippedStoreItems",
@@ -121,7 +119,29 @@ export const userWithEquippedItemsPipeline = (
   {
     $addFields: {
       equippedStoreItems: {
-        $mergeObjects: "$equippedStoreItems",
+        $mergeObjects: [
+          { $mergeObjects: "$equippedStoreItems.mapped" },
+          {
+            $let: {
+              vars: {
+                mergedPrivileges: {
+                  $reduce: {
+                    input: { $ifNull: ["$equippedStoreItems.privilege", []] },
+                    initialValue: [],
+                    in: { $setUnion: ["$$value", { $ifNull: ["$$this", []] }] },
+                  },
+                },
+              },
+              in: {
+                $cond: {
+                  if: { $gt: [{ $size: "$$mergedPrivileges" }, 0] },
+                  then: { privilege: "$$mergedPrivileges" },
+                  else: {},
+                },
+              },
+            },
+          },
+        ],
       },
     },
   },

@@ -19,7 +19,7 @@ export interface IRoomMessage {
   currentTag: string;
   currentLevel: number;
   text: string;
-  equippedStoreItems: Record<string, string>;
+  equippedStoreItems: Record<string, any>;
 }
 
 export interface IMemberDetails {
@@ -32,7 +32,7 @@ export interface IMemberDetails {
   currentTag: string;
   currentLevel: number;
   _id: mongoose.Schema.Types.ObjectId | string;
-  equippedStoreItems?: Record<string, string>;
+  equippedStoreItems?: Record<string, any>;
   recievedGiftValue?: number;
 }
 
@@ -85,7 +85,7 @@ const RoomMessageSchema = new Schema<IRoomMessage>(
     currentTag: { type: String },
     currentLevel: { type: Number },
     text: { type: String },
-    equippedStoreItems: { type: Map, of: String },
+    equippedStoreItems: { type: Map, of: Schema.Types.Mixed },
   },
   { _id: false },
 );
@@ -101,7 +101,7 @@ const MemberDetailsSchema = new Schema<IMemberDetails>(
     currentTag: { type: String },
     currentLevel: { type: Number },
     _id: { type: Schema.Types.ObjectId },
-    equippedStoreItems: { type: Map, of: String },
+    equippedStoreItems: { type: Map, of: Schema.Types.Mixed },
   },
   { _id: false },
 );
