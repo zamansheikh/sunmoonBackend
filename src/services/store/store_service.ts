@@ -34,9 +34,7 @@ export interface IPremiumFiles {
 
 export interface IStoreService {
   // 📌 store categories
-  createCategory(
-    title: string,
-  ): Promise<IStoreCategoryDocument>;
+  createCategory(title: string): Promise<IStoreCategoryDocument>;
   getCategoryById(id: string): Promise<IStoreCategoryDocument>;
   getAllCategories(): Promise<IStoreCategoryDocument[]>;
   updateCategory(id: string, title: string): Promise<IStoreCategoryDocument>;
@@ -91,11 +89,15 @@ export interface IStoreService {
     itemId: string,
     priceIndex?: number,
   ): Promise<IStoreItemDocument>;
-  getMyBucket(
+  getMyBucketByCategory(
     ownerId: string,
     category: string,
     query: Record<string, any>,
   ): Promise<{ pagination: IPagination; buckets: IMyBucketDocument[] }>;
+  getMyBuckets(
+    ownerId: string,
+    query: Record<string, any>,
+  ): Promise<Record<string, IMyBucketDocument[]>>;
   userGiftItem(ownerId: string, bucketId: string): Promise<IMyBucketDocument>;
 }
 
@@ -120,9 +122,7 @@ export default class StoreService implements IStoreService {
   }
 
   //  📌 store categories
-  async createCategory(
-    title: string,
-  ): Promise<IStoreCategoryDocument> {
+  async createCategory(title: string): Promise<IStoreCategoryDocument> {
     const calculatedPremium = title === "VIP" || title === "SVIP";
     return await this.CategoryRepository.createCategory(
       title,
@@ -585,18 +585,28 @@ export default class StoreService implements IStoreService {
     }
   }
 
-  async getMyBucket(
+  async getMyBucketByCategory(
     ownerId: string,
     category: string,
     query: Record<string, any>,
   ): Promise<{ pagination: IPagination; buckets: IMyBucketDocument[] }> {
-    const owener = await this.UserRepository.findUserById(ownerId);
-    if (!owener) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
+    const owner = await this.UserRepository.findUserById(ownerId);
+    if (!owner) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
     const existingCategory =
       await this.CategoryRepository.getCategoryById(category);
     if (!existingCategory)
       throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
     return await this.BucketRepository.getAllBuckets(ownerId, category, query);
+  }
+
+  async getMyBuckets(
+    ownerId: string,
+    query: Record<string, any>,
+  ): Promise<Record<string, IMyBucketDocument[]>> {
+    const owner = await this.UserRepository.findUserById(ownerId);
+    if (!owner) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
+
+    return await this.BucketRepository.getAllBucketsByCategoryGrouped(ownerId);
   }
 
   async userGiftItem(

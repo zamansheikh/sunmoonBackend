@@ -375,15 +375,29 @@ export default class StoreController {
     });
   });
 
-  getMyBucket = catchAsync(async (req: Request, res: Response) => {
+  getMyBucketByCategory = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.user!;
     const { category } = req.params;
     validateFieldExistance(category, "category");
-    const items = await this.Service.getMyBucket(id, category, req.query);
+    const items = await this.Service.getMyBucketByCategory(
+      id,
+      category,
+      req.query,
+    );
     sendResponse(res, {
       statusCode: 200,
       success: true,
       result: items,
+    });
+  });
+
+  getMyBuckets = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.user!;
+    const buckets = await this.Service.getMyBuckets(id, req.query);
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      result: buckets,
     });
   });
 

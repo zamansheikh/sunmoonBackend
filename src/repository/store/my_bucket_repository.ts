@@ -43,6 +43,13 @@ export interface IMyBucketRepository {
     itemId: string,
     session?: ClientSession,
   ): Promise<IMyBucketDocument | null>;
+  getAllBucketsByOwner(
+    ownerId: string,
+    query: Record<string, any>,
+  ): Promise<{ pagination: IPagination; buckets: IMyBucketDocument[] }>;
+  getAllBucketsByCategoryGrouped(
+    ownerId: string,
+  ): Promise<Record<string, IMyBucketDocument[]>>;
 }
 
 export default class MyBucketRepository implements IMyBucketRepository {
@@ -159,6 +166,96 @@ export default class MyBucketRepository implements IMyBucketRepository {
     itemId: string,
     session?: ClientSession,
   ): Promise<IMyBucketDocument | null> {
-    return await this.Model.findOne({ ownerId, itemId }).session(session || null);
+    return await this.Model.findOne({ ownerId, itemId }).session(
+      session || null,
+    );
+  }
+
+  async getAllBucketsByOwner(
+    ownerId: string,
+    query: Record<string, any>,
+  ): Promise<{ pagination: IPagination; buckets: IMyBucketDocument[] }> {
+    const qb = new QueryBuilder(this.Model, query);
+    const res = qb
+      .find({ ownerId: ownerId })
+      .populateField("itemId categoryId")
+      .sort();
+    const buckets = await res.exec();
+    const pagination = await res.countTotal();
+    return { pagination, buckets };
+  }
+
+  async getAllBucketsByCategoryGrouped(
+    ownerId: string,
+  ): Promise<Record<string, IMyBucketDocument[]>> {
+    const results = await this.Model.db
+      .collection(DatabaseNames.StoreCategory)
+      .aggregate([
+        {
+          $lookup: {
+
+            from: DatabaseNames.MyBucketItem,
+            let: { categoryId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$categoryId", "$$categoryId"] },
+                      {
+                        $eq: ["$ownerId", new mongoose.Types.ObjectId(ownerId)],
+                      },
+                    ],
+                  },
+                },
+              },
+              {
+                $lookup: {
+                  from: DatabaseNames.StoreItem,
+                  localField: "itemId",
+                  foreignField: "_id",
+                  as: "itemId",
+                },
+              },
+              {
+                $unwind: "$itemId",
+              },
+              {
+                $lookup: {
+                  from: DatabaseNames.StoreCategory,
+                  localField: "categoryId",
+                  foreignField: "_id",
+                  as: "categoryId",
+                },
+              },
+              {
+                $unwind: "$categoryId",
+              },
+            ],
+            as: "buckets",
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            categories: {
+              $push: {
+                k: "$title",
+                v: "$buckets",
+              },
+            },
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: {
+              $arrayToObject: "$categories",
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    return results[0] || {};
   }
 }

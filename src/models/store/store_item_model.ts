@@ -74,6 +74,7 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
     name: {
       type: String,
       required: true,
+      unique: true,
       trim: true,
     },
     logo: {

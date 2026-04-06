@@ -90,9 +90,10 @@ router
 router
   .route("/bucket")
   .post(authenticate(), controller.buyStoreItem)
-  .put(authenticate(), controller.useGiftItem);
+  .put(authenticate(), controller.useGiftItem)
+  .get(authenticate(), controller.getMyBuckets);
 router
   .route("/bucket/category/:category")
-  .get(authenticate(), controller.getMyBucket);
+  .get(authenticate(), controller.getMyBucketByCategory);
 
 export default router;
