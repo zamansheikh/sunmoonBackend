@@ -14,6 +14,7 @@ import { promises } from "dns";
 export interface IStoreItemRepository {
   createStoreItem(item: IStoreItem): Promise<IStoreItemDocument>;
   getStoreItemById(id: string): Promise<IStoreItemDocument | null>;
+  getStoreItemByName(name: string): Promise<IStoreItemDocument | null>;
   getAllStoreItems(
     category: string,
     query: Record<string, any>
@@ -52,6 +53,10 @@ export default class StoreItemRepository implements IStoreItemRepository {
 
   async getStoreItemById(id: string): Promise<IStoreItemDocument | null> {
     return await this.Model.findById(id);
+  }
+
+  async getStoreItemByName(name: string): Promise<IStoreItemDocument | null> {
+    return await this.Model.findOne({ name });
   }
 
   async getAllStoreItems(

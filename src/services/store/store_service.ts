@@ -198,6 +198,11 @@ export default class StoreService implements IStoreService {
     svgaFile: Express.Multer.File,
     previewFile: Express.Multer.File,
   ): Promise<IStoreItemDocument> {
+    const existingName = await this.ItemRepository.getStoreItemByName(item.name);
+    if (existingName) {
+      throw new AppError(StatusCodes.CONFLICT, `Item with name ${item.name} already exists`);
+    }
+
     const category = await this.CategoryRepository.getCategoryById(
       item.categoryId.toString(),
     );
@@ -226,6 +231,11 @@ export default class StoreService implements IStoreService {
     item: IStoreItem,
     files: IPremiumFiles[],
   ): Promise<IStoreItemDocument> {
+    const existingName = await this.ItemRepository.getStoreItemByName(item.name);
+    if (existingName) {
+      throw new AppError(StatusCodes.CONFLICT, `Item with name ${item.name} already exists`);
+    }
+
     // chhecking category validity
     const exisitngCategory = await this.CategoryRepository.getCategoryById(
       item.categoryId.toString(),
