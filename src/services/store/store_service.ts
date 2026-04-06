@@ -98,7 +98,7 @@ export interface IStoreService {
     ownerId: string,
     query: Record<string, any>,
   ): Promise<Record<string, IMyBucketDocument[]>>;
-  userGiftItem(ownerId: string, bucketId: string): Promise<IMyBucketDocument>;
+  selectBucket(ownerId: string, bucketId: string): Promise<IMyBucketDocument>;
 }
 
 export default class StoreService implements IStoreService {
@@ -558,21 +558,21 @@ export default class StoreService implements IStoreService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      // Parallelize update operations and lookup within transaction
-      const [_, __, existingBucket] = await Promise.all([
-        this.userStatsRepository.updateCoins(
-          ownerId,
-          -selectedPrice.price,
-          session,
-        ),
-        this.ItemRepository.updateSoldCount(itemId, session),
-        // check if the user already owns this item
-        this.BucketRepository.findBucketByOwnerAndItem(
+      await this.userStatsRepository.updateCoins(
+        ownerId,
+        -selectedPrice.price,
+        session,
+      );
+
+      await this.ItemRepository.updateSoldCount(itemId, session);
+
+      // check if the user already owns this item
+      const existingBucket =
+        await this.BucketRepository.findBucketByOwnerAndItem(
           ownerId,
           item._id as string,
           session,
-        ),
-      ]);
+        );
 
       const newExpiry = new Date(
         Date.now() + selectedPrice.validity * 24 * 60 * 60 * 1000,
@@ -629,68 +629,101 @@ export default class StoreService implements IStoreService {
     return await this.BucketRepository.getAllBucketsByCategoryGrouped(ownerId);
   }
 
-  async userGiftItem(
+  async selectBucket(
     ownerId: string,
     bucketId: string,
   ): Promise<IMyBucketDocument> {
-    const owner = await this.UserRepository.findUserById(ownerId);
-    const bucket = await this.BucketRepository.getBucketsById(bucketId);
+    const [owner, bucket] = await Promise.all([
+      this.UserRepository.findUserById(ownerId),
+      this.BucketRepository.getBucketsById(bucketId),
+    ]);
+
     if (!owner) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
     if (!bucket) throw new AppError(StatusCodes.NOT_FOUND, "Bucket not found");
-    if (bucket.ownerId.toString() != ownerId)
+
+    if (bucket.ownerId.toString() !== ownerId) {
       throw new AppError(
         StatusCodes.UNAUTHORIZED,
         "You are not the owner of this bucket",
       );
+    }
+
     if (bucket.useStatus) {
-      const updated = await this.BucketRepository.updateBucket(bucketId, {
+      return await this.BucketRepository.updateBucket(bucketId, {
         useStatus: false,
       });
-      return updated;
     }
-    const item = await this.ItemRepository.getStoreItemById(
-      bucket.itemId.toString(),
-    );
-    if (!item) throw new AppError(StatusCodes.NOT_FOUND, "Item not found");
-    const premiumCategory =
-      await this.CategoryRepository.getCategoryConditionally({
-        isPremium: true,
-      });
 
-    // start transaction
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      if (item.isPremium) {
-        // deselecting all the items
-        await this.BucketRepository.updateBucketUseStatus(
-          { ownerId: ownerId, useStatus: true },
-          { useStatus: false },
+      const item = await this.ItemRepository.getStoreItemById(
+        bucket.itemId.toString(),
+      );
+      if (!item) throw new AppError(StatusCodes.NOT_FOUND, "Item not found");
+
+      const equippedBuckets = await this.BucketRepository.getEquippedBuckets(
+        ownerId,
+      );
+
+      if (!equippedBuckets || equippedBuckets.length === 0) {
+        const updated = await this.BucketRepository.updateBucket(
+          bucketId,
+          { useStatus: true },
           session,
         );
+        await session.commitTransaction();
+        return updated;
+      }
+
+      const itemsToDeselect: string[] = [];
+      let targetCategories: string[] = [];
+
+      if (!item.isPremium) {
+        const category = await this.CategoryRepository.getCategoryById(
+          bucket.categoryId.toString(),
+        );
+        if (!category) throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
+        targetCategories = [category.title];
       } else {
-        // deselect premium items
-        if (premiumCategory)
-          await this.BucketRepository.updateBucketUseStatus(
-            {
-              ownerId: ownerId,
-              useStatus: true,
-              categoryId: premiumCategory!._id,
-            },
-            { useStatus: false },
-            session,
-          );
-        // deselecting all the items in a single category
+        targetCategories = item.bundleFiles?.map((b) => b.categoryName) || [];
+      }
+
+      for (const eqBucket of equippedBuckets) {
+        const eqItem = eqBucket.itemId as any as IStoreItemDocument;
+        const eqCategory = eqBucket.categoryId as any as IStoreCategoryDocument;
+
+        if (!eqItem.isPremium) {
+          if (targetCategories.includes(eqCategory.title)) {
+            itemsToDeselect.push(eqBucket._id as string);
+          }
+        } else {
+          if (
+            eqItem.bundleFiles &&
+            eqItem.bundleFiles.some((b) =>
+              targetCategories.includes(b.categoryName),
+            )
+          ) {
+            itemsToDeselect.push(eqBucket._id as string);
+          }
+        }
+      }
+
+      if (itemsToDeselect.length > 0) {
         await this.BucketRepository.updateBucketUseStatus(
-          { ownerId: ownerId, useStatus: true, categoryId: bucket.categoryId },
+          { _id: { $in: itemsToDeselect } },
           { useStatus: false },
           session,
         );
       }
-      const updated = await this.BucketRepository.updateBucket(bucketId, {
-        useStatus: true,
-      });
+
+      const updated = await this.BucketRepository.updateBucket(
+        bucketId,
+        { useStatus: true },
+        session,
+      );
+
       await session.commitTransaction();
       return updated;
     } catch (error) {

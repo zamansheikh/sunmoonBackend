@@ -31,7 +31,7 @@ export interface IMyBucketRepository {
     update: Partial<IMyBucket>,
     session?: ClientSession,
   ): Promise<UpdateResult>;
-  getEquippedBuckets(id: string): Promise<IMyBucketDocument[]>;
+  getEquippedBuckets(id: string): Promise<IMyBucketDocument[] | null>;
   getAllBucketItems(query: Record<string, any>): Promise<{
     pagination: IPagination;
     items: IMyBucketDocument[];
@@ -121,13 +121,11 @@ export default class MyBucketRepository implements IMyBucketRepository {
     return await this.Model.updateMany(filter, update, { session });
   }
 
-  async getEquippedBuckets(id: string): Promise<IMyBucketDocument[]> {
+  async getEquippedBuckets(id: string): Promise<IMyBucketDocument[] | null> {
     const equipped = await this.Model.find({
       ownerId: id,
       useStatus: true,
     }).populate("itemId categoryId");
-    if (!equipped)
-      throw new AppError(StatusCodes.NOT_FOUND, "buckets not found");
     return equipped;
   }
 
@@ -193,7 +191,6 @@ export default class MyBucketRepository implements IMyBucketRepository {
       .aggregate([
         {
           $lookup: {
-
             from: DatabaseNames.MyBucketItem,
             let: { categoryId: "$_id" },
             pipeline: [

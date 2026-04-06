@@ -401,11 +401,11 @@ export default class StoreController {
     });
   });
 
-  useGiftItem = catchAsync(async (req: Request, res: Response) => {
+  selectBucket = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.user!;
     const { bucketId } = req.body;
     validateFieldExistance(bucketId, "bucketId");
-    const item = await this.Service.userGiftItem(id, bucketId);
+    const item = await this.Service.selectBucket(id, bucketId);
     sendResponse(res, {
       statusCode: 200,
       success: true,

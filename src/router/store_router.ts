@@ -90,7 +90,7 @@ router
 router
   .route("/bucket")
   .post(authenticate(), controller.buyStoreItem)
-  .put(authenticate(), controller.useGiftItem)
+  .put(authenticate(), controller.selectBucket)
   .get(authenticate(), controller.getMyBuckets);
 router
   .route("/bucket/category/:category")
