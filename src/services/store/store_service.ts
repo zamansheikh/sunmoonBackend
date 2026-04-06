@@ -694,6 +694,12 @@ export default class StoreService implements IStoreService {
         const eqItem = eqBucket.itemId as any as IStoreItemDocument;
         const eqCategory = eqBucket.categoryId as any as IStoreCategoryDocument;
 
+        if (!eqItem || !eqItem.name || !eqCategory || !eqCategory.title) {
+          itemsToDeselect.push(eqBucket._id as string);
+          continue;
+        }
+
+
         if (!eqItem.isPremium) {
           if (targetCategories.includes(eqCategory.title)) {
             itemsToDeselect.push(eqBucket._id as string);
