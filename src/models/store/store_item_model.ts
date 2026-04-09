@@ -27,6 +27,7 @@ export interface IStoreItem {
   deleteStatus?: boolean;
   totalSold?: number;
   expireAt?: Date;
+  isBought?: boolean;
 }
 
 export interface IStoreItemDocument extends Document, IStoreItem {

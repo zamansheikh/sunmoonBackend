@@ -8,7 +8,7 @@ import {
   IStoreItemModel,
 } from "../../models/store/store_item_model";
 import { DatabaseNames } from "../../core/Utils/enums";
-import { ClientSession, DeleteResult, UpdateResult } from "mongoose";
+import { ClientSession, DeleteResult, Types, UpdateResult } from "mongoose";
 import { promises } from "dns";
 
 export interface IStoreItemRepository {
@@ -17,26 +17,32 @@ export interface IStoreItemRepository {
   getStoreItemByName(name: string): Promise<IStoreItemDocument | null>;
   getAllStoreItems(
     category: string,
-    query: Record<string, any>
+    query: Record<string, any>,
+    id: string,
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }>;
-  getAllStoreItemsByCategoryGrouped(): Promise<Record<string, IStoreItemDocument[]>>;
+  getAllStoreItemsByCategoryGrouped(
+    id: string,
+  ): Promise<Record<string, IStoreItemDocument[]>>;
   updateStoreItem(
     id: string,
-    item: Partial<IStoreItem>
+    item: Partial<IStoreItem>,
   ): Promise<IStoreItemDocument>;
   deleteStoreItem(id: string, days: number): Promise<IStoreItemDocument>;
   deleteStoreItemHard(id: string): Promise<IStoreItemDocument>;
   updateBundleCategoryTitle(
     oldTitle: string,
-    newTitle: string
+    newTitle: string,
   ): Promise<UpdateResult>;
   createNewBundles(id: string, bundle: IBundle[]): Promise<IStoreItemDocument>;
   deleteByCategory(categoryId: string): Promise<DeleteResult>;
   deleteByBundleCategoryName(categoryName: string): Promise<DeleteResult>;
   updateSoldCount(itemId: string, session?: ClientSession): Promise<void>;
-  getAllStoreItemByCategory(categoryId: string): Promise<IStoreItemDocument[]>; // no pagination
+  getAllStoreItemByCategory(
+    categoryId: string,
+    id?: string,
+  ): Promise<IStoreItemDocument[]>; // no pagination
   getStoreItemsByBundleCategoryName(
-    categoryName: string
+    categoryName: string,
   ): Promise<IStoreItemDocument[]>;
 }
 
@@ -61,27 +67,81 @@ export default class StoreItemRepository implements IStoreItemRepository {
 
   async getAllStoreItems(
     category: string,
-    query: Record<string, any>
+    query: Record<string, any>,
+    id: string,
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }> {
     const qb = new QueryBuilder(this.Model, query);
-    const res = qb
-      .find({ categoryId: category, deleteStatus: false })
-      .sort()
-      .paginate();
-    const items = await res.exec();
-    const pagination = await res.countTotal();
+    // Note: Since we need aggregation for isBought, we use aggregation directly
+    // but we can still use some qb logic if needed or just implement pagination here.
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const pipeline: any[] = [
+      {
+        $match: {
+          categoryId: new Types.ObjectId(category),
+          deleteStatus: false,
+        },
+      },
+      {
+        $lookup: {
+          from: DatabaseNames.MyBucketItem,
+          let: { itemId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$itemId", "$$itemId"] },
+                    { $eq: ["$ownerId", new Types.ObjectId(id)] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "boughtInfo",
+        },
+      },
+      {
+        $addFields: {
+          isBought: { $gt: [{ $size: "$boughtInfo" }, 0] },
+        },
+      },
+      {
+        $project: {
+          boughtInfo: 0,
+        },
+      },
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
+    const items = await this.Model.aggregate(pipeline);
+    const total = await this.Model.countDocuments({
+      categoryId: category,
+      deleteStatus: false,
+    });
+
+    const pagination: IPagination = {
+      page,
+      limit,
+      total,
+      totalPage: Math.ceil(total / limit),
+    };
+
     return { pagination, items };
   }
 
-  async getAllStoreItemsByCategoryGrouped(): Promise<
-    Record<string, IStoreItemDocument[]>
-  > {
+  async getAllStoreItemsByCategoryGrouped(
+    id: string,
+  ): Promise<Record<string, IStoreItemDocument[]>> {
     const results = await this.Model.db
       .collection(DatabaseNames.StoreCategory)
       .aggregate([
         {
           $match: {
-           isPremium: false,
+            isPremium: false,
           },
         },
         {
@@ -90,15 +150,50 @@ export default class StoreItemRepository implements IStoreItemRepository {
             localField: "_id",
             foreignField: "categoryId",
             pipeline: [
-                   {
+              {
                 $match: {
                   deleteStatus: false,
+                },
+              },
+              {
+                $lookup: {
+                  from: DatabaseNames.MyBucketItem,
+                  let: { itemId: "$_id" },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $eq: ["$itemId", "$$itemId"] },
+                            {
+                              $eq: [
+                                "$ownerId",
+                                new Types.ObjectId(id),
+                              ],
+                            },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                  as: "boughtInfo",
+                },
+              },
+              {
+                $addFields: {
+                  isBought: { $gt: [{ $size: "$boughtInfo" }, 0] },
+                },
+              },
+              {
+                $project: {
+                  boughtInfo: 0,
                 },
               },
             ],
             as: "items",
           },
         },
+        
         {
           $group: {
             _id: null,
@@ -129,12 +224,12 @@ export default class StoreItemRepository implements IStoreItemRepository {
     const deleted = await this.Model.findByIdAndUpdate(
       id,
       { expireAt: newDate, deleteStatus: true },
-      { new: true }
+      { new: true },
     );
     if (!deleted)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Store item with id ${id} not found`
+        `Store item with id ${id} not found`,
       );
     return deleted;
   }
@@ -143,27 +238,27 @@ export default class StoreItemRepository implements IStoreItemRepository {
     if (!deleted)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Store item with id ${id} not found`
+        `Store item with id ${id} not found`,
       );
     return deleted;
   }
 
   async updateStoreItem(
     id: string,
-    item: Partial<IStoreItem>
+    item: Partial<IStoreItem>,
   ): Promise<IStoreItemDocument> {
     const updated = await this.Model.findByIdAndUpdate(id, item, { new: true });
     if (!updated)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Store item with id ${id} not found`
+        `Store item with id ${id} not found`,
       );
     return updated;
   }
 
   async updateBundleCategoryTitle(
     oldTitle: string,
-    newTitle: string
+    newTitle: string,
   ): Promise<UpdateResult> {
     return await this.Model.updateMany(
       {
@@ -180,23 +275,23 @@ export default class StoreItemRepository implements IStoreItemRepository {
             "elem.categoryName": oldTitle,
           },
         ],
-      }
+      },
     );
   }
 
   async createNewBundles(
     id: string,
-    bundle: IBundle[]
+    bundle: IBundle[],
   ): Promise<IStoreItemDocument> {
     const updated = await this.Model.findByIdAndUpdate(
       id,
       { $push: { bundleFiles: { $each: bundle } } },
-      { new: true }
+      { new: true },
     );
     if (!updated)
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `Store item with id ${id} not found`
+        `Store item with id ${id} not found`,
       );
     return updated;
   }
@@ -205,24 +300,75 @@ export default class StoreItemRepository implements IStoreItemRepository {
     return await this.Model.deleteMany({ categoryId });
   }
 
-  async deleteByBundleCategoryName(categoryName: string): Promise<DeleteResult> {
+  async deleteByBundleCategoryName(
+    categoryName: string,
+  ): Promise<DeleteResult> {
     return await this.Model.deleteMany({
       "bundleFiles.categoryName": categoryName,
     });
   }
 
-  async updateSoldCount(itemId: string, session?: ClientSession): Promise<void> {
-    await this.Model.findByIdAndUpdate(itemId, { $inc: { totalSold: 1 } }).session(session || null);
+  async updateSoldCount(
+    itemId: string,
+    session?: ClientSession,
+  ): Promise<void> {
+    await this.Model.findByIdAndUpdate(itemId, {
+      $inc: { totalSold: 1 },
+    }).session(session || null);
   }
 
   async getAllStoreItemByCategory(
-    categoryId: string
+    categoryId: string,
+    id?: string,
   ): Promise<IStoreItemDocument[]> {
-    return await this.Model.find({ categoryId: categoryId });
+    const pipeline: any[] = [
+      {
+        $match: {
+          categoryId: new Types.ObjectId(categoryId),
+          deleteStatus: false,
+        },
+      },
+    ];
+
+    if (id) {
+      pipeline.push(
+        {
+          $lookup: {
+            from: DatabaseNames.MyBucketItem,
+            let: { itemId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$itemId", "$$itemId"] },
+                      { $eq: ["$ownerId", new Types.ObjectId(id)] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: "boughtInfo",
+          },
+        },
+        {
+          $addFields: {
+            isBought: { $gt: [{ $size: "$boughtInfo" }, 0] },
+          },
+        },
+        {
+          $project: {
+            boughtInfo: 0,
+          },
+        },
+      );
+    }
+
+    return await this.Model.aggregate(pipeline);
   }
 
   async getStoreItemsByBundleCategoryName(
-    categoryName: string
+    categoryName: string,
   ): Promise<IStoreItemDocument[]> {
     return await this.Model.find({
       "bundleFiles.categoryName": categoryName,

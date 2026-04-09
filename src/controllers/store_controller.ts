@@ -210,7 +210,8 @@ export default class StoreController {
   });
 
   getVIPStoreItems = catchAsync(async (req: Request, res: Response) => {
-    const items = await this.Service.getVIPStoreItems();
+    const { id } = req.user!;
+    const items = await this.Service.getVIPStoreItems(id);
     sendResponse(res, {
       statusCode: 200,
       success: true,
@@ -219,7 +220,8 @@ export default class StoreController {
   });
 
   getSVIPStoreItems = catchAsync(async (req: Request, res: Response) => {
-    const items = await this.Service.getSVIPStoreItems();
+    const { id } = req.user!;
+    const items = await this.Service.getSVIPStoreItems(id);
     sendResponse(res, {
       statusCode: 200,
       success: true,
@@ -228,7 +230,8 @@ export default class StoreController {
   });
 
   getAllStoreItems = catchAsync(async (req: Request, res: Response) => {
-    const items = await this.Service.getAllStoreItems();
+    const {id} = req.user!;
+    const items = await this.Service.getAllStoreItems(id);
     sendResponse(res, {
       statusCode: 200,
       success: true,
@@ -237,10 +240,15 @@ export default class StoreController {
   });
 
   getStoreItemsByCategory = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.user!;
     const { category } = req.params;
     const { query } = req;
     validateFieldExistance(category, "categoryId");
-    const items = await this.Service.getStoreItemsByCategory(category, query);
+    const items = await this.Service.getStoreItemsByCategory(
+      category,
+      query,
+      id,
+    );
     sendResponse(res, {
       statusCode: 200,
       success: true,

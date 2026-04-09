@@ -58,12 +58,13 @@ export interface IStoreService {
     logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument>;
   getStoreItemById(id: string): Promise<IStoreItemDocument>;
-  getVIPStoreItems(): Promise<IStoreItemDocument[]>;
-  getSVIPStoreItems(): Promise<IStoreItemDocument[]>;
-  getAllStoreItems(): Promise<Record<string, IStoreItemDocument[]>>;
+  getVIPStoreItems(id: string): Promise<IStoreItemDocument[]>;
+  getSVIPStoreItems(id: string): Promise<IStoreItemDocument[]>;
+  getAllStoreItems(id: string): Promise<Record<string, IStoreItemDocument[]>>;
   getStoreItemsByCategory(
     category: string,
     query: Record<string, any>,
+    id: string,
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }>;
   updateStoreItemSingle(
     id: string,
@@ -341,31 +342,36 @@ export default class StoreService implements IStoreService {
     return item;
   }
 
-  async getAllStoreItems(): Promise<Record<string, IStoreItemDocument[]>> {
-    return await this.ItemRepository.getAllStoreItemsByCategoryGrouped();
+  async getAllStoreItems(
+    id: string,
+  ): Promise<Record<string, IStoreItemDocument[]>> {
+    return await this.ItemRepository.getAllStoreItemsByCategoryGrouped(id);
   }
 
-  async getVIPStoreItems(): Promise<IStoreItemDocument[]> {
+  async getVIPStoreItems(id: string): Promise<IStoreItemDocument[]> {
     const category = await this.CategoryRepository.getCategoryByTitle("VIP");
     if (!category) return [];
     return await this.ItemRepository.getAllStoreItemByCategory(
       (category as any)._id.toString(),
+      id,
     );
   }
 
-  async getSVIPStoreItems(): Promise<IStoreItemDocument[]> {
+  async getSVIPStoreItems(id: string): Promise<IStoreItemDocument[]> {
     const category = await this.CategoryRepository.getCategoryByTitle("SVIP");
     if (!category) return [];
     return await this.ItemRepository.getAllStoreItemByCategory(
       (category as any)._id.toString(),
+      id,
     );
   }
 
   async getStoreItemsByCategory(
     category: string,
     query: Record<string, any>,
+    id: string,
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }> {
-    return await this.ItemRepository.getAllStoreItems(category, query);
+    return await this.ItemRepository.getAllStoreItems(category, query, id);
   }
 
   async updateStoreItemSingle(
@@ -711,9 +717,8 @@ export default class StoreService implements IStoreService {
       );
       if (!item) throw new AppError(StatusCodes.NOT_FOUND, "Item not found");
 
-      const equippedBuckets = await this.BucketRepository.getEquippedBuckets(
-        ownerId,
-      );
+      const equippedBuckets =
+        await this.BucketRepository.getEquippedBuckets(ownerId);
 
       if (!equippedBuckets || equippedBuckets.length === 0) {
         const updated = await this.BucketRepository.updateBucket(
@@ -732,7 +737,8 @@ export default class StoreService implements IStoreService {
         const category = await this.CategoryRepository.getCategoryById(
           bucket.categoryId.toString(),
         );
-        if (!category) throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
+        if (!category)
+          throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
         targetCategories = [category.title];
       } else {
         targetCategories = item.bundleFiles?.map((b) => b.categoryName) || [];
@@ -746,7 +752,6 @@ export default class StoreService implements IStoreService {
           itemsToDeselect.push(eqBucket._id as string);
           continue;
         }
-
 
         if (!eqItem.isPremium) {
           if (targetCategories.includes(eqCategory.title)) {
