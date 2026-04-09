@@ -166,10 +166,7 @@ export default class StoreItemRepository implements IStoreItemRepository {
                           $and: [
                             { $eq: ["$itemId", "$$itemId"] },
                             {
-                              $eq: [
-                                "$ownerId",
-                                new Types.ObjectId(id),
-                              ],
+                              $eq: ["$ownerId", new Types.ObjectId(id)],
                             },
                           ],
                         },
@@ -193,7 +190,7 @@ export default class StoreItemRepository implements IStoreItemRepository {
             as: "items",
           },
         },
-        
+
         {
           $group: {
             _id: null,
