@@ -28,6 +28,7 @@ export function ValidateStoreItemBatch(
   files: {
     svgaFile?: Express.Multer.File[];
     previewFile?: Express.Multer.File[];
+    logo?: Express.Multer.File[];
   },
 ) {
   const { name, categoryId, prices, categoryNames, privilege } = body;
@@ -43,12 +44,12 @@ export function ValidateStoreItemBatch(
   //check if prices is the right type of IPrices
   validatePrices(prices);
 
-  if (name.startsWith("VIP") || name.startsWith("SVIP")) {
-    const parts = name.split("-");
-    if (parts.length !== 2 || (parts[1] !== "1" && parts[1] !== "2")) {
+  const nameParts = name.split("-");
+  if (nameParts[0] === "VIP" || nameParts[0] === "SVIP") {
+    if (nameParts.length !== 2 || isNaN(Number(nameParts[1]))) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "VIP or SVIP names must include a valid level suffix (-1 or -2), e.g., VIP-1 or SVIP-2",
+        "VIP or SVIP names must include a valid numeric level suffix, e.g., VIP-1 or SVIP-3",
       );
     }
   }
@@ -77,6 +78,7 @@ export function ValidateStoreItemUpdateBatch(
   files: {
     svgaFile?: Express.Multer.File[];
     previewFile?: Express.Multer.File[];
+    logo?: Express.Multer.File[];
   },
 ) {
   const { name, categoryId, prices, categoryNames, privilege } = body;

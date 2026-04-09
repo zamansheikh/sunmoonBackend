@@ -45,6 +45,7 @@ router.route("/items/single").post(
   upload.fields([
     { name: "svgaFile", maxCount: 1 },
     { name: "previewFile", maxCount: 1 },
+    { name: "logo", maxCount: 1 },
   ]),
   controller.createStoreItemSingle,
 );
@@ -53,6 +54,7 @@ router.route("/items/batch").post(
   upload.fields([
     { name: "svgaFile", maxCount: 10 },
     { name: "previewFile", maxCount: 10 },
+    { name: "logo", maxCount: 1 },
   ]),
   controller.createStoreItemBatch,
 );
@@ -71,6 +73,7 @@ router.route("/items/single/:id").put(
   upload.fields([
     { name: "svgaFile", maxCount: 1 },
     { name: "previewFile", maxCount: 1 },
+    { name: "logo", maxCount: 1 },
   ]),
   controller.updateStoreItemSingle,
 );
@@ -78,7 +81,11 @@ router
   .route("/items/batch/:id")
   .put(
     authenticate([UserRoles.Admin]),
-    upload.array("svgaFile", 10),
+    upload.fields([
+      { name: "svgaFile", maxCount: 10 },
+      { name: "previewFile", maxCount: 10 },
+      { name: "logo", maxCount: 1 },
+    ]),
     controller.updateStoreItemBatch,
   );
 router

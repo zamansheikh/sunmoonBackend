@@ -103,9 +103,17 @@ export default class StoreController {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const svgaFile = files["svgaFile"]?.[0];
     const previewFile = files["previewFile"]?.[0];
+    const logoFile = files["logo"]?.[0];
 
     validateFieldExistance(svgaFile, "svgaFile");
     validateFieldExistance(previewFile, "previewFile");
+
+    if (logoFile && !isImageFile(logoFile.originalname)) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "logo must be an image",
+      );
+    }
 
     if (!isSvgaFile(svgaFile!.originalname)) {
       throw new AppError(
@@ -124,6 +132,7 @@ export default class StoreController {
       { name, categoryId, prices: [{ validity, price }], privilege },
       svgaFile!,
       previewFile!,
+      logoFile,
     );
     sendResponse(res, {
       statusCode: 200,
@@ -146,6 +155,7 @@ export default class StoreController {
 
     const svgaFiles = files["svgaFile"] || [];
     const previewFiles = files["previewFile"] || [];
+    const logoFile = files["logo"]?.[0];
 
     let categories = categoryNames.split(",");
     categories = categories.map((cat: string) => cat.trim());
@@ -169,9 +179,17 @@ export default class StoreController {
         previewFile: previewFiles[i],
       });
     }
+
+    if (logoFile && !isImageFile(logoFile.originalname)) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "logo must be an image",
+      );
+    }
     const item = await this.Service.createStoreItemBatch(
       { name, categoryId, prices, privilege },
       premiumFiles,
+      logoFile,
     );
     sendResponse(res, {
       statusCode: 200,
@@ -246,6 +264,7 @@ export default class StoreController {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const svgaFile = files?.["svgaFile"]?.[0];
     const previewFile = files?.["previewFile"]?.[0];
+    const logoFile = files?.["logo"]?.[0];
 
     if (svgaFile && !isSvgaFile(svgaFile.originalname)) {
       throw new AppError(
@@ -259,12 +278,19 @@ export default class StoreController {
         "previewFile must be an image",
       );
     }
+    if (logoFile && !isImageFile(logoFile.originalname)) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "logo must be an image",
+      );
+    }
 
     const item = await this.Service.updateStoreItemSingle(
       id,
       { name, categoryId, prices, privilege },
       svgaFile,
       previewFile,
+      logoFile,
     );
     sendResponse(res, {
       statusCode: 200,
@@ -287,6 +313,14 @@ export default class StoreController {
     ValidateStoreItemUpdateBatch(req.body, files);
 
     let premiumFiles: IPremiumFiles[] = [];
+    const logoFile = files?.["logo"]?.[0];
+
+    if (logoFile && !isImageFile(logoFile.originalname)) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "logo must be an image",
+      );
+    }
 
     if (categoryNames) {
       let names = categoryNames.split(",");
@@ -318,6 +352,7 @@ export default class StoreController {
       id,
       { name, categoryId, prices, privilege },
       premiumFiles,
+      logoFile,
     );
     sendResponse(res, {
       statusCode: 200,
@@ -367,7 +402,11 @@ export default class StoreController {
     const { id } = req.user!;
     const { itemId, priceIndex } = req.body;
     validateFieldExistance(itemId, "itemId");
-    const item = await this.Service.buyStoreItem(id, itemId, priceIndex ? Number(priceIndex) : 0);
+    const item = await this.Service.buyStoreItem(
+      id,
+      itemId,
+      priceIndex ? Number(priceIndex) : 0,
+    );
     sendResponse(res, {
       statusCode: 200,
       success: true,

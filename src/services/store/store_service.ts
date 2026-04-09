@@ -50,10 +50,12 @@ export interface IStoreService {
     item: IStoreItem,
     svgaFile: Express.Multer.File,
     previewFile: Express.Multer.File,
+    logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument>;
   createStoreItemBatch(
     item: IStoreItem,
     files: IPremiumFiles[],
+    logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument>;
   getStoreItemById(id: string): Promise<IStoreItemDocument>;
   getVIPStoreItems(): Promise<IStoreItemDocument[]>;
@@ -68,11 +70,13 @@ export interface IStoreService {
     item: Partial<IStoreItem>,
     svgaFile?: Express.Multer.File,
     previewFile?: Express.Multer.File,
+    logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument>;
   updateStoreItemBatch(
     id: string,
     item: Partial<IStoreItem>,
     files?: IPremiumFiles[],
+    logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument>;
   deleteStoreItem(id: string): Promise<IStoreItemDocument>;
   changeItemCategory(
@@ -197,6 +201,7 @@ export default class StoreService implements IStoreService {
     item: IStoreItem,
     svgaFile: Express.Multer.File,
     previewFile: Express.Multer.File,
+    logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument> {
     const existingName = await this.ItemRepository.getStoreItemByName(
       item.name,
@@ -221,13 +226,22 @@ export default class StoreService implements IStoreService {
     const previewUrl = await saveFileToLocal(previewFile, {
       folder: "store_items",
     });
+    let logoUrl: string | undefined;
+    if (logoFile) {
+      logoUrl = await saveFileToLocal(logoFile, {
+        folder: "store_items",
+      });
+    }
+
     let itemToCreate: IStoreItem = {
       name: item.name,
+      logo: logoUrl || item.logo,
       categoryId: item.categoryId,
       isPremium: false,
       prices: item.prices,
       svgaFile: svgaUrl,
       previewFile: previewUrl,
+      privilege: item.privilege,
     };
     return await this.ItemRepository.createStoreItem(itemToCreate);
   }
@@ -235,6 +249,7 @@ export default class StoreService implements IStoreService {
   async createStoreItemBatch(
     item: IStoreItem,
     files: IPremiumFiles[],
+    logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument> {
     const existingName = await this.ItemRepository.getStoreItemByName(
       item.name,
@@ -296,8 +311,17 @@ export default class StoreService implements IStoreService {
         fileType: extension ?? "",
       });
     }
+
+    let logoUrl: string | undefined;
+    if (logoFile) {
+      logoUrl = await saveFileToLocal(logoFile, {
+        folder: "store_items",
+      });
+    }
+
     let itemToCreate: IStoreItem = {
       name: item.name,
+      logo: logoUrl || item.logo,
       categoryId: item.categoryId,
       isPremium: true,
       prices: item.prices,
@@ -349,6 +373,7 @@ export default class StoreService implements IStoreService {
     item: Partial<IStoreItem>,
     svgaFile?: Express.Multer.File,
     previewFile?: Express.Multer.File,
+    logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument> {
     const existingItem = await this.ItemRepository.getStoreItemById(id);
     if (!existingItem)
@@ -387,6 +412,16 @@ export default class StoreService implements IStoreService {
       item.previewFile = url;
     }
 
+    if (logoFile) {
+      if (existingItem.logo) {
+        await deleteLocalFile(existingItem.logo);
+      }
+      const url = await saveFileToLocal(logoFile, {
+        folder: "store_items",
+      });
+      item.logo = url;
+    }
+
     return await this.ItemRepository.updateStoreItem(id, item);
   }
 
@@ -394,6 +429,7 @@ export default class StoreService implements IStoreService {
     id: string,
     item: Partial<IStoreItem>,
     files?: IPremiumFiles[],
+    logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument> {
     let existingItem = await this.ItemRepository.getStoreItemById(id);
     if (!existingItem)
@@ -450,8 +486,19 @@ export default class StoreService implements IStoreService {
       });
     }
 
+    if (logoFile) {
+      if (existingItem.logo) {
+        await deleteLocalFile(existingItem.logo);
+      }
+      const url = await saveFileToLocal(logoFile, {
+        folder: "store_items",
+      });
+      item.logo = url;
+    }
+
     let profileToBeUpdated: IStoreItem = {
       name: item.name || existingItem.name,
+      logo: item.logo || existingItem.logo,
       categoryId: item.categoryId || existingItem.categoryId,
       isPremium: true,
       prices: item.prices || existingItem.prices,
@@ -492,6 +539,7 @@ export default class StoreService implements IStoreService {
     if (existingItem.svgaFile) await deleteLocalFile(existingItem.svgaFile);
     if (existingItem.previewFile)
       await deleteLocalFile(existingItem.previewFile);
+    if (existingItem.logo) await deleteLocalFile(existingItem.logo);
 
     if (existingItem.bundleFiles) {
       for (const bundle of existingItem.bundleFiles) {
