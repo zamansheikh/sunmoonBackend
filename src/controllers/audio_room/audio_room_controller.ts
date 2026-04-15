@@ -604,4 +604,16 @@ export class AudioRoomController {
       result: result,
     });
   });
+
+  getRewardedUsers = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    const result = await this.Service.getRewardedUsers(roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Rewarded users fetched successfully",
+      result: result,
+    });
+  });
 }

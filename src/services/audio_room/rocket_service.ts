@@ -15,7 +15,10 @@ import {
 } from "../../core/Utils/constants";
 import { AudioRoomChannels, LaunchGiftTypes } from "../../core/Utils/enums";
 import { getRandomNumberFromRange } from "../../core/Utils/helper_functions";
-import { IAudioRoomDocument, IMemberDetails } from "../../models/audio_room/audio_room_model";
+import {
+  IAudioRoomDocument,
+  IMemberDetails,
+} from "../../models/audio_room/audio_room_model";
 import { IMyBucket } from "../../models/store/my_bucket_model";
 import { IStoreItemDocument } from "../../models/store/store_item_model";
 
@@ -45,6 +48,7 @@ export default class RocketService {
   private static readonly FUEL_KEY_PREFIX = `${this.ROCKET_SERVICE_FOLDER}:fuel:`;
   private static readonly LEVEL_KEY_PREFIX = `${this.ROCKET_SERVICE_FOLDER}:level:`;
   private static readonly ROCKET_MILESTONE_KEY_PREFIX = `${this.ROCKET_SERVICE_FOLDER}:milestone:`;
+  private static readonly REWARDED_USERS_KEY_PREFIX = `${this.ROCKET_SERVICE_FOLDER}:rewarded_users:`;
 
   // repositories
   private giftRecordRepository =
@@ -55,8 +59,7 @@ export default class RocketService {
   private myBucketRepository = RepositoryProviders.myBucketRepositoryProvider;
   private userStatsRepository = RepositoryProviders.userStatsRepositoryProvider;
   private userRepository = RepositoryProviders.userRepositoryProvider;
-  private audioRoomRepository =
-    RepositoryProviders.audioRoomRepositoryProvider;
+  private audioRoomRepository = RepositoryProviders.audioRoomRepositoryProvider;
 
   private redis = RedisService.getInstance();
 
@@ -132,12 +135,14 @@ export default class RocketService {
     const remainingFuel = fuel - ROCKET_MILESTONES[level - 2];
     // reward the users
     const rewardedUsers = await this.rewardUsers(room, level);
+    // save the rewarded users for api usages
+    await this.saveRewarddedUsers(rewardedUsers, roomId);
     // notifying the app about the rocket launch (scope: room)
     const socketServer = SingletonSocketServer.getInstance();
     socketServer.emitToRoom(roomId, AudioRoomChannels.LaunchRocket, {
       roomId,
       fuel,
-      rewardedUser: rewardedUsers,
+      // rewardedUser: rewardedUsers,
       level,
     });
     // Notify Level Update
@@ -259,6 +264,19 @@ export default class RocketService {
       });
     }
     return rewardedUsers;
+  }
+
+  private async saveRewarddedUsers(
+    rewardedUsers: IRewarededUser[],
+    roomId: string,
+  ) {
+    const key = `${RocketService.REWARDED_USERS_KEY_PREFIX}${roomId}`;
+    await this.redis.set(key, rewardedUsers, 86400); // Expires in 24 hours
+  }
+
+  public async getRewardedUsers(roomId: string) {
+    const key = `${RocketService.REWARDED_USERS_KEY_PREFIX}${roomId}`;
+    return await this.redis.get<IRewarededUser[]>(key);
   }
 
   // this function adds asset to the

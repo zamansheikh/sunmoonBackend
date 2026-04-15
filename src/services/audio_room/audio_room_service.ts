@@ -1,5 +1,8 @@
 import AppError from "../../core/errors/app_errors";
-import RocketService, { IRocketServiceResponse } from "./rocket_service";
+import RocketService, {
+  IRewarededUser,
+  IRocketServiceResponse,
+} from "./rocket_service";
 import { isValidObjectId } from "mongoose";
 import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
 import { AudioRoomHelper } from "../../core/helper_classes/audioRoomHelper";
@@ -149,6 +152,7 @@ export interface IAudioRoomService {
     roomId: string,
     period: RankingPeriods,
   ): Promise<any>;
+  getRewardedUsers(roomId: string): Promise<IRewarededUser[] | null>;
 }
 
 export class AudioRoomService implements IAudioRoomService {
@@ -1455,7 +1459,7 @@ export class AudioRoomService implements IAudioRoomService {
     const roomIds = recentVisits.map((v) => v.roomId);
 
     // Fetch all rooms in a SINGLE database round-trip
-    const rooms = await this.audioRoomRepository.getRoomsByRoomIds(roomIds); 
+    const rooms = await this.audioRoomRepository.getRoomsByRoomIds(roomIds);
 
     // Map back to guarantee the original chronological order from recentVisits
     // and filter out any rooms that might have been deleted (not found in bulk fetch)
@@ -1519,6 +1523,10 @@ export class AudioRoomService implements IAudioRoomService {
       totalRoomTransaction: totalRoomTransaction,
       myRanking: myRanking,
     };
+  }
+
+  async getRewardedUsers(roomId: string): Promise<IRewarededUser[]> {
+    return (await RocketService.getInstance().getRewardedUsers(roomId)) || [];
   }
 
   private emitRoomData(room: IAudioRoomDocument) {

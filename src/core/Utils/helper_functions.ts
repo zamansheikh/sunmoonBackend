@@ -25,6 +25,7 @@ import {
   IAudioRoom,
   IAudioRoomDocument,
 } from "../../models/audio_room/audio_room_model";
+import { IMyBucketDocument } from "../../models/store/my_bucket_model";
 
 export const generateFileHash = (buffer: Buffer): string => {
   return crypto.createHash("sha256").update(buffer).digest("hex");
@@ -295,6 +296,27 @@ export async function getEquippedItemObjects(
   return equippedFeatures;
 }
 
+export async function getMyBucketItems(
+  repository: IMyBucketRepository,
+  userId: string,
+): Promise<Record<string, any[]>> {
+  const myBuckets = await repository.getAllBucketsByCategoryGrouped(userId);
+
+  const transformedBuckets: Record<string, any[]> = {};
+  for (const key in myBuckets) {
+    transformedBuckets[key] = myBuckets[key].map((bucket) => {
+      const item = bucket.itemId as IStoreItem;
+      return {
+        name: item.name,
+        logo: item.logo,
+        isPremium: item.isPremium,
+        previewFile: item.previewFile,
+      };
+    });
+  }
+
+  return transformedBuckets;
+}
 // export async function checkPremiumItem(
 //   repository: IMyBucketRepository,
 //   userId: string,

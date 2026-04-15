@@ -69,4 +69,5 @@ export class RepositoryProviders {
   );
   static readonly familyJoinRequestRepositoryProvider =
     new FamilyJoinRequestRepository(FamilyJoinRequestModel);
+  
 }

@@ -51,6 +51,7 @@ import { IStoreItem } from "../../models/store/store_item_model";
 import {
   determineUserLevelFromXp,
   getEquippedItemObjects,
+  getMyBucketItems,
   getNextSalaryDate,
   isTheDateFromThisMonth,
 } from "../../core/Utils/helper_functions";
@@ -283,6 +284,10 @@ export default class AuthService implements IAuthService {
       this.CategoryRepository,
       id,
     );
+    userWithStats.myBucketItems = await getMyBucketItems(
+      this.BucketRepository,
+      id,
+    );
     return userWithStats;
   }
 
@@ -340,6 +345,10 @@ export default class AuthService implements IAuthService {
     (user as any).equippedStoreItems = await getEquippedItemObjects(
       this.BucketRepository,
       this.CategoryRepository,
+      id,
+    );
+    (user as any).myBucketItems = await getMyBucketItems(
+      this.BucketRepository,
       id,
     );
     return user;
