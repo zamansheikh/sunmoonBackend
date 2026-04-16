@@ -5,6 +5,7 @@ export class RedisFolderProvider {
     "mgb_invitation_tracking_service";
   static readonly MgbGiftTrackingSystemFolderPrefix =
     "mgb_gift_tracking_system";
+  static readonly CoinBagServiceFolderPrefix = "coin_bag_service";
 
   static {
     // Automatically validate that no two prefixes share the same value

@@ -136,6 +136,31 @@ export function validateArray(arr: any, fieldName: string) {
     throw new AppError(StatusCodes.BAD_REQUEST, `${fieldName} cannot be empty`);
 }
 
+export function validateNumberArray(arr: any, fieldName: string) {
+  let parsedArr = arr;
+  if (typeof arr === "string") {
+    try {
+      parsedArr = JSON.parse(arr);
+    } catch (error) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `${fieldName} must be a valid JSON string or array`,
+      );
+    }
+  }
+
+  if (!Array.isArray(parsedArr))
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      `${fieldName} must be an array`,
+    );
+  if (parsedArr.length < 1)
+    throw new AppError(StatusCodes.BAD_REQUEST, `${fieldName} cannot be empty`);
+  parsedArr.forEach((item: any) => {
+    validateNumber(item, fieldName);
+  });
+}
+
 export function validateNumber(num: any, fieldName: string) {
   if (isNaN(Number(num)))
     throw new AppError(

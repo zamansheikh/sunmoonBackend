@@ -14,6 +14,7 @@ import { RecentVisitedRoomRepository } from "../repository/audio_room/recent_vis
 import RecentVisitedRoomModel from "../models/audio_room/recent_visited_room_model";
 import { CurrentRoomMemberRepository } from "../repository/audio_room/current_room_member_repository";
 import CurrentRoomMemberModel from "../models/audio_room/current_room_member";
+import { CoinBagController } from "../controllers/audio_room/coin_bag_controller";
 
 const router = express.Router();
 

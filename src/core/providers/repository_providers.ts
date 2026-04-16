@@ -24,6 +24,10 @@ import { FamilyMemberRepository } from "../../repository/family/family_member_re
 import FamilyMemberModel from "../../models/family/family_member_model";
 import { FamilyJoinRequestRepository } from "../../repository/family/family_join_request_repository";
 import FamilyJoinRequestModel from "../../models/family/family_join_request_model";
+import CoinBagOptionModel from "../../models/audio_room/coin_bag_option_model";
+import { CoinBagOptionRepository } from "../../repository/audio_room/coin_bag_option_repository";
+import CoinBagDistributionModel from "../../models/audio_room/coin_bag_distribution_model";
+import { CoinBagDistributionRepository } from "../../repository/audio_room/coin_bag_distribution_repository";
 
 export class RepositoryProviders {
   static readonly giftRecordRepositoryProvider = new GiftRecordRepository(
@@ -69,5 +73,11 @@ export class RepositoryProviders {
   );
   static readonly familyJoinRequestRepositoryProvider =
     new FamilyJoinRequestRepository(FamilyJoinRequestModel);
-  
+
+  static readonly coinBagOptionRepositoryProvider = new CoinBagOptionRepository(
+    CoinBagOptionModel,
+  );
+
+  static readonly coinBagDistributionRepositoryProvider =
+    new CoinBagDistributionRepository(CoinBagDistributionModel);
 }
