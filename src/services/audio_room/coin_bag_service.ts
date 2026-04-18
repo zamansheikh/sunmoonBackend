@@ -1,5 +1,6 @@
 import { RepositoryProviders } from "../../core/providers/repository_providers";
 import { ICoinBagOptionRepository } from "../../repository/audio_room/coin_bag_option_repository";
+import { ICoinBagDistributionRepository } from "../../repository/audio_room/coin_bag_distribution_repository";
 import { ICoinBagOptions } from "../../models/audio_room/coin_bag_option_model";
 import { AudioRoomCache } from "../../core/cache/audio_room_cache";
 import AppError from "../../core/errors/app_errors";
@@ -15,10 +16,12 @@ import { RedisFolderProvider } from "../../core/redis/redis_folder_provider";
 import RedisService from "../../core/redis/redis_service";
 import { UserActiveStatus } from "../../core/Utils/enums";
 import { UserCache } from "../../core/cache/user_chache";
+import { ICoinBagDistribution } from "../../models/audio_room/coin_bag_distribution_model";
 
 export default class CoinBagService {
   private static instance: CoinBagService;
   private coinBagOptionRepository: ICoinBagOptionRepository;
+  private coinBagDistributionRepository: ICoinBagDistributionRepository;
   private userStatsRepository = RepositoryProviders.userStatsRepositoryProvider;
   private redis = RedisService.getInstance();
 
@@ -26,9 +29,15 @@ export default class CoinBagService {
     RedisFolderProvider.CoinBagServiceFolderPrefix;
   private readonly SESSION_KEY_PREFIX = `${this.COIN_BAG_SERVICE_FOLDER}:session:`;
 
+  // options and distributions created by admin
+  private coinbagOptions: ICoinBagOptions | null = null;
+  private coinbagDistributions: ICoinBagDistribution[] | null = null;
+
   private constructor() {
     this.coinBagOptionRepository =
       RepositoryProviders.coinBagOptionRepositoryProvider;
+    this.coinBagDistributionRepository =
+      RepositoryProviders.coinBagDistributionRepositoryProvider;
   }
 
   public static getInstance(): CoinBagService {
@@ -95,9 +104,26 @@ export default class CoinBagService {
       throw new AppError(404, "No active Coin Bag in this room");
   }
 
+  private async resolveCoinBagOptions() {
+    if (this.coinbagOptions) {
+      return this.coinbagOptions;
+    }
+    this.coinbagOptions = await this.coinBagOptionRepository.get();
+    return this.coinbagOptions;
+  }
+
+  private async resolveCoinBagDistributions() {
+    if (this.coinbagDistributions) {
+      return this.coinbagDistributions;
+    }
+    this.coinbagDistributions =
+      await this.coinBagDistributionRepository.getAll();
+    return this.coinbagDistributions;
+  }
+
   // for client user only
   public async getCoinBagOptions(): Promise<ICoinBagOptions> {
-    return await this.coinBagOptionRepository.get();
+    return await this.resolveCoinBagOptions();
   }
 
   // for admin only
