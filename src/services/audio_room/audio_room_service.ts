@@ -771,7 +771,7 @@ export class AudioRoomService implements IAudioRoomService {
     userObj.equippedStoreItems = await getEquippedItemObjects(
       this.bucketRepository,
       this.categoryRepository,
-      userObj.equippedStoreItems,
+      myId,
     );
     const messageBody: IRoomMessage =
       AudioRoomHelper.getInstance().generateRoomMessage(userObj, message);
