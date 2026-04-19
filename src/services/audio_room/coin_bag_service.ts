@@ -149,7 +149,7 @@ export default class CoinBagService {
     // check for session existance and the reward timing
     if (!session)
       throw new AppError(404, "Coin bag session does not exist or has expired");
-    
+
     // Get remaining session TTL to sync auxiliary keys
     const remainingTTL = await this.redis.getTTL(sessionKey);
 
@@ -165,7 +165,7 @@ export default class CoinBagService {
     if (addedCount === 0) {
       throw new AppError(400, "You have already claimed this coin bag");
     }
-    
+
     // Sync expiration with session
     if (remainingTTL > 0) {
       await this.redis.expire(claimedSetKey, remainingTTL);
@@ -182,7 +182,7 @@ export default class CoinBagService {
       // Atomic rank increment to prevent race conditions
       const rankKey = `${this.COIN_BAG_SERVICE_FOLDER}:rank:${roomId}`;
       const userRank = (await this.redis.increment(rankKey)) - 1; // 0-indexed
-      
+
       // Sync expiration with session
       if (remainingTTL > 0) {
         await this.redis.expire(rankKey, remainingTTL);
@@ -226,6 +226,40 @@ export default class CoinBagService {
       await this.redis.removeFromSet(claimedSetKey, userId);
       throw error;
     }
+  }
+
+  public async getClaimedUsers(roomId: string) {
+    // check session active status
+    const sessionKey = `${this.SESSION_KEY_PREFIX}${roomId}`;
+    const session = await this.redis.get<ICoinBagSession>(sessionKey);
+    if (!session)
+      throw new AppError(404, "Coin bag session does not exist or has expired");
+    if (session.rewardStartTime > Date.now()) {
+      throw new AppError(400, "Coin bag session is not started yet");
+    }
+    // Use getSortedSetRange to get all winners in order (0 to -1)
+    const claimedUsersKey = `${this.CLAIMED_COIN_USERS_KEY_PREFIX}${roomId}`;
+    const claimedUsers =
+      await this.redis.getSortedSetRange<IClaimedCoinUser>(claimedUsersKey);
+
+    // get sender brief
+    const senderBrief = await UserCache.getInstance().getUserBrief(
+      session.senderId,
+    );
+    return {
+      sender: {
+        name: senderBrief?.name,
+        avatar: senderBrief?.avatar,
+      },
+      totalRecievedUsers: claimedUsers.length,
+      totalRecievedAmount: claimedUsers.reduce(
+        (acc, user) => acc + user.coinAmount,
+        0,
+      ),
+      totalAllocatedUsers: session.userCount,
+      totalAllocatedAmount: session.coinAmount,
+      claimedUsers,
+    };
   }
 
   private async validateCoinBagOptions(coinAmount: number, userCount: number) {
