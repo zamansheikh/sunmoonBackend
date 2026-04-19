@@ -52,4 +52,37 @@ export class CoinBagController {
       result: result,
     });
   });
+
+  sendCoinBagToRoom = catchAsync(async (req: Request, res: Response) => {
+    const { coinAmount, userCount, roomId } = req.body;
+    const senderId = req.user!.id;
+    await this.service.sendCoinBagToRoom(coinAmount, userCount, roomId, senderId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Coin bag sent to room successfully",
+    });
+  });
+
+  getCoinBagStatus = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    const result = await this.service.getCoinBagStatus(roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Coin bag status fetched successfully",
+      result: result,
+    });
+  });
+
+  claimCoinBag = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.body;
+    const userId = req.user!.id;
+    await this.service.claimCoinBag(roomId, userId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Coin bag claimed successfully",
+    });
+  });
 }

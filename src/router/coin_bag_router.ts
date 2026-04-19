@@ -14,6 +14,10 @@ router
   .post(authenticate(), coinBagController.createCoinBagOptions)
   .put(authenticate(), coinBagController.updateCoinBagOptions);
 
+router.post("/send", authenticate(), coinBagController.sendCoinBagToRoom);
+router.get("/status/:roomId", coinBagController.getCoinBagStatus);
+router.post("/claim", authenticate(), coinBagController.claimCoinBag);
+
 // Distribution routes
 router
   .route("/distribution")

@@ -106,13 +106,14 @@ export class RedisService {
    * Sets only allow unique values; duplicates are ignored.
    * @param key Key
    * @param value Value (will be stringified if it's an object/array)
+   * @returns Number of elements added to the set
    */
-  public async addToSet(key: string, ...values: any[]): Promise<void> {
-    if (values.length === 0) return;
+  public async addToSet(key: string, ...values: any[]): Promise<number> {
+    if (values.length === 0) return 0;
     const stringValues = values.map((value) =>
       typeof value === "string" ? value : JSON.stringify(value),
     );
-    await this.client.sAdd(key, stringValues);
+    return await this.client.sAdd(key, stringValues);
   }
 
   /**
@@ -126,6 +127,65 @@ export class RedisService {
       typeof value === "string" ? value : JSON.stringify(value),
     );
     await this.client.sRem(key, stringValues);
+  }
+
+  /**
+   * Increment a key's value (INCRBY)
+   * @param key Key
+   * @param amount Amount to increment (default 1)
+   */
+  public async increment(key: string, amount: number = 1): Promise<number> {
+    return await this.client.incrBy(key, amount);
+  }
+
+  /**
+   * Add a value to a Redis sorted set (ZADD)
+   * @param key Key
+   * @param value Value (will be stringified if it's an object/array)
+   * @param score Score for sorting
+   */
+  public async addToSortedSet(
+    key: string,
+    value: any,
+    score: number,
+  ): Promise<void> {
+    const stringValue =
+      typeof value === "string" ? value : JSON.stringify(value);
+    await this.client.zAdd(key, {
+      score: score,
+      value: stringValue,
+    });
+  }
+
+  /**
+   * Get members of a sorted set in a specific range (ZRANGE)
+   * @param key Key
+   * @param start Start index (default 0)
+   * @param stop Stop index (default -1)
+   * @param reverse If true, use REV option
+   */
+  public async getSortedSetRange<T>(
+    key: string,
+    start: number = 0,
+    stop: number = -1,
+    reverse: boolean = false,
+  ): Promise<T[]> {
+    let members: string[];
+    if (reverse) {
+      members = await this.client.zRange(key, start, stop, {
+        REV: true,
+      });
+    } else {
+      members = await this.client.zRange(key, start, stop);
+    }
+
+    return members.map((member) => {
+      try {
+        return JSON.parse(member);
+      } catch {
+        return member as unknown as T;
+      }
+    });
   }
 
   /**
@@ -160,6 +220,15 @@ export class RedisService {
     if (keys.length > 0) {
       await this.client.del(keys);
     }
+  }
+
+  /**
+   * Get the remaining TTL of a key in seconds
+   * @param key Key
+   * @returns TTL in seconds, or -1 if no TTL, or -2 if key does not exist
+   */
+  public async getTTL(key: string): Promise<number> {
+    return await this.client.ttl(key);
   }
 
   /**
