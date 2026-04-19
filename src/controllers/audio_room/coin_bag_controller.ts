@@ -78,11 +78,23 @@ export class CoinBagController {
   claimCoinBag = catchAsync(async (req: Request, res: Response) => {
     const { roomId } = req.body;
     const userId = req.user!.id;
-    await this.service.claimCoinBag(roomId, userId);
+    const result = await this.service.claimCoinBag(roomId, userId);
     sendResponse(res, {
       success: true,
       statusCode: 200,
       message: "Coin bag claimed successfully",
+      result: result,
+    });
+  });
+
+  getClaimedUsers = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    const result = await this.service.getClaimedUsers(roomId);
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Claimed users fetched successfully",
+      result: result,
     });
   });
 }

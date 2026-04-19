@@ -17,6 +17,7 @@ router
 router.post("/send", authenticate(), coinBagController.sendCoinBagToRoom);
 router.get("/status/:roomId", coinBagController.getCoinBagStatus);
 router.post("/claim", authenticate(), coinBagController.claimCoinBag);
+router.get("/claimed-users/:roomId", coinBagController.getClaimedUsers);
 
 // Distribution routes
 router
