@@ -3,7 +3,7 @@ import { DatabaseNames } from "./enums";
  * Returns a sub-pipeline that:
  * - Matches a user by _id (using let variable)
  * - Looks up equipped store items
- * - Transforms them into the desired { categoryName: svgaFile } object
+ * - Transforms them into { categoryName: { svgaUrl, previewUrl } } objects
  * - Returns a clean user object with equippedStoreItems field
  */
 export const userWithEquippedItemsPipeline = (
@@ -71,7 +71,10 @@ export const userWithEquippedItemsPipeline = (
                             as: "b",
                             in: {
                               k: "$$b.categoryName",
-                              v: "$$b.svgaFile",
+                              v: {
+                                svgaUrl: "$$b.svgaFile",
+                                previewUrl: "$$b.previewFile",
+                              },
                             },
                           },
                         },
@@ -86,7 +89,10 @@ export const userWithEquippedItemsPipeline = (
                                 as: "dummy",
                                 in: {
                                   k: { $ifNull: ["$category.title", "Unknown"] },
-                                  v: "$svgaFile",
+                                  v: {
+                                    svgaUrl: "$svgaFile",
+                                    previewUrl: { $ifNull: ["$previewFile", ""] },
+                                  },
                                 },
                               },
                             },

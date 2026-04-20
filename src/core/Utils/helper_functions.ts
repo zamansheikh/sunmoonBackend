@@ -253,7 +253,7 @@ export async function getEquippedItemObjects(
   if (!equippedBucket || equippedBucket.length === 0) {
     return {};
   }
-  let equippedFeatures: Record<string, any> = {};
+  let equippedFeatures: Record<string, Record<string, string> | string[]> = {};
   let privileges: string[] = [];
 
   for (let i = 0; i < equippedBucket.length; i++) {
@@ -273,8 +273,11 @@ export async function getEquippedItemObjects(
 
     if (item.bundleFiles && item.bundleFiles.length > 0) {
       for (let j = 0; j < item.bundleFiles.length; j++) {
-        equippedFeatures[item.bundleFiles[j].categoryName] =
-          item.bundleFiles[j].svgaFile;
+        const bundle = item.bundleFiles[j];
+        equippedFeatures[bundle.categoryName] = {
+          svgaUrl: bundle.svgaFile,
+          previewUrl: bundle.previewFile,
+        };
       }
     } else {
       const category = await catRepository.getCategoryById(
@@ -284,7 +287,10 @@ export async function getEquippedItemObjects(
         console.error("category not found");
         continue;
       }
-      equippedFeatures[category.title] = item.svgaFile;
+      equippedFeatures[category.title] = {
+        svgaUrl: item.svgaFile ?? "",
+        previewUrl: item.previewFile ?? "",
+      };
     }
   }
 
