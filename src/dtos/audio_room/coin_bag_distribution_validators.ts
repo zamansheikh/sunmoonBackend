@@ -60,6 +60,13 @@ export function validateCreateCoinBagDistribution(body: any): ICoinBagDistributi
   validateNumber(totalUsers, "totalUsers");
   const validatedDataPoints = validateDataPoints(dataPoints);
 
+  if (Number(totalUsers) !== validatedDataPoints.length) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "totalUsers must be equal to the number of dataPoints provided",
+    );
+  }
+
   return {
     totalUsers: Number(totalUsers),
     dataPoints: validatedDataPoints,
@@ -81,6 +88,13 @@ export function validateUpdateCoinBagDistribution(body: any): ICoinBagDistributi
 
   validateNumber(totalUsers, "totalUsers");
   const validatedDataPoints = validateDataPoints(dataPoints);
+
+  if (Number(totalUsers) !== validatedDataPoints.length) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "totalUsers must be equal to the number of dataPoints provided",
+    );
+  }
 
   return {
     totalUsers: Number(totalUsers),
