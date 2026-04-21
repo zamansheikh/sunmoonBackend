@@ -32,6 +32,8 @@ import MagicBallHostRouter from "./router/magic_ball_host_routes";
 import FamilyRouter from "./router/family_router";
 import CoinBagRouter from "./router/coin_bag_router";
 import path from "path";
+import StoreItemModel from "./models/store/store_item_model";
+import { IStoreCategoryDocument } from "./models/store/store_category_model";
 
 // error handlers
 import globalErrorHandler from "./core/errors/global_error_handlar";
@@ -138,6 +140,55 @@ app.post(
   upload.single("file"),
   saveToLocalFileApiFunction,
 );
+
+
+app.get("/api/get-cached-svga", async (req: Request, res: Response) => {
+  try {
+    const items = await StoreItemModel.find({ deleteStatus: false }).populate(
+      "categoryId",
+    );
+
+    const groupedSvgas: Record<string, string[]> = {};
+
+    items.forEach((item) => {
+      if (!item.isPremium) {
+        const category = item.categoryId as unknown as IStoreCategoryDocument;
+        const categoryName = category?.title;
+
+        if (categoryName && item.svgaFile) {
+          if (!groupedSvgas[categoryName]) {
+            groupedSvgas[categoryName] = [];
+          }
+          if (!groupedSvgas[categoryName].includes(item.svgaFile)) {
+            groupedSvgas[categoryName].push(item.svgaFile);
+          }
+        }
+      } else if (item.bundleFiles && item.bundleFiles.length > 0) {
+        item.bundleFiles.forEach((bundle) => {
+          const categoryName = bundle.categoryName;
+          if (categoryName && bundle.svgaFile) {
+            if (!groupedSvgas[categoryName]) {
+              groupedSvgas[categoryName] = [];
+            }
+            if (!groupedSvgas[categoryName].includes(bundle.svgaFile)) {
+              groupedSvgas[categoryName].push(bundle.svgaFile);
+            }
+          }
+        });
+      }
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: groupedSvgas,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+});
 
 // app.get("/release/latest", async (req: Request, res: Response) => {
 //   res.send({
