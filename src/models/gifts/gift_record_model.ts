@@ -40,7 +40,7 @@ const giftRecordSchema = new Schema<IGiftRecordDocument>(
     totalCoinCost: { type: Number, required: true },
     totalDiamonds: { type: Number, required: true },
     roomId: { type: String },
-    expireAt: { type: Date, required: true, expires: 1 },
+    // expireAt: { type: Date, required: true, expires: 1 },
   },
   { timestamps: true },
 );

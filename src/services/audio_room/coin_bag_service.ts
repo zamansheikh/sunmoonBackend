@@ -40,6 +40,8 @@ export default class CoinBagService {
     RedisFolderProvider.CoinBagServiceFolderPrefix;
   private readonly SESSION_KEY_PREFIX = `${this.COIN_BAG_SERVICE_FOLDER}:session:`;
   private readonly CLAIMED_COIN_USERS_KEY_PREFIX = `${this.COIN_BAG_SERVICE_FOLDER}:claimed_users:`;
+  private readonly CLAIMED_SET_KEY_PREFIX = `${this.COIN_BAG_SERVICE_FOLDER}:claimed_set:`;
+  private readonly RANK_KEY_PREFIX = `${this.COIN_BAG_SERVICE_FOLDER}:rank:`;
 
   // options and distributions created by admin
   private coinbagOptions: ICoinBagOptions | null = null;
@@ -117,6 +119,7 @@ export default class CoinBagService {
       // ! send a global banner
 
       // ! send room wide socket event
+      return { rewardStartTime: sessionData.rewardStartTime };
     } catch (error) {
       // abort transaction if any operation fails
       await dbSession.abortTransaction();
@@ -153,14 +156,14 @@ export default class CoinBagService {
     // Get remaining session TTL to sync auxiliary keys
     const remainingTTL = await this.redis.getTTL(sessionKey);
 
-    if (session.rewardStartTime > Date.now())
-      throw new AppError(
-        400,
-        "The reward countdown is still active; please wait",
-      );
+    // if (session.rewardStartTime > Date.now())
+    //   throw new AppError(
+    //     400,
+    //     "The reward countdown is still active; please wait",
+    //   );
 
     // Check if user already claimed using a Redis set for atomicity
-    const claimedSetKey = `${this.COIN_BAG_SERVICE_FOLDER}:claimed_set:${roomId}`;
+    const claimedSetKey = `${this.CLAIMED_SET_KEY_PREFIX}${roomId}`;
     const addedCount = await this.redis.addToSet(claimedSetKey, userId);
     if (addedCount === 0) {
       throw new AppError(400, "You have already claimed this coin bag");
@@ -180,7 +183,7 @@ export default class CoinBagService {
         throw new AppError(404, "Coin bag distribution not found");
 
       // Atomic rank increment to prevent race conditions
-      const rankKey = `${this.COIN_BAG_SERVICE_FOLDER}:rank:${roomId}`;
+      const rankKey = `${this.RANK_KEY_PREFIX}${roomId}`;
       const userRank = (await this.redis.increment(rankKey)) - 1; // 0-indexed
 
       // Sync expiration with session
@@ -197,7 +200,10 @@ export default class CoinBagService {
 
       const coinPercentage =
         matchedDistribution.dataPoints[userRank].percentage;
-      const coinAmount = Math.floor(session.coinAmount * coinPercentage);
+
+      const coinAmount = Math.floor(
+        session.coinAmount * (coinPercentage / 100),
+      );
 
       // prepare claimed user data
       const claimedUserData: IClaimedCoinUser = {
@@ -215,7 +221,7 @@ export default class CoinBagService {
         claimedUserData,
         claimedUserData.rank,
       );
-      await this.redis.expire(claimedUsersKey, 3600);
+      await this.redis.expire(claimedUsersKey, remainingTTL);
 
       // add the reward to the userstats
       await this.userStatsRepository.updateCoins(userId, coinAmount);
@@ -234,9 +240,9 @@ export default class CoinBagService {
     const session = await this.redis.get<ICoinBagSession>(sessionKey);
     if (!session)
       throw new AppError(404, "Coin bag session does not exist or has expired");
-    if (session.rewardStartTime > Date.now()) {
-      throw new AppError(400, "Coin bag session is not started yet");
-    }
+    // if (session.rewardStartTime > Date.now()) {
+    //   throw new AppError(400, "Coin bag session is not started yet");
+    // }
     // Use getSortedSetRange to get all winners in order (0 to -1)
     const claimedUsersKey = `${this.CLAIMED_COIN_USERS_KEY_PREFIX}${roomId}`;
     const claimedUsers =

@@ -7,6 +7,8 @@ import {
   IGiftModel,
 } from "../../entities/admin/gift_interface";
 import { QueryBuilder } from "../../core/Utils/query_builder";
+import GiftRecordModel from "../../models/gifts/gift_record_model";
+import { DatabaseNames } from "../../core/Utils/enums";
 
 export interface IGiftRepository {
   createGift(gift: IGift): Promise<IGiftDocument>;
@@ -22,6 +24,7 @@ export interface IGiftRepository {
     qty?: number,
     session?: mongoose.ClientSession,
   ): Promise<IGiftDocument>;
+  getAllRecievedGifts(userId: string): Promise<IAllRecievedGifts[]>
 }
 
 export class GiftRepository implements IGiftRepository {
@@ -90,4 +93,45 @@ export class GiftRepository implements IGiftRepository {
       throw new AppError(StatusCodes.NOT_FOUND, "Gift not found");
     return updatedGift;
   }
+
+  async getAllRecievedGifts(userId: string): Promise<IAllRecievedGifts[]> {
+    const data = await GiftRecordModel.aggregate([
+      {
+        $match: {
+          receiverId: new mongoose.Types.ObjectId(userId),
+        },
+      },
+      {
+        $group: {
+          _id: "$giftId",
+          totalRecieved: { $sum: "$qty" },
+        },
+      },
+      {
+        $lookup: {
+          from: DatabaseNames.Gifts,
+          localField: "_id",
+          foreignField: "_id",
+          as: "gift",
+        },
+      },
+      {
+        $unwind: "$gift",
+      },
+      {
+        $project: {
+          _id: 0,
+          gift: 1,
+          totalRecieved: 1,
+        },
+      },
+    ]);
+
+    return data;
+  }
+}
+
+export interface IAllRecievedGifts{
+ gift: IGiftDocument,
+ totalRecieved: number,
 }

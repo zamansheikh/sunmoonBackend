@@ -288,6 +288,9 @@ export default class AuthService implements IAuthService {
       this.BucketRepository,
       id,
     );
+    userWithStats.recievedGifts =
+      await this.GiftRepository.getAllRecievedGifts(id);
+
     return userWithStats;
   }
 
@@ -351,6 +354,8 @@ export default class AuthService implements IAuthService {
       this.BucketRepository,
       id,
     );
+    (user as any).recievedGifts =
+      await this.GiftRepository.getAllRecievedGifts(id);
     return user;
   }
 
