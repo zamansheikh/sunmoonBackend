@@ -175,7 +175,7 @@ mongoose.connect(MONGOURL).then(async () => {
     const cronManager = CronManager.getInstance();
     cronManager.start();
     // cronManager.register("0 0 * * *", resetRoomXPTrackingSystem); // Everyday at 12:00 AM reset xp tracking system
-    cronManager.register("0 0 * * 0", roomSupportRewardSystem); // every week at sunday room support reset
+    cronManager.register("0 0 * * *", roomSupportRewardSystem); // every week at sunday room support reset
     cronManager.register("0 0 * * *", resetMagicBallJob); // Everyday at 12:00 AM reset xp tracking system
   });
 });
