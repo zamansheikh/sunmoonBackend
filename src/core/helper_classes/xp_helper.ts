@@ -38,28 +38,30 @@ export class XpHelper {
     const user = await this.userRepository.findUserById(userId);
     if (!user) return;
     const level = this.determineUserLevelFromXp(user.totalEarnedXp + xpAmount);
-    if (level > user!.level!) {
+    if (level > (user.level || 0)) {
       const socketInstance = SingletonSocketServer.getInstance();
       socketInstance.emitToUser(userId, AudioRoomChannels.LevelUp, { level });
     }
-    user!.totalEarnedXp += xpAmount;
-    user!.level = level;
-    await user!.save();
+    user.totalEarnedXp += xpAmount;
+    user.level = level;
+    await user.save();
   }
 
   public async updateUserXpFromCoin(userId: string, coins: number) {
     const user = await this.userRepository.findUserById(userId);
+    if (!user) return;
+
     const xpAmount =
       (coins / this.GIFT_SEND_XP) *
       (await this.calculateSvipMultiplier(userId));
-    const level = this.determineUserLevelFromXp(user!.totalEarnedXp + xpAmount);
-    if (level > user!.level!) {
+    const level = this.determineUserLevelFromXp(user.totalEarnedXp + xpAmount);
+    if (level > (user.level || 0)) {
       const socketInstance = SingletonSocketServer.getInstance();
       socketInstance.emitToUser(userId, AudioRoomChannels.LevelUp, { level });
     }
-    user!.totalEarnedXp += xpAmount;
-    user!.level = level;
-    await user!.save();
+    user.totalEarnedXp += xpAmount;
+    user.level = level;
+    await user.save();
   }
 
   private async calculateSvipMultiplier(userId: string): Promise<number> {
@@ -86,6 +88,7 @@ export class XpHelper {
     const svipPackages = (
       await this.bucketRepository.getAllPremiumItems(userId)
     )
+      .filter((item) => item.itemId) // Ensure itemId is populated/not null
       .map((item) => (item.itemId as IStoreItem).name)
       .filter((name) => name.includes("SVIP"))
       .map((name) => parseInt(name.split("SVIP-")?.[1] || "0") || 0);
