@@ -218,6 +218,12 @@ export default class SingletonSocketServer {
   }
 
   private async handleUserConnect(userId: string, socket: Socket) {
+    // Register the socket synchronously BEFORE any await. A REST call
+    // (e.g. join-audio-room) landing mid-handshake relies on getSocketId()
+    // to put this socket into the room — if onlineUsers is set after the
+    // DB await, joinRoomSocket silently no-ops and no broadcasts reach the
+    // client until it reconnects.
+    this.onlineUsers.set(userId, socket.id);
     if (this.disconnectedUsers.has(userId)) {
       const { timeOut, roomId } = this.disconnectedUsers.get(userId)!;
       clearTimeout(timeOut);
@@ -231,7 +237,6 @@ export default class SingletonSocketServer {
         socket.join(room.roomId);
       }
     }
-    this.onlineUsers.set(userId, socket.id);
     console.log(`User ${userId} connected with socket ID: ${socket.id}`);
   }
 
