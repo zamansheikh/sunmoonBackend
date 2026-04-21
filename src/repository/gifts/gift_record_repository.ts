@@ -56,10 +56,10 @@ export class GiftRecordRepository implements IGiftRecordRepository {
   async createGiftRecord(giftRecord: IGiftRecord): Promise<boolean> {
     try {
       // determine ttl -> always currents months last date.
-      const currentMonthLastDate = DateHelper.getEndOfMonth(new Date());
+      // const currentMonthLastDate = DateHelper.getEndOfMonth(new Date());
       const newGiftRecord = new this.Model({
         ...giftRecord,
-        expireAt: currentMonthLastDate,
+        // expireAt: currentMonthLastDate,
       });
       await newGiftRecord.save();
       return true;
