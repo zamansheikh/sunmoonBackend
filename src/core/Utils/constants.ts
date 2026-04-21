@@ -117,7 +117,7 @@ export interface ROOM_LEVEL_CRITERIA_INTERFACE {
 export const ROOM_LEVEL_CRITERIA: ROOM_LEVEL_CRITERIA_INTERFACE[] = [
   {
     level: 1,
-    roomVisitor: 20,
+    roomVisitor: 2,
     roomTransactions: 3 * MILLION,
     totalRewardCoin: 420 * THOUSAND,
     ownerCoin: 330 * THOUSAND,
@@ -126,7 +126,7 @@ export const ROOM_LEVEL_CRITERIA: ROOM_LEVEL_CRITERIA_INTERFACE[] = [
   },
   {
     level: 2,
-    roomVisitor: 50,
+    roomVisitor: 5,
     roomTransactions: 6 * MILLION,
     totalRewardCoin: 900 * THOUSAND,
     ownerCoin: 660 * THOUSAND,
@@ -135,7 +135,7 @@ export const ROOM_LEVEL_CRITERIA: ROOM_LEVEL_CRITERIA_INTERFACE[] = [
   },
   {
     level: 3,
-    roomVisitor: 75,
+    roomVisitor: 7,
     roomTransactions: 12 * MILLION,
     totalRewardCoin: 1.81 * MILLION,
     ownerCoin: 1.3 * MILLION,
