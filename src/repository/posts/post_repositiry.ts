@@ -11,6 +11,7 @@ import {
   postStructure,
 } from "./post_repository_constants";
 import { IPostRepository } from "./post_repository_interface";
+import { lookupRichUser } from "../../core/Utils/helper_pipelines";
 
 export default class PostRepository implements IPostRepository {
   PostModel: IPostModel;
@@ -34,19 +35,17 @@ export default class PostRepository implements IPostRepository {
 
     const result = qb
       .aggregate([
-        {
-          $lookup: {
-            from: DatabaseNames.User,
-            localField: "ownerId",
-            foreignField: "_id",
-            as: "userInfo",
-          },
-        },
+        // Rich user lookup so equippedStoreItems comes back resolved into
+        // { svgaUrl, previewUrl } objects (the shape the app expects), and
+        // level / userId are available without an extra join.
+        lookupRichUser("ownerId", "userInfo"),
         { $unwind: "$userInfo" },
         {
           $addFields: {
             userName: "$userInfo.name",
             avatar: "$userInfo.avatar",
+            level: "$userInfo.level",
+            equippedStoreItems: "$userInfo.equippedStoreItems",
           },
         },
         {
@@ -140,19 +139,14 @@ export default class PostRepository implements IPostRepository {
           _id: postObjectId,
         },
       },
-      {
-        $lookup: {
-          from: DatabaseNames.User,
-          localField: "ownerId",
-          foreignField: "_id",
-          as: "userInfo",
-        },
-      },
+      lookupRichUser("ownerId", "userInfo"),
       { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
       {
         $addFields: {
           userName: "$userInfo.name",
           avatar: "$userInfo.avatar",
+          level: "$userInfo.level",
+          equippedStoreItems: "$userInfo.equippedStoreItems",
         },
       },
       {
@@ -261,19 +255,14 @@ export default class PostRepository implements IPostRepository {
             ownerId: new mongoose.Types.ObjectId(userId),
           },
         },
-        {
-          $lookup: {
-            from: DatabaseNames.User,
-            localField: "ownerId",
-            foreignField: "_id",
-            as: "userInfo",
-          },
-        },
+        lookupRichUser("ownerId", "userInfo"),
         { $unwind: "$userInfo" },
         {
           $addFields: {
             userName: "$userInfo.name",
             avatar: "$userInfo.avatar",
+            level: "$userInfo.level",
+            equippedStoreItems: "$userInfo.equippedStoreItems",
           },
         },
         {

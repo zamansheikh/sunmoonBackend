@@ -15,7 +15,12 @@ export const postStructure  = {
             reactionType: 1
         },
        userName: 1,
-       avatar: 1
+       avatar: 1,
+       // Author profile extras so the post card can render the real
+       // level pill and SVIP tag (resolved by lookupRichUser into
+       // { svgaUrl, previewUrl } objects).
+       level: 1,
+       equippedStoreItems: 1,
     }
 };
 
