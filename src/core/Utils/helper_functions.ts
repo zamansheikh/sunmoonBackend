@@ -26,6 +26,7 @@ import {
   IAudioRoomDocument,
 } from "../../models/audio_room/audio_room_model";
 import { IMyBucketDocument } from "../../models/store/my_bucket_model";
+import { RepositoryProviders } from "../providers/repository_providers";
 
 export const generateFileHash = (buffer: Buffer): string => {
   return crypto.createHash("sha256").update(buffer).digest("hex");
@@ -299,6 +300,10 @@ export async function getEquippedItemObjects(
     equippedFeatures["privilege"] = Array.from(new Set(privileges));
   }
 
+  return equippedFeatures;
+}
+
+export async function checkBoughtSvip(userId: string, repository: IMyBucketRepository) {
   // ── Premium VIP / SVIP detection ─────────────────────────────────────────
   // Fetch all premium bucket items for the user (no useStatus filter).
   // Find the first store item whose name starts with "SVIP" or "VIP" and
@@ -307,7 +312,6 @@ export async function getEquippedItemObjects(
   const premiumBuckets = await repository.getAllPremiumItems(userId);
 
   let svipItem: Record<string, any> | null = null;
-  let vipItem: Record<string, any> | null = null;
 
   for (const bucket of premiumBuckets) {
     if (
@@ -321,9 +325,8 @@ export async function getEquippedItemObjects(
     if (!premiumStoreItem?.name) continue;
 
     const isPremiumSVIP = premiumStoreItem.name.startsWith("SVIP");
-    const isPremiumVIP = !isPremiumSVIP && premiumStoreItem.name.startsWith("VIP");
 
-    if (!isPremiumSVIP && !isPremiumVIP) continue;
+    if (!isPremiumSVIP) continue;
 
     // Find the "svga_tag" bundle entry for svgaFile / previewFile
     const tagBundle = premiumStoreItem.bundleFiles?.find(
@@ -337,21 +340,53 @@ export async function getEquippedItemObjects(
       previewFile: tagBundle?.previewFile ?? null,
     };
 
-    if (isPremiumSVIP && !svipItem) {
-      svipItem = shaped;
-    } else if (isPremiumVIP && !vipItem) {
-      vipItem = shaped;
+    svipItem = shaped;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  return svipItem;
+}
+
+export async function checkBoughtVip(userId: string, repository: IMyBucketRepository) {
+  // ── Premium VIP / SVIP detection ─────────────────────────────────────────
+  // Fetch all premium bucket items for the user (no useStatus filter).
+  // Find the first store item whose name starts with "SVIP" or "VIP" and
+  // shape it to { logo, name, svgaFile, previewFile } using the "svga_tag"
+  // bundle entry — mirroring the aggregation pipeline logic.
+  const premiumBuckets = await repository.getAllPremiumItems(userId);
+
+  let vipItem: Record<string, any> | null = null;
+
+  for (const bucket of premiumBuckets) {
+    if (
+      typeof bucket.itemId === "string" ||
+      bucket.itemId instanceof Types.ObjectId
+    ) {
+      continue; // itemId not populated, skip
     }
 
-    // Stop early once both are found
-    if (svipItem && vipItem) break;
+    const premiumStoreItem = bucket.itemId as IStoreItem;
+    if (!premiumStoreItem?.name) continue;
+
+    const isPremiumVIP = premiumStoreItem.name.startsWith("VIP");
+
+    if (!isPremiumVIP) continue;
+
+    // Find the "svga_tag" bundle entry for svgaFile / previewFile
+    const tagBundle = premiumStoreItem.bundleFiles?.find(
+      (b) => b.categoryName === "svga_tag",
+    );
+
+    const shaped: Record<string, any> = {
+      name: premiumStoreItem.name,
+      logo: premiumStoreItem.logo ?? null,
+      svgaFile: tagBundle?.svgaFile ?? null,
+      previewFile: tagBundle?.previewFile ?? null,
+    };
+
+    vipItem = shaped;
   }
-
-  if (svipItem) equippedFeatures["svipItem"] = svipItem as any;
-  if (vipItem) equippedFeatures["vipItem"] = vipItem as any;
   // ─────────────────────────────────────────────────────────────────────────
-
-  return equippedFeatures;
+  return vipItem;
 }
 
 export async function getMyBucketItems(

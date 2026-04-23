@@ -49,6 +49,8 @@ import { IMyBucketRepository } from "../../repository/store/my_bucket_repository
 import { IStoreCategoryRepository } from "../../repository/store/store_category_repository";
 import { IStoreItem } from "../../models/store/store_item_model";
 import {
+  checkBoughtSvip,
+  checkBoughtVip,
   determineUserLevelFromXp,
   getEquippedItemObjects,
   getMyBucketItems,
@@ -284,6 +286,14 @@ export default class AuthService implements IAuthService {
       this.CategoryRepository,
       id,
     );
+    (userWithStats as any).svipItem = await checkBoughtSvip(
+      id,
+      this.BucketRepository,
+    );
+    (userWithStats as any).vipItem = await checkBoughtVip(
+      id,
+      this.BucketRepository,
+    );
     userWithStats.myBucketItems = await getMyBucketItems(
       this.BucketRepository,
       id,
@@ -350,6 +360,8 @@ export default class AuthService implements IAuthService {
       this.CategoryRepository,
       id,
     );
+    (user as any).svipItem = await checkBoughtSvip(id, this.BucketRepository);
+    (user as any).vipItem = await checkBoughtVip(id, this.BucketRepository);
     (user as any).myBucketItems = await getMyBucketItems(
       this.BucketRepository,
       id,
