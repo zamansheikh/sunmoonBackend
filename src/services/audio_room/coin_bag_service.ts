@@ -25,9 +25,10 @@ interface IClaimedCoinUser {
 
 import { RedisFolderProvider } from "../../core/redis/redis_folder_provider";
 import RedisService from "../../core/redis/redis_service";
-import { UserActiveStatus } from "../../core/Utils/enums";
+import { AudioRoomChannels, UserActiveStatus } from "../../core/Utils/enums";
 import { UserCache } from "../../core/cache/user_chache";
 import { ICoinBagDistribution } from "../../models/audio_room/coin_bag_distribution_model";
+import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
 
 export default class CoinBagService {
   private static instance: CoinBagService;
@@ -75,9 +76,9 @@ export default class CoinBagService {
     if (!AudioRoomCache.getInstance().validateRoomId(roomId)) {
       throw new AppError(404, "Room not found");
     }
-    if (!UserCache.getInstance().validateUserId(senderId)) {
-      throw new AppError(404, "User not found");
-    }
+    const userBrief = await UserCache.getInstance().getUserBrief(senderId);
+    if (!userBrief)
+      throw new AppError(404, "User not found, cannot send coin bag");
     // validate if the options are valid
     await this.validateCoinBagOptions(coinAmount, userCount);
     // validate the session
@@ -116,9 +117,20 @@ export default class CoinBagService {
       // commit transaction if everything is successful
       await dbSession.commitTransaction();
 
-      // ! send a global banner
+      SingletonSocketServer.getInstance().emitGlobalCoinBagBanner({
+        roomId,
+        coinAmount,
+        senderPhoto: userBrief.avatar,
+        senderName: userBrief.name,
+      });
 
-      // ! send room wide socket event
+      // send room wide socket event
+      SingletonSocketServer.getInstance().emitToAll(
+        AudioRoomChannels.NewCoinBag,
+        {
+          rewardStartTime: sessionData.rewardStartTime,
+        },
+      );
       return { rewardStartTime: sessionData.rewardStartTime };
     } catch (error) {
       // abort transaction if any operation fails

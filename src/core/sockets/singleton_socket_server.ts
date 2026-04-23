@@ -9,7 +9,7 @@ import { AudioRoomRepository } from "../../repository/audio_room/audio_room_repo
 import UserRepository, {
   IUserRepository,
 } from "../../repository/users/user_repository";
-import { AudioRoomChannels } from "../Utils/enums";
+import { AudioRoomChannels, GlobalBannerTypes } from "../Utils/enums";
 import MyBucketRepository, {
   IMyBucketRepository,
 } from "../../repository/store/my_bucket_repository";
@@ -170,6 +170,46 @@ export default class SingletonSocketServer {
     this.io.emit(event, data);
   }
 
+  public emitGlobalRocketBanner({
+    roomId,
+    message,
+    rocketLevel,
+    roomPhoto,
+  }: {
+    roomId: string;
+    message: string;
+    rocketLevel: number;
+    roomPhoto: string;
+  }) {
+    this.io.emit(AudioRoomChannels.GlobalBanner, {
+      bannerType: GlobalBannerTypes.RocketBanner,
+      roomId,
+      message,
+      rocketLevel,
+      roomPhoto,
+    });
+  }
+
+  public emitGlobalCoinBagBanner({
+    roomId,
+    coinAmount,
+    senderPhoto,
+    senderName,
+  }: {
+    roomId: string;
+    coinAmount: number;
+    senderPhoto: string;
+    senderName: string;
+  }) {
+    this.io.emit(AudioRoomChannels.GlobalBanner, {
+      bannerType: GlobalBannerTypes.CoinBagBanner,
+      roomId,
+      coinAmount,
+      senderPhoto,
+      senderName,
+    });
+  }
+
   public roomSearializer(room: IAudioRoom) {
     return {
       title: room.title,
@@ -179,14 +219,24 @@ export default class SingletonSocketServer {
       roomPhoto: room.roomPhoto,
       admins: room.admins,
       hostSeat: room.hostSeat,
-      seats: room.seats instanceof Map ? Object.fromEntries(room.seats) : room.seats,
+      seats:
+        room.seats instanceof Map ? Object.fromEntries(room.seats) : room.seats,
       messages: room.messages,
-      members: room.members instanceof Map ? Object.fromEntries(room.members) : room.members,
+      members:
+        room.members instanceof Map
+          ? Object.fromEntries(room.members)
+          : room.members,
       membersArray: room.membersArray,
       bannedUsers: room.bannedUsers,
-      mutedUsers: room.mutedUsers instanceof Map ? Object.fromEntries(room.mutedUsers) : room.mutedUsers,
+      mutedUsers:
+        room.mutedUsers instanceof Map
+          ? Object.fromEntries(room.mutedUsers)
+          : room.mutedUsers,
       chatPrivacy: room.chatPrivacy,
-      allowedUsersToChat: room.allowedUsersToChat instanceof Map ? Object.fromEntries(room.allowedUsersToChat) : room.allowedUsersToChat,
+      allowedUsersToChat:
+        room.allowedUsersToChat instanceof Map
+          ? Object.fromEntries(room.allowedUsersToChat)
+          : room.allowedUsersToChat,
       password: room.password,
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
@@ -204,16 +254,24 @@ export default class SingletonSocketServer {
       roomPhoto: room.roomPhoto,
       admins: room.admins,
       hostSeat: room.hostSeat,
-      seats: room.seats instanceof Map ? Object.fromEntries(room.seats) : room.seats,
+      seats:
+        room.seats instanceof Map ? Object.fromEntries(room.seats) : room.seats,
       bannedUsers: room.bannedUsers,
-      mutedUsers: room.mutedUsers instanceof Map ? Object.fromEntries(room.mutedUsers) : room.mutedUsers,
+      mutedUsers:
+        room.mutedUsers instanceof Map
+          ? Object.fromEntries(room.mutedUsers)
+          : room.mutedUsers,
       chatPrivacy: room.chatPrivacy,
-      allowedUsersToChat: room.allowedUsersToChat instanceof Map ? Object.fromEntries(room.allowedUsersToChat) : room.allowedUsersToChat,
+      allowedUsersToChat:
+        room.allowedUsersToChat instanceof Map
+          ? Object.fromEntries(room.allowedUsersToChat)
+          : room.allowedUsersToChat,
       password: room.password,
       isHostPresent: room.isHostPresent,
       isLocked: room.isLocked,
       hostId: room.hostId,
-      membersCount: room.membersCount ?? (room.membersArray ? room.membersArray.length : 0),
+      membersCount:
+        room.membersCount ?? (room.membersArray ? room.membersArray.length : 0),
     };
   }
 

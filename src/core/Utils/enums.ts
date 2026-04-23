@@ -137,6 +137,7 @@ export enum AudioRoomChannels {
   MicInviteRequest = "mic-invite-request",
   RoomData = "room-data",
   SentAudioGift = "sent-audio-gift",
+  NewCoinBag = "new-coin-bag",
 }
 
 export enum MagicBallChallengeTypes {
@@ -349,4 +350,10 @@ export enum FamilyMemberRole {
   CoLeader = "co-leader",
   Elder = "elder",
   Member = "member",
+}
+
+export enum GlobalBannerTypes {
+  RocketBanner = "rocket_banner",
+  CoinBagBanner = "coin_bag_banner",
+  GiftBanner = "gift_banner",
 }

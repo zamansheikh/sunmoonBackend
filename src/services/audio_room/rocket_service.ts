@@ -152,9 +152,9 @@ export default class RocketService {
       milestone: ROCKET_MILESTONES[level - 1],
     } as IRocketServiceResponse);
     // banner notification (scope: global)
-    socketServer.emitToAll(AudioRoomChannels.GlobalBanner, {
+    socketServer.emitGlobalRocketBanner({
       roomId: roomId,
-      message: `Rocket in ${room.title || "Room"} is about to launch`,
+      message: `Rocket in ${room.title || "Room"} has been launched`,
       rocketLevel: level,
       roomPhoto: room.roomPhoto || "",
     });
