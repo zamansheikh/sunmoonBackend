@@ -301,6 +301,12 @@ export class AudioRoomService implements IAudioRoomService {
     const audioHelper = AudioRoomHelper.getInstance();
     // prepare user info
     const userInfo: IMemberDetails = audioHelper.generateMemberDetails(userObj);
+
+    // remove text-bubble from join message
+    if (userObj.equippedStoreItems && userObj.equippedStoreItems["text-bubble"]) {
+      delete userObj.equippedStoreItems["text-bubble"];
+    }
+
     // prepare join room message
     const joinMessage: IRoomMessage = audioHelper.generateRoomMessage(
       userObj,

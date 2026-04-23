@@ -320,6 +320,11 @@ export default class SingletonSocketServer {
 
       const userObj = await helperInstance.prepareUserData(userId);
 
+      // remove text-bubble from leave message
+      if (userObj.equippedStoreItems && userObj.equippedStoreItems["text-bubble"]) {
+        delete userObj.equippedStoreItems["text-bubble"];
+      }
+
       // leave message
       const leaveMessage: IRoomMessage = helperInstance.generateRoomMessage(
         userObj,
