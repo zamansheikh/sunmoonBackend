@@ -43,6 +43,11 @@ export interface IMyBucketRepository {
     itemId: string,
     session?: ClientSession,
   ): Promise<IMyBucketDocument | null>;
+  findBucketByOwnerAndCategory(
+    ownerId: string,
+    categoryId: string,
+    session?: ClientSession,
+  ): Promise<IMyBucketDocument | null>;
   getAllBucketsByOwner(
     ownerId: string,
     query: Record<string, any>,
@@ -167,6 +172,16 @@ export default class MyBucketRepository implements IMyBucketRepository {
     return await this.Model.findOne({ ownerId, itemId }).session(
       session || null,
     );
+  }
+
+  async findBucketByOwnerAndCategory(
+    ownerId: string,
+    categoryId: string,
+    session?: ClientSession,
+  ): Promise<IMyBucketDocument | null> {
+    return await this.Model.findOne({ ownerId, categoryId })
+      .populate("itemId")
+      .session(session || null);
   }
 
   async getAllBucketsByOwner(

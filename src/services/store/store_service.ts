@@ -351,19 +351,21 @@ export default class StoreService implements IStoreService {
   async getVIPStoreItems(id: string): Promise<IStoreItemDocument[]> {
     const category = await this.CategoryRepository.getCategoryByTitle("VIP");
     if (!category) return [];
-    return await this.ItemRepository.getAllStoreItemByCategory(
+    const items = await this.ItemRepository.getAllStoreItemByCategory(
       (category as any)._id.toString(),
       id,
     );
+    return this.applyPremiumTierIsBought(items);
   }
 
   async getSVIPStoreItems(id: string): Promise<IStoreItemDocument[]> {
     const category = await this.CategoryRepository.getCategoryByTitle("SVIP");
     if (!category) return [];
-    return await this.ItemRepository.getAllStoreItemByCategory(
+    const items = await this.ItemRepository.getAllStoreItemByCategory(
       (category as any)._id.toString(),
       id,
     );
+    return this.applyPremiumTierIsBought(items);
   }
 
   async getStoreItemsByCategory(
@@ -371,7 +373,52 @@ export default class StoreService implements IStoreService {
     query: Record<string, any>,
     id: string,
   ): Promise<{ pagination: IPagination; items: IStoreItemDocument[] }> {
-    return await this.ItemRepository.getAllStoreItems(category, query, id);
+    const result = await this.ItemRepository.getAllStoreItems(
+      category,
+      query,
+      id,
+    );
+
+    // Check if this category is premium — if so, apply tier-based isBought
+    const cat = await this.CategoryRepository.getCategoryById(category);
+    if (cat && cat.isPremium) {
+      result.items = this.applyPremiumTierIsBought(result.items);
+    }
+
+    return result;
+  }
+
+  /**
+   * For premium items (VIP/SVIP), if the user owns any item in this category,
+   * all items with a tier number ≤ the owned tier are marked as isBought = true.
+   * e.g. If user owns SVIP-5, then SVIP-1 through SVIP-5 all show isBought: true.
+   */
+  private applyPremiumTierIsBought(
+    items: IStoreItemDocument[],
+  ): IStoreItemDocument[] {
+    // Find the highest tier the user actually owns (isBought === true from the DB lookup)
+    let highestOwnedTier = 0;
+    for (const item of items) {
+      if ((item as any).isBought) {
+        const tier = this.extractPremiumTier(item.name);
+        if (tier > highestOwnedTier) {
+          highestOwnedTier = tier;
+        }
+      }
+    }
+
+    // If user doesn't own anything, no changes needed
+    if (highestOwnedTier === 0) return items;
+
+    // Mark all items with tier ≤ highestOwnedTier as isBought
+    for (const item of items) {
+      const tier = this.extractPremiumTier(item.name);
+      if (tier <= highestOwnedTier) {
+        (item as any).isBought = true;
+      }
+    }
+
+    return items;
   }
 
   async updateStoreItemSingle(
@@ -573,6 +620,17 @@ export default class StoreService implements IStoreService {
   }
 
   // 📌 my buckets
+
+  /**
+   * Extracts the numeric tier from a premium item name.
+   * e.g. "SVIP-3" → 3, "VIP-10" → 10
+   */
+  private extractPremiumTier(name: string): number {
+    const parts = name.split("-");
+    const tier = parseInt(parts[parts.length - 1], 10);
+    return isNaN(tier) ? 0 : tier;
+  }
+
   async buyStoreItem(
     ownerId: string,
     itemId: string,
@@ -607,7 +665,52 @@ export default class StoreService implements IStoreService {
         `for item price ${selectedPrice.price} having ${stats.coins} coins is not enough`,
       );
 
-    // starting transaction
+    // ── Premium tier-upgrade enforcement (VIP / SVIP) ──────────────────────
+    // For premium items only one item per category is allowed at a time and
+    // the user may only upgrade to a higher tier, never downgrade or re-buy.
+    let existingPremiumBucketId: string | null = null;
+
+    if (item.isPremium) {
+      const category = await this.CategoryRepository.getCategoryById(
+        item.categoryId.toString(),
+      );
+      if (!category)
+        throw new AppError(StatusCodes.NOT_FOUND, "Item category not found");
+
+      if (category.isPremium) {
+        // Find the user's current bucket in this premium category (if any)
+        const existingPremiumBucket =
+          await this.BucketRepository.findBucketByOwnerAndCategory(
+            ownerId,
+            item.categoryId.toString(),
+          );
+
+        if (existingPremiumBucket) {
+          const existingItem =
+            existingPremiumBucket.itemId as any as IStoreItemDocument;
+
+          if (!existingItem || !existingItem.name) {
+            // Orphaned bucket — safe to replace
+            existingPremiumBucketId = existingPremiumBucket._id as string;
+          } else {
+            const existingTier = this.extractPremiumTier(existingItem.name);
+            const newTier = this.extractPremiumTier(item.name);
+
+            if (newTier <= existingTier) {
+              throw new AppError(
+                StatusCodes.BAD_REQUEST,
+                `You already own ${existingItem.name} (tier ${existingTier}). ` +
+                  `You can only upgrade to a higher tier than ${existingTier}.`,
+              );
+            }
+
+            // Valid upgrade — mark the old bucket for replacement
+            existingPremiumBucketId = existingPremiumBucket._id as string;
+          }
+        }
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -620,35 +723,48 @@ export default class StoreService implements IStoreService {
 
       await this.ItemRepository.updateSoldCount(itemId, session);
 
-      // check if the user already owns this item
-      const existingBucket =
-        await this.BucketRepository.findBucketByOwnerAndItem(
-          ownerId,
-          item._id as string,
-          session,
-        );
-
       const newExpiry = new Date(
         Date.now() + selectedPrice.validity * 24 * 60 * 60 * 1000,
       );
 
-      if (existingBucket) {
+      if (existingPremiumBucketId) {
+        // ── Premium upgrade: replace the old bucket with the new item ──────
         await this.BucketRepository.updateBucket(
-          existingBucket._id as string,
-          { expireAt: newExpiry },
-          session,
-        );
-      } else {
-        await this.BucketRepository.createNewBucket(
+          existingPremiumBucketId,
           {
             itemId: item._id as string,
-            ownerId: ownerId,
-            categoryId: item.categoryId,
             expireAt: newExpiry,
+            useStatus: false,
           },
           session,
         );
+      } else {
+        // ── Normal flow: extend expiry if already owned, else create ───────
+        const existingBucket =
+          await this.BucketRepository.findBucketByOwnerAndItem(
+            ownerId,
+            item._id as string,
+            session,
+          );
+
+        if (existingBucket) {
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            "You already own this item",
+          );
+        } else {
+          await this.BucketRepository.createNewBucket(
+            {
+              itemId: item._id as string,
+              ownerId: ownerId,
+              categoryId: item.categoryId,
+              expireAt: newExpiry,
+            },
+            session,
+          );
+        }
       }
+
       await session.commitTransaction();
       return item;
     } catch (error) {
