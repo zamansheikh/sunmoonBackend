@@ -17,6 +17,12 @@ import { AudioRoomRepository } from "../../repository/audio_room/audio_room_repo
 import { RepositoryProviders } from "../providers/repository_providers";
 import { ROOM_LEVEL_CRITERIA } from "../Utils/constants";
 import { IRoomSupportDocument } from "../../models/audio_room/room_support_model";
+import {
+  checkBoughtSvip,
+  checkBoughtVip,
+  getEquippedItemObjects,
+  getMyBucketItems,
+} from "../Utils/helper_functions";
 
 //  singleton class for AudioRoom Helper functionality
 export class AudioRoomHelper {
@@ -31,6 +37,10 @@ export class AudioRoomHelper {
   public currentRoomMemberRepository = new CurrentRoomMemberRepository(
     CurrentRoomMemberModel,
   );
+  private userRepository = RepositoryProviders.userRepositoryProvider;
+  private bucketRepository = RepositoryProviders.myBucketRepositoryProvider;
+  private storeCategoryRepository =
+    RepositoryProviders.storeCategoryRepositoryProvider;
 
   private constructor() {}
 
@@ -161,6 +171,32 @@ export class AudioRoomHelper {
       svipItem: userObj.svipItem as Record<string, string>,
       vipItem: userObj.vipItem as Record<string, string>,
     };
+  }
+
+  public async prepareUserData(userId: string): Promise<Record<string, any>> {
+    try {
+      const user = await this.userRepository.findUserById(userId);
+      if (!user) {
+        throw new AppError(StatusCodes.NOT_FOUND, "User not found");
+      }
+      const userObj = user.toObject();
+      (userObj as any).equippedStoreItems = await getEquippedItemObjects(
+        this.bucketRepository,
+        this.storeCategoryRepository,
+        userId,
+      );
+      (userObj as any).svipItem = await checkBoughtSvip(
+        userId,
+        this.bucketRepository,
+      );
+      (userObj as any).vipItem = await checkBoughtVip(
+        userId,
+        this.bucketRepository,
+      );
+      return userObj;
+    } catch (err) {
+      throw err;
+    }
   }
 
   // this function is to make sure, the user only joins one room only after leaving the other

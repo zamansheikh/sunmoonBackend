@@ -303,7 +303,10 @@ export async function getEquippedItemObjects(
   return equippedFeatures;
 }
 
-export async function checkBoughtSvip(userId: string, repository: IMyBucketRepository) {
+export async function checkBoughtSvip(
+  userId: string,
+  repository: IMyBucketRepository,
+) {
   // ── Premium VIP / SVIP detection ─────────────────────────────────────────
   // Fetch all premium bucket items for the user (no useStatus filter).
   // Find the first store item whose name starts with "SVIP" or "VIP" and
@@ -311,7 +314,12 @@ export async function checkBoughtSvip(userId: string, repository: IMyBucketRepos
   // bundle entry — mirroring the aggregation pipeline logic.
   const premiumBuckets = await repository.getAllPremiumItems(userId);
 
-  let svipItem: Record<string, any> | null = null;
+  let svipItem: Record<string, any> = {
+    name: null,
+    logo: null,
+    svgaFile: null,
+    previewFile: null,
+  };
 
   for (const bucket of premiumBuckets) {
     if (
@@ -346,7 +354,10 @@ export async function checkBoughtSvip(userId: string, repository: IMyBucketRepos
   return svipItem;
 }
 
-export async function checkBoughtVip(userId: string, repository: IMyBucketRepository) {
+export async function checkBoughtVip(
+  userId: string,
+  repository: IMyBucketRepository,
+) {
   // ── Premium VIP / SVIP detection ─────────────────────────────────────────
   // Fetch all premium bucket items for the user (no useStatus filter).
   // Find the first store item whose name starts with "SVIP" or "VIP" and
@@ -354,7 +365,12 @@ export async function checkBoughtVip(userId: string, repository: IMyBucketReposi
   // bundle entry — mirroring the aggregation pipeline logic.
   const premiumBuckets = await repository.getAllPremiumItems(userId);
 
-  let vipItem: Record<string, any> | null = null;
+  let vipItem: Record<string, any> = {
+    name: null,
+    logo: null,
+    svgaFile: null,
+    previewFile: null,
+  };
 
   for (const bucket of premiumBuckets) {
     if (

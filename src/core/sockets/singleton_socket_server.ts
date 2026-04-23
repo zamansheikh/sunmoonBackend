@@ -260,16 +260,7 @@ export default class SingletonSocketServer {
         return room;
       }
 
-      const user = await this.userRepository.findUserById(userId);
-      if (!user) {
-        return room;
-      }
-      const userObj = user.toObject();
-      userObj.equippedStoreItems = await getEquippedItemObjects(
-        this.bucketRepository,
-        this.categoryRepository,
-        userId,
-      );
+      const userObj = await helperInstance.prepareUserData(userId);
 
       // leave message
       const leaveMessage: IRoomMessage = helperInstance.generateRoomMessage(

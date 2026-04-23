@@ -227,8 +227,7 @@ export class AudioRoomService implements IAudioRoomService {
     // include the users socket to the roomId socket.join(roomId);
     socketInstance.joinRoomSocket(hostId! as string, roomId!);
     // send create room event
-    socketInstance.emitToRoom(
-      "", // empty string for global emit
+    socketInstance.emitToAll(
       AudioRoomChannels.NewAudioRoomCreated,
       socketInstance.roomSearializer(audioRoomDocument),
     );
@@ -278,10 +277,8 @@ export class AudioRoomService implements IAudioRoomService {
     if (!audioRoom) {
       throw new AppError(404, "Audio room not found");
     }
-    const user = await this.userRepository.findUserById(userId);
-    if (!user) {
-      throw new AppError(404, "User not found");
-    }
+
+    const userObj = await AudioRoomHelper.getInstance().prepareUserData(userId);
 
     // check if user is banned
     const isBanned = audioRoom.bannedUsers.some(
@@ -290,14 +287,6 @@ export class AudioRoomService implements IAudioRoomService {
     if (isBanned) {
       throw new AppError(403, "User is banned");
     }
-
-    // prepare user data
-    const userObj = user.toObject();
-    userObj.equippedStoreItems = await getEquippedItemObjects(
-      this.bucketRepository,
-      this.categoryRepository,
-      userId!,
-    );
 
     // check for room lock status and password matching
     if (audioRoom.isLocked) {
@@ -392,16 +381,7 @@ export class AudioRoomService implements IAudioRoomService {
     seatKey: string,
   ): Promise<IAudioRoomDocument> {
     // client side data validation
-    const user = await this.userRepository.findUserById(userId);
-    if (!user) {
-      throw new AppError(404, "User not found");
-    }
-    const userObj = user.toObject();
-    userObj.equippedStoreItems = await getEquippedItemObjects(
-      this.bucketRepository,
-      this.categoryRepository,
-      userId!,
-    );
+    const userObj = await AudioRoomHelper.getInstance().prepareUserData(userId);
     const audioRoom =
       await this.audioRoomRepository.checkRoomExisistance(roomId);
     if (!audioRoom) {
@@ -762,17 +742,7 @@ export class AudioRoomService implements IAudioRoomService {
       );
     }
 
-    const user = await this.userRepository.findUserById(myId);
-    if (!user) {
-      throw new AppError(404, "User not found");
-    }
-    // prepare message body
-    const userObj = user.toObject();
-    userObj.equippedStoreItems = await getEquippedItemObjects(
-      this.bucketRepository,
-      this.categoryRepository,
-      myId,
-    );
+    const userObj = await AudioRoomHelper.getInstance().prepareUserData(myId);
     const messageBody: IRoomMessage =
       AudioRoomHelper.getInstance().generateRoomMessage(userObj, message);
     await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
@@ -1092,12 +1062,7 @@ export class AudioRoomService implements IAudioRoomService {
     }
 
     // build member details for the banned user entry
-    const targetUserObj = targetUser.toObject();
-    targetUserObj.equippedStoreItems = await getEquippedItemObjects(
-      this.bucketRepository,
-      this.categoryRepository,
-      targetId,
-    );
+    const targetUserObj = await audioHelper.prepareUserData(targetId);
     const memberDetails: IMemberDetails =
       audioHelper.generateMemberDetails(targetUserObj);
 

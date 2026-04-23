@@ -168,16 +168,7 @@ export class MicInviteService {
       this.invitationSessions.delete(userId);
 
       // 5. Join logic
-      const user = await this.UserRepository.findUserById(userId);
-      if (!user) {
-        throw new AppError(404, "User not found");
-      }
-      const userObj = user.toObject();
-      userObj.equippedStoreItems = await getEquippedItemObjects(
-        this.BucketRepository,
-        this.CategoryRepository,
-        userId!,
-      );
+      const userObj = await AudioRoomHelper.getInstance().prepareUserData(userId);
       const userInfo: IMemberDetails =
         AudioRoomHelper.getInstance().generateMemberDetails(userObj);
 
