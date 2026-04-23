@@ -140,6 +140,8 @@ export class AudioRoomHelper {
       currentTag: userObj.currentLevelTag as string,
       currentLevel: userObj.level as number,
       equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
+      svipItem: userObj.svipItem as Record<string, string>,
+      vipItem: userObj.vipItem as Record<string, string>,
     };
   }
 
@@ -156,6 +158,8 @@ export class AudioRoomHelper {
       currentLevel: userObj.level as number,
       text: text,
       equippedStoreItems: userObj.equippedStoreItems as Record<string, string>,
+      svipItem: userObj.svipItem as Record<string, string>,
+      vipItem: userObj.vipItem as Record<string, string>,
     };
   }
 

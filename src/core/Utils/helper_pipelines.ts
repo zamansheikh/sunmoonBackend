@@ -152,6 +152,143 @@ export const userWithEquippedItemsPipeline = (
     },
   },
 
+  // Lookup all bucket items (regardless of useStatus) to find premium SVIP / VIP store items
+  {
+    $lookup: {
+      from: DatabaseNames.MyBucketItem,
+      let: { ownerId: "$_id" },
+      pipeline: [
+        {
+          $match: {
+            $expr: { $eq: ["$ownerId", "$$ownerId"] },
+          },
+        },
+        // Join each bucket entry with its StoreItem, keeping only premium ones
+        {
+          $lookup: {
+            from: DatabaseNames.StoreItem,
+            let: { itemId: "$itemId" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$_id", "$$itemId"] },
+                      { $eq: ["$isPremium", true] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: "storeItem",
+          },
+        },
+        // Discard bucket entries whose store item isn't premium
+        {
+          $unwind: {
+            path: "$storeItem",
+            preserveNullAndEmptyArrays: false,
+          },
+        },
+        // Promote the store item as the document
+        {
+          $replaceRoot: { newRoot: "$storeItem" },
+        },
+      ],
+      as: "premiumBucketItems",
+    },
+  },
+  // Extract the first SVIP / VIP item, shaped to only: logo, name, svgaFile, previewFile
+  // svgaFile and previewFile are taken from the bundleFiles entry where categoryName == "svga_tag"
+  {
+    $addFields: {
+      svipItem: {
+        $let: {
+          vars: {
+            raw: {
+              $first: {
+                $filter: {
+                  input: "$premiumBucketItems",
+                  as: "item",
+                  cond: { $regexMatch: { input: "$$item.name", regex: "^SVIP" } },
+                },
+              },
+            },
+          },
+          in: {
+            $cond: {
+              if: { $eq: ["$$raw", null] },
+              then: null,
+              else: {
+                $let: {
+                  vars: {
+                    tagBundle: {
+                      $first: {
+                        $filter: {
+                          input: { $ifNull: ["$$raw.bundleFiles", []] },
+                          as: "b",
+                          cond: { $eq: ["$$b.categoryName", "svga_tag"] },
+                        },
+                      },
+                    },
+                  },
+                  in: {
+                    name: "$$raw.name",
+                    logo: "$$raw.logo",
+                    svgaFile: { $ifNull: ["$$tagBundle.svgaFile", null] },
+                    previewFile: { $ifNull: ["$$tagBundle.previewFile", null] },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      vipItem: {
+        $let: {
+          vars: {
+            raw: {
+              $first: {
+                $filter: {
+                  input: "$premiumBucketItems",
+                  as: "item",
+                  cond: { $regexMatch: { input: "$$item.name", regex: "^VIP" } },
+                },
+              },
+            },
+          },
+          in: {
+            $cond: {
+              if: { $eq: ["$$raw", null] },
+              then: null,
+              else: {
+                $let: {
+                  vars: {
+                    tagBundle: {
+                      $first: {
+                        $filter: {
+                          input: { $ifNull: ["$$raw.bundleFiles", []] },
+                          as: "b",
+                          cond: { $eq: ["$$b.categoryName", "svga_tag"] },
+                        },
+                      },
+                    },
+                  },
+                  in: {
+                    name: "$$raw.name",
+                    logo: "$$raw.logo",
+                    svgaFile: { $ifNull: ["$$tagBundle.svgaFile", null] },
+                    previewFile: { $ifNull: ["$$tagBundle.previewFile", null] },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+
   // Optional: project only fields you want in the final user object
   {
     $project: {
@@ -170,6 +307,8 @@ export const userWithEquippedItemsPipeline = (
       currentBackground: "$currentLevelBackground",
       currentTag: "$currentLevelTag",
       currentLevel: "$level",
+      svipItem: 1,
+      vipItem: 1,
       // exclude: password, email, etc.
     },
   },

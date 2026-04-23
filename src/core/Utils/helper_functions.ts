@@ -299,6 +299,58 @@ export async function getEquippedItemObjects(
     equippedFeatures["privilege"] = Array.from(new Set(privileges));
   }
 
+  // ── Premium VIP / SVIP detection ─────────────────────────────────────────
+  // Fetch all premium bucket items for the user (no useStatus filter).
+  // Find the first store item whose name starts with "SVIP" or "VIP" and
+  // shape it to { logo, name, svgaFile, previewFile } using the "svga_tag"
+  // bundle entry — mirroring the aggregation pipeline logic.
+  const premiumBuckets = await repository.getAllPremiumItems(userId);
+
+  let svipItem: Record<string, any> | null = null;
+  let vipItem: Record<string, any> | null = null;
+
+  for (const bucket of premiumBuckets) {
+    if (
+      typeof bucket.itemId === "string" ||
+      bucket.itemId instanceof Types.ObjectId
+    ) {
+      continue; // itemId not populated, skip
+    }
+
+    const premiumStoreItem = bucket.itemId as IStoreItem;
+    if (!premiumStoreItem?.name) continue;
+
+    const isPremiumSVIP = premiumStoreItem.name.startsWith("SVIP");
+    const isPremiumVIP = !isPremiumSVIP && premiumStoreItem.name.startsWith("VIP");
+
+    if (!isPremiumSVIP && !isPremiumVIP) continue;
+
+    // Find the "svga_tag" bundle entry for svgaFile / previewFile
+    const tagBundle = premiumStoreItem.bundleFiles?.find(
+      (b) => b.categoryName === "svga_tag",
+    );
+
+    const shaped: Record<string, any> = {
+      name: premiumStoreItem.name,
+      logo: premiumStoreItem.logo ?? null,
+      svgaFile: tagBundle?.svgaFile ?? null,
+      previewFile: tagBundle?.previewFile ?? null,
+    };
+
+    if (isPremiumSVIP && !svipItem) {
+      svipItem = shaped;
+    } else if (isPremiumVIP && !vipItem) {
+      vipItem = shaped;
+    }
+
+    // Stop early once both are found
+    if (svipItem && vipItem) break;
+  }
+
+  if (svipItem) equippedFeatures["svipItem"] = svipItem as any;
+  if (vipItem) equippedFeatures["vipItem"] = vipItem as any;
+  // ─────────────────────────────────────────────────────────────────────────
+
   return equippedFeatures;
 }
 

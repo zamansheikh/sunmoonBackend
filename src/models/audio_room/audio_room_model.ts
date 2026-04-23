@@ -20,6 +20,8 @@ export interface IRoomMessage {
   currentLevel: number;
   text: string;
   equippedStoreItems: Record<string, any>;
+  svipItem?: Record<string, any>;
+  vipItem?: Record<string, any>;
 }
 
 export interface IMemberDetails {
@@ -34,6 +36,8 @@ export interface IMemberDetails {
   _id: mongoose.Schema.Types.ObjectId | string;
   equippedStoreItems?: Record<string, any>;
   recievedGiftValue?: number;
+  svipItem?: Record<string, any>;
+  vipItem?: Record<string, any>;
 }
 
 export interface IBannedUser {
