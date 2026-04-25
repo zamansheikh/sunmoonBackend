@@ -137,28 +137,36 @@ export default class RocketService {
     const rewardedUsers = await this.rewardUsers(room, level);
     // save the rewarded users for api usages
     await this.saveRewarddedUsers(rewardedUsers, roomId);
-    // notifying the app about the rocket launch (scope: room)
+
     const socketServer = SingletonSocketServer.getInstance();
-    socketServer.emitToRoom(roomId, AudioRoomChannels.LaunchRocket, {
-      roomId,
-      fuel,
-      // rewardedUser: rewardedUsers,
-      level,
-    });
-    // Notify Level Update
-    socketServer.emitToRoom(roomId, AudioRoomChannels.NewRocketLevel, {
-      roomId,
-      level: level,
-      milestone: ROCKET_MILESTONES[level - 1],
-    } as IRocketServiceResponse);
-    // banner notification (scope: global)
+
+    // banner notification (scope: global) - IMMEDIATE
     socketServer.emitGlobalRocketBanner({
       roomId: roomId,
       message: `Rocket in ${room.title || "Room"} has been launched`,
       rocketLevel: level,
       roomPhoto: room.roomPhoto || "",
     });
-    // update the rocket informations (update level, update milestone, update fuel)
+
+    // Schedule the room-specific events for 10s later
+    // We capture current values in the closure to handle race conditions if multiple levels launch
+    setTimeout(() => {
+      // notifying the app about the rocket launch (scope: room)
+      socketServer.emitToRoom(roomId, AudioRoomChannels.LaunchRocket, {
+        roomId,
+        fuel,
+        // rewardedUser: rewardedUsers,
+        level,
+      });
+      // Notify Level Update
+      socketServer.emitToRoom(roomId, AudioRoomChannels.NewRocketLevel, {
+        roomId,
+        level: level,
+        milestone: ROCKET_MILESTONES[level - 1],
+      } as IRocketServiceResponse);
+    }, 10000);
+
+    // update the rocket informations (update level, update milestone, update fuel) - IMMEDIATE
     const fuelKey = `${RocketService.FUEL_KEY_PREFIX}${roomId}`;
     const levelKey = `${RocketService.LEVEL_KEY_PREFIX}${roomId}`;
     const milestoneKey = `${RocketService.ROCKET_MILESTONE_KEY_PREFIX}${roomId}`;
