@@ -1,53 +1,41 @@
 import { StatusCodes } from "http-status-codes";
 import cloudinary from "../config/cloudaniay_config";
 import AppError from "../errors/app_errors";
-import { generateFileHash } from "./helper_functions";
+import { getCloudinaryPublicId } from "./helper_functions";
 
 export const uploadFileToCloudinary = ({
-  isVideo,
-  folder = "user_profiles",
   file,
-  svga = false,
+  folder = "user_profiles",
 }: {
-  isVideo: boolean;
-  folder: string;
   file: Express.Multer.File;
-  svga?: boolean;
+  folder?: string;
 }) => {
-  const fileHash = generateFileHash(file.buffer);
-  const publicId = `${folder}/${fileHash}`;
-
   return new Promise<string>((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        public_id: publicId, // Ensures hash is used
-        folder: folder,
-        resource_type: svga ? "raw" : isVideo ? "video" : "image",
-        overwrite: false, // Don't overwrite if already exists
+        folder,
+        resource_type: "auto",
       },
       (error, result) => {
         if (error || !result) return reject(error);
         resolve(result.secure_url);
-      }
+      },
     );
     stream.end(file.buffer);
   });
 };
 
-export const deleteFileFromCloudinary = async ({
-  publicId,
-  isVideo,
-  svga = false,
-}: {
-  publicId: string;
-  isVideo: boolean;
-  svga?: boolean;
-}): Promise<boolean> => {
-
-  
+export const deleteFileFromCloudinary = async (
+  url: string,
+): Promise<boolean> => {
   try {
+    const publicId = getCloudinaryPublicId(url);
+    const urlObj = new URL(url);
+    const parts = urlObj.pathname.split("/");
+    const resourceType = parts[2]; // This extracts 'image', 'video', or 'raw' from the URL path
+
     const result = await cloudinary.uploader.destroy(publicId, {
-       resource_type: svga ? "raw" : isVideo ? "video" : "image",
+      resource_type: resourceType,
     });
 
     if (result.result == "not found")
@@ -55,13 +43,13 @@ export const deleteFileFromCloudinary = async ({
     if (result.result != "ok")
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
-        "File deletion failed"
+        "File deletion failed",
       );
     return result.result === "ok";
   } catch (error: any) {
     throw new AppError(
       error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
-      error.message || "File Deletion failed"
+      error.message || "File Deletion failed",
     );
   }
 };

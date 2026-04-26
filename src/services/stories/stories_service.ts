@@ -27,7 +27,7 @@ export default class StoryService implements IStoryService {
     async createStory({ id, file }: { id: string; file: Express.Multer.File; }): Promise<IStoryDocument | null> {
         const user = await this.UserRepository.findUserById(id);
         if(!user) throw new AppError(StatusCodes.BAD_REQUEST, "User does not exist");
-        const mediaUrl = await uploadFileToCloudinary({ isVideo: isVideoFile(file.originalname), folder: CloudinaryFolder.userStories, file });
+        const mediaUrl = await uploadFileToCloudinary({ folder: CloudinaryFolder.userStories, file });
         if(!mediaUrl) throw new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "Uploading to cloud failed");
         return this.StoryRepository.createStory({mediaUrl, ownerId: new Types.ObjectId(id)});
 

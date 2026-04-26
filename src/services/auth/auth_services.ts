@@ -393,7 +393,6 @@ export default class AuthService implements IAuthService {
     let profilePicUrl;
     if (avatar) {
       profilePicUrl = await uploadFileToCloudinary({
-        isVideo: false,
         folder: CloudinaryFolder.UserPRofile,
         file: avatar,
       });
@@ -401,7 +400,6 @@ export default class AuthService implements IAuthService {
     }
     if (coverPicture) {
       const cover = await uploadFileToCloudinary({
-        isVideo: false,
         folder: CloudinaryFolder.UserPRofile,
         file: coverPicture,
       });

@@ -535,7 +535,6 @@ export default class AdminUserService implements IAdminUserService {
 
   async createGift(gift: IGift): Promise<IGiftDocument> {
     const previewImageUrl = await uploadFileToCloudinary({
-      isVideo: false,
       folder: CloudinaryFolder.giftAssets,
       file: gift.previewImage as Express.Multer.File,
     });
@@ -546,10 +545,8 @@ export default class AdminUserService implements IAdminUserService {
       );
     gift.previewImage = previewImageUrl;
     const svgaImageUrl = await uploadFileToCloudinary({
-      isVideo: true,
       folder: CloudinaryFolder.giftAssets,
       file: gift.svgaImage as Express.Multer.File,
-      svga: true,
     });
     if (!svgaImageUrl)
       throw new AppError(
@@ -570,7 +567,6 @@ export default class AdminUserService implements IAdminUserService {
   async updateGift(id: string, gift: Partial<IGift>): Promise<IGiftDocument> {
     if (gift.previewImage) {
       const previewUrl = await uploadFileToCloudinary({
-        isVideo: false,
         folder: CloudinaryFolder.giftAssets,
         file: gift.previewImage as Express.Multer.File,
       });
@@ -583,7 +579,6 @@ export default class AdminUserService implements IAdminUserService {
     }
     if (gift.svgaImage) {
       const svgaUrl = await uploadFileToCloudinary({
-        isVideo: false,
         folder: CloudinaryFolder.giftAssets,
         file: gift.svgaImage as Express.Multer.File,
       });
@@ -999,7 +994,6 @@ export default class AdminUserService implements IAdminUserService {
     file: Express.Multer.File,
   ): Promise<IBannerDocument> {
     const bannerUrl = await uploadFileToCloudinary({
-      isVideo: false,
       folder: CloudinaryFolder.BannerAssets,
       file: file,
     });
@@ -1019,7 +1013,6 @@ export default class AdminUserService implements IAdminUserService {
     let url;
     if (file) {
       url = await uploadFileToCloudinary({
-        isVideo: false,
         folder: CloudinaryFolder.BannerAssets,
         file: file,
       });
@@ -1043,16 +1036,7 @@ export default class AdminUserService implements IAdminUserService {
       throw new AppError(StatusCodes.NOT_FOUND, "Banner not found");
     }
 
-    const parts = new URL(banner.url).pathname.split("/");
-    const fileName = parts[parts.length - 1];
-    const folderName = parts[parts.length - 2];
-    const fileHash = fileName.substring(0, fileName.lastIndexOf("."));
-    const publicId = `${folderName}/${folderName}/${fileHash}`;
-
-    const deleteFile = await deleteFileFromCloudinary({
-      isVideo: false,
-      publicId: publicId,
-    });
+    const deleteFile = await deleteFileFromCloudinary(banner.url);
     if (!deleteFile)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
@@ -1084,7 +1068,6 @@ export default class AdminUserService implements IAdminUserService {
     file: Express.Multer.File,
   ): Promise<IPosterDocument> {
     const posterUrl = await uploadFileToCloudinary({
-      isVideo: false,
       folder: CloudinaryFolder.PosterAssets,
       file: file,
     });
@@ -1104,7 +1087,6 @@ export default class AdminUserService implements IAdminUserService {
     let url;
     if (file) {
       url = await uploadFileToCloudinary({
-        isVideo: false,
         folder: CloudinaryFolder.PosterAssets,
         file: file,
       });
@@ -1128,16 +1110,7 @@ export default class AdminUserService implements IAdminUserService {
       throw new AppError(StatusCodes.NOT_FOUND, "Banner not found");
     }
 
-    const parts = new URL(poster.url).pathname.split("/");
-    const fileName = parts[parts.length - 1];
-    const folderName = parts[parts.length - 2];
-    const fileHash = fileName.substring(0, fileName.lastIndexOf("."));
-    const publicId = `${folderName}/${folderName}/${fileHash}`;
-
-    const deleteFile = await deleteFileFromCloudinary({
-      isVideo: false,
-      publicId: publicId,
-    });
+    const deleteFile = await deleteFileFromCloudinary(poster.url);
     if (!deleteFile)
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
@@ -1208,12 +1181,10 @@ export default class AdminUserService implements IAdminUserService {
       throw new AppError(StatusCodes.CONFLICT, "Level already exists");
 
     const tagUrl = await uploadFileToCloudinary({
-      isVideo: false,
       folder: CloudinaryFolder.LevelTagBgAssets,
       file: tag,
     });
     const bgUrl = await uploadFileToCloudinary({
-      isVideo: false,
       folder: CloudinaryFolder.LevelTagBgAssets,
       file: bg,
     });
@@ -1257,15 +1228,9 @@ export default class AdminUserService implements IAdminUserService {
     }
 
     if (tag) {
-      const url = existingLevel.levelTag;
-      const publicId = getCloudinaryPublicId(url);
-      await deleteFileFromCloudinary({
-        isVideo: false,
-        publicId: publicId,
-      });
+      await deleteFileFromCloudinary(existingLevel.levelTag);
 
       const tagUrl = await uploadFileToCloudinary({
-        isVideo: false,
         folder: CloudinaryFolder.LevelTagBgAssets,
         file: tag,
       });
@@ -1273,15 +1238,9 @@ export default class AdminUserService implements IAdminUserService {
     }
 
     if (bg) {
-      const url = existingLevel.levelBg;
-      const publicId = getCloudinaryPublicId(url);
-      await deleteFileFromCloudinary({
-        isVideo: false,
-        publicId: publicId,
-      });
+      await deleteFileFromCloudinary(existingLevel.levelBg);
 
       const bgUrl = await uploadFileToCloudinary({
-        isVideo: false,
         folder: CloudinaryFolder.LevelTagBgAssets,
         file: bg,
       });

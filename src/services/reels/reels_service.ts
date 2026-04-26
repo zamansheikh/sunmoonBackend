@@ -37,7 +37,7 @@ export default class ReelsService implements IReelService {
         const length = Number(body.video_length);
         if (length > 60) throw new AppError(StatusCodes.BAD_REQUEST, "Video length exceeded the limit");
         try {
-            const reelUrl = await uploadFileToCloudinary({ isVideo: true, folder: CloudinaryFolder.Reels, file });
+            const reelUrl = await uploadFileToCloudinary({ folder: CloudinaryFolder.Reels, file });
  
             
             body["reelUrl"] = reelUrl;

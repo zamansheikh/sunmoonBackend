@@ -477,12 +477,40 @@ export function determineUserTagAndBg(level: number): string {
 }
 
 export function getCloudinaryPublicId(url: string): string {
-  const parts = new URL(url).pathname.split("/");
+  // Decode URL to handle spaces/special characters
+  const decodedUrl = decodeURIComponent(url);
+  const parts = new URL(decodedUrl).pathname.split("/");
+
+  // The public ID starts after the version segment (e.g., /v123456789/)
+  const versionIndex = parts.findIndex((part) => /^v\d+$/.test(part));
+
+  if (versionIndex !== -1 && versionIndex < parts.length - 1) {
+    const publicIdWithExt = parts.slice(versionIndex + 1).join("/");
+    const lastDot = publicIdWithExt.lastIndexOf(".");
+    return lastDot === -1
+      ? publicIdWithExt
+      : publicIdWithExt.substring(0, lastDot);
+  }
+
+  // Fallback 1: Use everything after the delivery type (upload, private, authenticated)
+  const deliveryIndex = parts.findIndex(
+    (part) =>
+      part === "upload" || part === "private" || part === "authenticated",
+  );
+  if (deliveryIndex !== -1 && deliveryIndex < parts.length - 1) {
+    const publicIdWithExt = parts.slice(deliveryIndex + 1).join("/");
+    const lastDot = publicIdWithExt.lastIndexOf(".");
+    return lastDot === -1
+      ? publicIdWithExt
+      : publicIdWithExt.substring(0, lastDot);
+  }
+
+  // Fallback 2: Just use the last two parts (folder/id)
   const fileName = parts[parts.length - 1];
   const folderName = parts[parts.length - 2];
-  const fileHash = fileName.substring(0, fileName.lastIndexOf("."));
-  const publicId = `${folderName}/${folderName}/${fileHash}`;
-  return publicId;
+  const lastDot = fileName.lastIndexOf(".");
+  const fileId = lastDot === -1 ? fileName : fileName.substring(0, lastDot);
+  return `${folderName}/${fileId}`;
 }
 
 export function isEmptyObject(obj: object): boolean {

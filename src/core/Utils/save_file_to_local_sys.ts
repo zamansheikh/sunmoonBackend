@@ -6,6 +6,10 @@ import AppError from "../errors/app_errors";
 import { StatusCodes } from "http-status-codes";
 import catchAsync from "./catch_async";
 import sendResponse from "./send_response";
+import {
+  deleteFileFromCloudinary,
+  uploadFileToCloudinary,
+} from "./upload_file_cloudinary";
 
 interface SaveFileOptions {
   folder: string; // e.g. "store_items"
@@ -69,6 +73,38 @@ export const saveToLocalFileApiFunction = catchAsync(
       success: true,
       message: "Successfully uploaded file",
       result: uploadUrl,
+      statusCode: StatusCodes.OK,
+    });
+  },
+);
+
+export const uploadFileCloudFunction = catchAsync(
+  async (req: Request, res: Response) => {
+    const { folder } = req.body;
+    if (!folder)
+      throw new AppError(StatusCodes.BAD_REQUEST, "Folder is required");
+    const file = req.file;
+    if (!file) throw new AppError(StatusCodes.BAD_REQUEST, "File is required");
+    const uploadUrl = await uploadFileToCloudinary({ file: file!, folder });
+    sendResponse(res, {
+      success: true,
+      message: "Successfully uploaded file",
+      result: uploadUrl,
+      statusCode: StatusCodes.OK,
+    });
+  },
+);
+
+export const deleteFileApiFunction = catchAsync(
+  async (req: Request, res: Response) => {
+    const { fileUrl } = req.body;
+    if (!fileUrl)
+      throw new AppError(StatusCodes.BAD_REQUEST, "File URL is required");
+    const isDeleted = await deleteFileFromCloudinary(fileUrl);
+    sendResponse(res, {
+      success: true,
+      message: "Successfully deleted file",
+      result: isDeleted,
       statusCode: StatusCodes.OK,
     });
   },

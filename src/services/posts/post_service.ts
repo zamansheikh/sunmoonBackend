@@ -47,10 +47,10 @@ export default class PostService implements IPostService {
             const isVideo = isVideoFile(file.originalname);
             if (isVideo) {
                 if (file.mimetype != "video/mp4") throw new AppError(StatusCodes.BAD_REQUEST, "Only MP4 format is supported");
-                mediaUrl = await uploadFileToCloudinary({ isVideo: true, folder: CloudinaryFolder.PostVideos, file });
+                mediaUrl = await uploadFileToCloudinary({ folder: CloudinaryFolder.PostVideos, file });
             } else {
                 // if (file.mimetype != "image/png") throw new AppError(StatusCodes.BAD_REQUEST, "Only PNG format is supported");
-                mediaUrl = await uploadFileToCloudinary({ isVideo: false, folder: CloudinaryFolder.PostImages, file });
+                mediaUrl = await uploadFileToCloudinary({ folder: CloudinaryFolder.PostImages, file });
             }
             postBody["mediaUrl"] = mediaUrl;
         }

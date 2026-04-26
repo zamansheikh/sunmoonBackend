@@ -55,7 +55,7 @@ export default class ChatService implements IChatService {
         }
         if (file) {
             const isVideo = isVideoFile(file.originalname);
-            const mediaUrl = await uploadFileToCloudinary({ isVideo, file, folder: isVideo ? CloudinaryFolder.messageVideos : CloudinaryFolder.messageImages });
+            const mediaUrl = await uploadFileToCloudinary({ file, folder: isVideo ? CloudinaryFolder.messageVideos : CloudinaryFolder.messageImages });
             if (!mediaUrl) throw new Error("Failed to upload media file.");
             messageBody["file"] = mediaUrl;
         }

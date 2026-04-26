@@ -39,7 +39,11 @@ import { IStoreCategoryDocument } from "./models/store/store_category_model";
 import globalErrorHandler from "./core/errors/global_error_handlar";
 import CronManager from "./core/corn/corn_manager";
 import { roomSupportRewardSystem } from "./core/corn/jobs/room_support_jobs";
-import { saveToLocalFileApiFunction } from "./core/Utils/save_file_to_local_sys";
+import {
+  deleteFileApiFunction,
+  saveToLocalFileApiFunction,
+  uploadFileCloudFunction,
+} from "./core/Utils/save_file_to_local_sys";
 import { upload } from "./core/middlewares/multer";
 import SingletonSocketServer from "./core/sockets/singleton_socket_server";
 import RedisConfig from "./core/config/redis_config";
@@ -136,11 +140,11 @@ app.use("/api/family", FamilyRouter);
 app.use("/api/coin-bag", CoinBagRouter);
 
 app.post(
-  "/api/upload-file-local",
+  "/api/upload-file-cloud",
   upload.single("file"),
-  saveToLocalFileApiFunction,
+  uploadFileCloudFunction,
 );
-
+app.delete("/api/delete-file-cloud", deleteFileApiFunction);
 
 app.get("/api/get-cached-svga", async (req: Request, res: Response) => {
   try {

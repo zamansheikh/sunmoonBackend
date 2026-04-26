@@ -195,7 +195,6 @@ export default class SharedPowerService implements ISharedPowerService {
       user.avatar = await uploadFileToCloudinary({
         file: user.avatar as Express.Multer.File,
         folder: "portal_users",
-        isVideo: false,
       });
     }
 
