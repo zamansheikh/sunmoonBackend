@@ -65,10 +65,6 @@ import {
   IUpdateCost,
   IUpdateCostDocument,
 } from "../../models/admin/update_cost_model";
-import {
-  saveFileToLocal,
-  deleteLocalFile,
-} from "../../core/Utils/save_file_to_local_sys";
 
 export interface IAdminUserService {
   loginAdmin(credentials: {
@@ -323,11 +319,12 @@ export default class AdminUserService implements IAdminUserService {
     if (avatar) {
       const existingAdmin = await this.AdminRepository.getAdminById(id);
       if (existingAdmin?.avatar) {
-        await deleteLocalFile(existingAdmin.avatar);
+        await deleteFileFromCloudinary(existingAdmin.avatar);
       }
 
-      const avatarUrl = await saveFileToLocal(avatar, {
+      const avatarUrl = await uploadFileToCloudinary({
         folder: "admin_assets",
+        file: avatar,
       });
 
       admin.avatar = avatarUrl;

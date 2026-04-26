@@ -21,10 +21,7 @@ import { IMyBucketRepository } from "../../repository/store/my_bucket_repository
 import IUserStatsRepository from "../../repository/users/userstats_repository_interface";
 import mongoose, { mongo } from "mongoose";
 import { IMyBucketDocument } from "../../models/store/my_bucket_model";
-import {
-  deleteLocalFile,
-  saveFileToLocal,
-} from "../../core/Utils/save_file_to_local_sys";
+
 
 export interface IPremiumFiles {
   categoryName: string;
@@ -221,16 +218,19 @@ export default class StoreService implements IStoreService {
       throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
     if (category.isPremium)
       throw new AppError(StatusCodes.BAD_REQUEST, "This is a premium category");
-    const svgaUrl = await saveFileToLocal(svgaFile, {
+    const svgaUrl = await uploadFileToCloudinary({
       folder: "store_items",
+      file: svgaFile,
     });
-    const previewUrl = await saveFileToLocal(previewFile, {
+    const previewUrl = await uploadFileToCloudinary({
       folder: "store_items",
+      file: previewFile,
     });
     let logoUrl: string | undefined;
     if (logoFile) {
-      logoUrl = await saveFileToLocal(logoFile, {
+      logoUrl = await uploadFileToCloudinary({
         folder: "store_items",
+        file: logoFile,
       });
     }
 
@@ -299,11 +299,13 @@ export default class StoreService implements IStoreService {
     let premimumURLs: IBundle[] = [];
     for (let i = 0; i < files.length; i++) {
       const extension = files[i].svgaFile.originalname.split(".").pop();
-      const svgaUrl = await saveFileToLocal(files[i].svgaFile, {
+      const svgaUrl = await uploadFileToCloudinary({
         folder: "store_items",
+        file: files[i].svgaFile,
       });
-      const previewUrl = await saveFileToLocal(files[i].previewFile, {
+      const previewUrl = await uploadFileToCloudinary({
         folder: "store_items",
+        file: files[i].previewFile,
       });
       premimumURLs.push({
         categoryName: files[i].categoryName,
@@ -315,8 +317,9 @@ export default class StoreService implements IStoreService {
 
     let logoUrl: string | undefined;
     if (logoFile) {
-      logoUrl = await saveFileToLocal(logoFile, {
+      logoUrl = await uploadFileToCloudinary({
         folder: "store_items",
+        file: logoFile,
       });
     }
 
@@ -442,14 +445,15 @@ export default class StoreService implements IStoreService {
 
     if (svgaFile) {
       // deleting the previous file
-      const deleteStatus = await deleteLocalFile(existingItem.svgaFile!);
+      const deleteStatus = await deleteFileFromCloudinary(existingItem.svgaFile!);
       if (!deleteStatus)
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
           "Failed to delete file",
         );
-      const url = await saveFileToLocal(svgaFile, {
+      const url = await uploadFileToCloudinary({
         folder: "store_items",
+        file: svgaFile,
       });
       item.svgaFile = url;
     }
@@ -457,20 +461,22 @@ export default class StoreService implements IStoreService {
     if (previewFile) {
       // deleting the previous file
       if (existingItem.previewFile) {
-        await deleteLocalFile(existingItem.previewFile);
+        await deleteFileFromCloudinary(existingItem.previewFile);
       }
-      const url = await saveFileToLocal(previewFile, {
+      const url = await uploadFileToCloudinary({
         folder: "store_items",
+        file: previewFile,
       });
       item.previewFile = url;
     }
 
     if (logoFile) {
       if (existingItem.logo) {
-        await deleteLocalFile(existingItem.logo);
+        await deleteFileFromCloudinary(existingItem.logo);
       }
-      const url = await saveFileToLocal(logoFile, {
+      const url = await uploadFileToCloudinary({
         folder: "store_items",
+        file: logoFile,
       });
       item.logo = url;
     }
@@ -514,7 +520,7 @@ export default class StoreService implements IStoreService {
     }
 
     for (let i = 0; i < urlsBeDeleted.length; i++) {
-      const deleteFile = await deleteLocalFile(urlsBeDeleted[i]);
+      const deleteFile = await deleteFileFromCloudinary(urlsBeDeleted[i]);
       if (!deleteFile) {
         console.error(`Failed to delete file: ${urlsBeDeleted[i]}`);
         continue;
@@ -525,11 +531,13 @@ export default class StoreService implements IStoreService {
 
     for (let i = 0; i < files!.length; i++) {
       const extenstion = files![i].svgaFile.originalname.split(".").pop();
-      let svgaUrl = await saveFileToLocal(files![i].svgaFile, {
+      let svgaUrl = await uploadFileToCloudinary({
         folder: "store_items",
+        file: files![i].svgaFile,
       });
-      let previewUrl = await saveFileToLocal(files![i].previewFile, {
+      let previewUrl = await uploadFileToCloudinary({
         folder: "store_items",
+        file: files![i].previewFile,
       });
       newFilesToBeAdded.push({
         categoryName: files![i].categoryName,
@@ -541,10 +549,11 @@ export default class StoreService implements IStoreService {
 
     if (logoFile) {
       if (existingItem.logo) {
-        await deleteLocalFile(existingItem.logo);
+        await deleteFileFromCloudinary(existingItem.logo);
       }
-      const url = await saveFileToLocal(logoFile, {
+      const url = await uploadFileToCloudinary({
         folder: "store_items",
+        file: logoFile,
       });
       item.logo = url;
     }
@@ -589,15 +598,15 @@ export default class StoreService implements IStoreService {
       );
 
     // cleaning files
-    if (existingItem.svgaFile) await deleteLocalFile(existingItem.svgaFile);
+    if (existingItem.svgaFile) await deleteFileFromCloudinary(existingItem.svgaFile);
     if (existingItem.previewFile)
-      await deleteLocalFile(existingItem.previewFile);
-    if (existingItem.logo) await deleteLocalFile(existingItem.logo);
+      await deleteFileFromCloudinary(existingItem.previewFile);
+    if (existingItem.logo) await deleteFileFromCloudinary(existingItem.logo);
 
     if (existingItem.bundleFiles) {
       for (const bundle of existingItem.bundleFiles) {
-        await deleteLocalFile(bundle.svgaFile);
-        await deleteLocalFile(bundle.previewFile);
+        await deleteFileFromCloudinary(bundle.svgaFile);
+        await deleteFileFromCloudinary(bundle.previewFile);
       }
     }
 
