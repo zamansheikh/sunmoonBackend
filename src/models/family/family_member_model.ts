@@ -36,7 +36,7 @@ const familyMemberSchema = new Schema<IFamilyMemberDocument>(
       type: Schema.Types.ObjectId,
       ref: DatabaseNames.User,
       required: true,
-      index: true,
+      unique: true,
     },
     role: {
       type: String,

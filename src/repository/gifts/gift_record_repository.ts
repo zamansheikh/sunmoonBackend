@@ -46,6 +46,8 @@ export interface IGiftRecordRepository {
     period: RankingPeriods,
   ): Promise<IRanking>;
   getMyReceivedAmountInRoom(myId: string, roomId: string): Promise<number>;
+
+  getFamilyRanking(period: RankingPeriods): Promise<IRanking[]>;
 }
 
 export class GiftRecordRepository implements IGiftRecordRepository {

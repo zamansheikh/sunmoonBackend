@@ -62,7 +62,7 @@ const familySchema = new Schema<IFamilyDocument>(
     },
     memberCount: {
       type: Number,
-      default: 0,
+      default: 1, // since the leader is the first member
     },
     memberLimit: {
       type: Number,

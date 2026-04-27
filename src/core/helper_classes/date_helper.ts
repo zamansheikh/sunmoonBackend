@@ -43,4 +43,22 @@ export class DateHelper {
     endOfMonth.setHours(23, 59, 59, 999);
     return endOfMonth;
   }
+
+  static getStartOfLastWeek(date: Date): Date {
+    const result = new Date(date);
+    const day = result.getDay(); // 0 is Sunday, 6 is Saturday
+    // Subtract current day index to get this Sunday, then subtract 7 more days
+    result.setDate(result.getDate() - day - 7);
+    result.setHours(0, 0, 0, 0);
+    return result;
+  }
+
+  static getEndOfLastWeek(date: Date): Date {
+    const result = new Date(date);
+    const day = result.getDay();
+    // Subtract current day index to get this Sunday, then subtract 1 more day to get last Saturday
+    result.setDate(result.getDate() - day - 1);
+    result.setHours(23, 59, 59, 999);
+    return result;
+  }
 }

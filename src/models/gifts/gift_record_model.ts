@@ -9,6 +9,7 @@ export interface IGiftRecord {
   totalCoinCost: number; // gift coinPrice * qty
   totalDiamonds: number; // gift diamonds * qty
   roomId?: string;
+  familyId?: string;
   expireAt?: Date;
 }
 
@@ -40,6 +41,7 @@ const giftRecordSchema = new Schema<IGiftRecordDocument>(
     totalCoinCost: { type: Number, required: true },
     totalDiamonds: { type: Number, required: true },
     roomId: { type: String },
+    familyId: { type: String },
     // expireAt: { type: Date, required: true, expires: 1 },
   },
   { timestamps: true },

@@ -486,6 +486,11 @@ export default class AuthService implements IAuthService {
   }): Promise<any> {
     const allExist =
       await UserCache.getInstance().validateUserIds(targetUserIds);
+    const senderBrief = await UserCache.getInstance().getUserBrief(myId);
+    if (!senderBrief) {
+      throw new AppError(StatusCodes.NOT_FOUND, "Sender not found");
+    }
+
     if (!allExist) {
       throw new AppError(404, "Some users not found");
     }
@@ -542,6 +547,7 @@ export default class AuthService implements IAuthService {
           totalCoinCost: gift.coinPrice * qty,
           totalDiamonds: diamonds,
           roomId: isValid ? roomId : undefined, // only adding room id if the room is valid
+          familyId: senderBrief.familyId,
         }),
       );
     }
@@ -553,7 +559,6 @@ export default class AuthService implements IAuthService {
       roomId &&
       (isValid || (await AudioRoomCache.getInstance().validateRoomId(roomId)))
     ) {
-      const senderBrief = await UserCache.getInstance().getUserBrief(myId);
       const targetBriefs =
         await UserCache.getInstance().getUsersBriefs(targetUserIds);
 

@@ -77,7 +77,7 @@ export class FamilyService implements IFamilyService {
     );
     if (family || leader.familyId)
       throw new AppError(StatusCodes.BAD_REQUEST, "Family already exists");
-    //step3: check if the user has required level -> 5
+    //step3: check if the leader (creator) has required level -> 5
     if (leader.level < 5)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
@@ -103,10 +103,10 @@ export class FamilyService implements IFamilyService {
       role: FamilyMemberRole.Leader,
     };
     await Promise.all([
-      this.familyMemberRepository.create(familyMember),
+      this.familyMemberRepository.create(familyMember), // creating a seprate member document
       this.userRepository.findUserByIdAndUpdate(data.leaderId.toString(), {
         familyId: newFamily._id as string,
-      }),
+      }), // caching the family id to the user document
     ]);
     //step8: return the created family
     return newFamily;
@@ -183,8 +183,8 @@ export class FamilyService implements IFamilyService {
     const [user, family, member, joinRequest] = await Promise.all([
       this.userRepository.findUserById(userId),
       this.familyRepository.getById(familyId),
-      this.familyMemberRepository.getByUserId(userId),
-      this.familyJoinRequestRepository.getByUserId(userId),
+      this.familyMemberRepository.getByUserId(userId), // checking if user is a member of any family
+      this.familyJoinRequestRepository.getByUserId(userId), // checking if user has sent a join request to any family
     ]);
 
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "User not found");
@@ -242,9 +242,7 @@ export class FamilyService implements IFamilyService {
         this.familyMemberRepository.create(familyMember),
         this.userRepository.findUserByIdAndUpdate(userId, { familyId }),
         //step7: increment member count
-        this.familyRepository.update(familyId, {
-          $inc: { memberCount: 1 },
-        } as any),
+        this.familyRepository.incrementMemberCount(familyId),
       ]);
 
       return { family, status: "joined" };
@@ -294,13 +292,13 @@ export class FamilyService implements IFamilyService {
     if (!isValidMongooseToken(requestId)) {
       throw new AppError(StatusCodes.BAD_REQUEST, "Invalid requestId");
     }
-    //step2: fetch the request within session
+    // Step 2: Retrieve the join request to validate its existence and prepare for processing
     const request = await this.familyJoinRequestRepository.findById(requestId);
     if (!request) {
       throw new AppError(StatusCodes.NOT_FOUND, "Join request not found");
     }
 
-    //step3: check for authorize the caller - must be a leader or co-leader of the same family
+    // step 3: Check leadership privileges - must be a leader or co-leader of the same family
     await this.checkLeadershipPrivileges(
       userId,
       request.familyId.toString(),
@@ -330,11 +328,7 @@ export class FamilyService implements IFamilyService {
           { familyId: familyId.toString() },
           session,
         ),
-        this.familyRepository.update(
-          familyId.toString(),
-          { $inc: { memberCount: 1 } } as any,
-          session,
-        ),
+        this.familyRepository.incrementMemberCount(familyId.toString(), 1, session),
       ]);
 
       await session.commitTransaction();
@@ -475,6 +469,10 @@ export class FamilyService implements IFamilyService {
     }
 
     return updatedMember;
+  }
+
+  async getLastWeekRanking() {
+    
   }
 
   private async checkLeadershipPrivileges(

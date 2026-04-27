@@ -13,6 +13,11 @@ export interface IFamilyRepository {
     data: Partial<IFamily>,
     session?: any,
   ): Promise<IFamilyDocument | null>;
+  incrementMemberCount(
+    id: string,
+    amount?: number,
+    session?: any,
+  ): Promise<IFamilyDocument | null>;
 }
 
 export class FamilyRepository implements IFamilyRepository {
@@ -38,6 +43,20 @@ export class FamilyRepository implements IFamilyRepository {
   ): Promise<IFamilyDocument | null> {
     return await this.model
       .findByIdAndUpdate(id, data, { new: true })
+      .session(session);
+  }
+
+  async incrementMemberCount(
+    id: string,
+    amount: number = 1,
+    session?: any,
+  ): Promise<IFamilyDocument | null> {
+    return await this.model
+      .findByIdAndUpdate(
+        id,
+        { $inc: { memberCount: amount } },
+        { new: true },
+      )
       .session(session);
   }
 }
