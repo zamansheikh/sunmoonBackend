@@ -349,7 +349,13 @@ export function lookupEnrichedUsersArray(
                 "$_id",
                 {
                   $map: {
-                    input: { $ifNull: ["$$userIds", []] },
+                    input: {
+                      $filter: {
+                        input: { $ifNull: ["$$userIds", []] },
+                        as: "id",
+                        cond: { $and: [{ $ne: ["$$id", null] }, { $ne: ["$$id", ""] }] },
+                      },
+                    },
                     as: "id",
                     in: { $toObjectId: "$$id" },
                   },

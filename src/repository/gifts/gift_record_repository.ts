@@ -46,8 +46,17 @@ export interface IGiftRecordRepository {
     period: RankingPeriods,
   ): Promise<IRanking>;
   getMyReceivedAmountInRoom(myId: string, roomId: string): Promise<number>;
-
-  getFamilyRanking(period: RankingPeriods): Promise<IRanking[]>;
+  getFamilyRanking(lastWeek: boolean): Promise<{
+    familyId: string;
+    familyName: string;
+    familyCoverPhoto: string;
+    totalContribution: number;
+    leader: {
+      memberId: string;
+      memberName: string;
+      memberPhoto: string;
+    };
+  }>;
 }
 
 export class GiftRecordRepository implements IGiftRecordRepository {
@@ -600,5 +609,74 @@ export class GiftRecordRepository implements IGiftRecordRepository {
     ]);
 
     return result[0]?.total || 0;
+  }
+
+  async getFamilyRanking(lastWeek: boolean = false): Promise<any> {
+    let startDate: Date;
+    let endDate: Date;
+    const now = new Date();
+
+    if (lastWeek) {
+      startDate = DateHelper.getStartOfLastWeek(now);
+      endDate = DateHelper.getEndOfLastWeek(now);
+    } else {
+      startDate = DateHelper.getStartOfWeek(now);
+      endDate = DateHelper.getEndOfWeek(now);
+    }
+
+    const ranking = await this.Model.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate, $lte: endDate },
+          familyId: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $group: {
+          _id: "$familyId",
+          totalContribution: { $sum: "$totalCoinCost" },
+        },
+      },
+      {
+        $lookup: {
+          from: DatabaseNames.Family,
+          let: { familyId: { $toObjectId: "$_id" } },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$familyId"] } } },
+          ],
+          as: "familyDetails",
+        },
+      },
+      { $unwind: "$familyDetails" },
+      {
+        $lookup: {
+          from: DatabaseNames.User,
+          let: { leaderId: { $toObjectId: "$familyDetails.leaderId" } },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$leaderId"] } } },
+          ],
+          as: "leaderDetails",
+        },
+      },
+      { $unwind: "$leaderDetails" },
+      {
+        $project: {
+          _id: 0,
+          familyId: "$_id",
+          familyName: "$familyDetails.name",
+          familyCoverPhoto: "$familyDetails.coverPhoto",
+          totalContribution: 1,
+          leader: {
+            memberId: "$leaderDetails._id",
+            memberName: "$leaderDetails.name",
+            memberPhoto: "$leaderDetails.avatar",
+          },
+        },
+      },
+      { $sort: { totalContribution: -1 } },
+      { $limit: 100 },
+    ]);
+
+    return ranking;
   }
 }

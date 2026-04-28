@@ -136,7 +136,7 @@ export default class RocketService {
     // reward the users
     const rewardedUsers = await this.rewardUsers(room, level);
     // save the rewarded users for api usages
-    await this.saveRewarddedUsers(rewardedUsers, roomId);
+    await this.saveRewardedUsers(rewardedUsers, roomId);
 
     const socketServer = SingletonSocketServer.getInstance();
 
@@ -171,7 +171,8 @@ export default class RocketService {
     const levelKey = `${RocketService.LEVEL_KEY_PREFIX}${roomId}`;
     const milestoneKey = `${RocketService.ROCKET_MILESTONE_KEY_PREFIX}${roomId}`;
     // The rocket Reached its Maximum Level, Reset to Level 1
-    if (level == 5) {
+    if (level > 5) {
+      level = 1;
       await this.redis.set(fuelKey, "0");
       await this.redis.set(levelKey, "1");
       await this.redis.set(milestoneKey, ROCKET_MILESTONES[0].toString());
@@ -203,7 +204,10 @@ export default class RocketService {
 
   private async rewardUsers(room: IAudioRoomDocument, level: number) {
     // the number of users eligible for reward recieve
-    let rewardableUserCount = REWARD_NUMBERS[level - 1];
+    // Ensure we don't go out of bounds of the REWARD_NUMBERS array
+    const rewardIndex = Math.min(level - 1, REWARD_NUMBERS.length - 1);
+    let rewardableUserCount = REWARD_NUMBERS[rewardIndex] || 0;
+
     // sort the users based on gift sent
     const members = (room.membersArray as unknown as IMemberDetails[]) || [];
 
@@ -227,10 +231,14 @@ export default class RocketService {
      */
     for (let i = 0; i < rewardableUserCount; i++) {
       const user = members[i];
+      if (!user || !user._id) continue; // Skip invalid or unpopulated users
+
       const rewards: ILaunchGifts[] = [];
+      const userIdStr = user._id.toString();
+
       if (i === 0) {
         // first user extra reward
-        const asset = await this.addAssetToUser(user._id.toString(), 4);
+        const asset = await this.addAssetToUser(userIdStr, 4);
         const rewardObj: ILaunchGifts = {
           quantity: 4,
           thumbnail: asset,
@@ -240,7 +248,7 @@ export default class RocketService {
       }
       if (i < 2) {
         // second user extra reward
-        const asset = await this.addAssetToUser(user._id.toString(), 3);
+        const asset = await this.addAssetToUser(userIdStr, 3);
         const rewardObj: ILaunchGifts = {
           quantity: 3,
           thumbnail: asset,
@@ -250,7 +258,7 @@ export default class RocketService {
       }
       if (i < 3) {
         // third user extra reward
-        const xp = await this.addXpToUser(user._id.toString());
+        const xp = await this.addXpToUser(userIdStr);
         const rewardObj: ILaunchGifts = {
           quantity: xp,
           thumbnail: "xp",
@@ -259,7 +267,7 @@ export default class RocketService {
         rewards.push(rewardObj);
       }
       // normal reward
-      const coins = await this.addCoinsToUser(user._id.toString());
+      const coins = await this.addCoinsToUser(userIdStr);
       const rewardGiftObj: ILaunchGifts = {
         quantity: coins,
         thumbnail: "coins",
@@ -274,17 +282,41 @@ export default class RocketService {
     return rewardedUsers;
   }
 
-  private async saveRewarddedUsers(
+  private async saveRewardedUsers(
     rewardedUsers: IRewarededUser[],
     roomId: string,
   ) {
-    const key = `${RocketService.REWARDED_USERS_KEY_PREFIX}${roomId}`;
-    await this.redis.set(key, rewardedUsers, 86400); // Expires in 24 hours
+    try {
+      const key = `${RocketService.REWARDED_USERS_KEY_PREFIX}${roomId}`;
+      await this.redis.set(key, rewardedUsers, 86400); // Expires in 24 hours
+      console.log(
+        `[RocketService] Rewarded users saved for room: ${roomId}, Count: ${rewardedUsers.length}`,
+      );
+    } catch (error) {
+      console.error(
+        `[RocketService] Error saving rewarded users for room ${roomId}:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   public async getRewardedUsers(roomId: string) {
     const key = `${RocketService.REWARDED_USERS_KEY_PREFIX}${roomId}`;
-    return await this.redis.get<IRewarededUser[]>(key);
+    try {
+      const result = await this.redis.get<IRewarededUser[]>(key);
+      console.log(
+        `[RocketService] Retrieved rewarded users for room: ${roomId}, Result:`,
+        result ? `${result.length} users` : "null",
+      );
+      return result;
+    } catch (error) {
+      console.error(
+        `[RocketService] Error retrieving rewarded users for room ${roomId}:`,
+        error,
+      );
+      return null;
+    }
   }
 
   // this function adds asset to the

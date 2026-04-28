@@ -29,6 +29,11 @@ import {
   IFamilyMember,
   IFamilyMemberDocument,
 } from "../../models/family/family_member_model";
+import {
+  GiftRecordRepository,
+  IGiftRecordRepository,
+} from "../../repository/gifts/gift_record_repository";
+import { DateHelper } from "../../core/helper_classes/date_helper";
 
 export interface IFamilyService {
   createFamily(data: IFamily): Promise<IFamilyDocument>;
@@ -64,6 +69,8 @@ export class FamilyService implements IFamilyService {
     RepositoryProviders.userStatsRepositoryProvider;
   familyJoinRequestRepository: IFamilyJoinRequestRepository =
     RepositoryProviders.familyJoinRequestRepositoryProvider;
+  GiftRecordRepository: IGiftRecordRepository =
+    RepositoryProviders.giftRecordRepositoryProvider;
 
   async createFamily(data: IFamily): Promise<IFamilyDocument> {
     //step1: validate leaderId
@@ -328,7 +335,11 @@ export class FamilyService implements IFamilyService {
           { familyId: familyId.toString() },
           session,
         ),
-        this.familyRepository.incrementMemberCount(familyId.toString(), 1, session),
+        this.familyRepository.incrementMemberCount(
+          familyId.toString(),
+          1,
+          session,
+        ),
       ]);
 
       await session.commitTransaction();
@@ -472,7 +483,20 @@ export class FamilyService implements IFamilyService {
   }
 
   async getLastWeekRanking() {
-    
+    const ranking = await this.GiftRecordRepository.getFamilyRanking(true);
+    return {
+      top1FamilyDetails: "UnImplemented",
+      ranking,
+    };
+  }
+
+  async getThisWeekRanking() {
+    const ranking = await this.GiftRecordRepository.getFamilyRanking(false);
+    return {
+      top1FamilyDetails: "UnImplemented",
+      weekEnd: DateHelper.getEndOfWeek(new Date()),
+      ranking,
+    };
   }
 
   private async checkLeadershipPrivileges(
