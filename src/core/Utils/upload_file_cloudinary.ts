@@ -38,18 +38,23 @@ export const deleteFileFromCloudinary = async (
       resource_type: resourceType,
     });
 
-    if (result.result == "not found")
-      throw new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "File not found");
-    if (result.result != "ok")
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "File deletion failed",
+    if (result.result == "not found") {
+      console.warn(`[Cloudinary] File not found on Cloudinary: ${url}`);
+      return true;
+    }
+
+    if (result.result != "ok") {
+      console.error(
+        `[Cloudinary] Deletion failed for ${url}. Result: ${result.result}`,
       );
+      return false;
+    }
+
     return result.result === "ok";
   } catch (error: any) {
-    throw new AppError(
-      error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
-      error.message || "File Deletion failed",
+    console.error(
+      `[Cloudinary] Error during deletion for URL: ${url}. Error: ${error.message}`,
     );
+    return false;
   }
 };

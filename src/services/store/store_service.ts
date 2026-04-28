@@ -446,11 +446,9 @@ export default class StoreService implements IStoreService {
     if (svgaFile) {
       // deleting the previous file
       const deleteStatus = await deleteFileFromCloudinary(existingItem.svgaFile!);
-      if (!deleteStatus)
-        throw new AppError(
-          StatusCodes.INTERNAL_SERVER_ERROR,
-          "Failed to delete file",
-        );
+      if (!deleteStatus) {
+        console.warn(`[StoreService] Failed to delete previous SVGA file from Cloudinary: ${existingItem.svgaFile}`);
+      }
       const url = await uploadFileToCloudinary({
         folder: "store_items",
         file: svgaFile,

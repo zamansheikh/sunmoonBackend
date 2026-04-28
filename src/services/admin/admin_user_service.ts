@@ -1034,11 +1034,9 @@ export default class AdminUserService implements IAdminUserService {
     }
 
     const deleteFile = await deleteFileFromCloudinary(banner.url);
-    if (!deleteFile)
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to delete image from cloudinary",
-      );
+    if (!deleteFile) {
+      console.warn(`[AdminUserService] Failed to delete banner image from Cloudinary: ${banner.url}`);
+    }
     const deletedBanner = await this.BannerRepository.deleteBanner(id);
     return deletedBanner;
   }
@@ -1108,11 +1106,9 @@ export default class AdminUserService implements IAdminUserService {
     }
 
     const deleteFile = await deleteFileFromCloudinary(poster.url);
-    if (!deleteFile)
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to delete image from cloudinary",
-      );
+    if (!deleteFile) {
+      console.warn(`[AdminUserService] Failed to delete poster image from Cloudinary: ${poster.url}`);
+    }
     const deletePoster = await this.PosterRepository.deletePoster(id);
     return deletePoster;
   }
