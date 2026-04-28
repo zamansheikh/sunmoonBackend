@@ -237,6 +237,7 @@ export default class StoreService implements IStoreService {
       );
     }
 
+    
     const category = await this.CategoryRepository.getCategoryById(
       item.categoryId.toString(),
     );
