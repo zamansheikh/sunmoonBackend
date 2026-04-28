@@ -131,10 +131,16 @@ export default class RocketService {
     if (!room) {
       room = await this.audioRoomRepository.getAudioRoomById(roomId);
     }
+
+    // Capture values for the current launch and next state to avoid closure bugs
+    const launchLevel = level > 5 ? 5 : level;
+    const nextLevel = level > 5 ? 1 : level;
+
     // calculate the remaining fuel
     const remainingFuel = fuel - ROCKET_MILESTONES[level - 2];
+
     // reward the users
-    const rewardedUsers = await this.rewardUsers(room, level);
+    const rewardedUsers = await this.rewardUsers(room, launchLevel);
     // save the rewarded users for api usages
     await this.saveRewardedUsers(rewardedUsers, roomId);
 
@@ -144,25 +150,23 @@ export default class RocketService {
     socketServer.emitGlobalRocketBanner({
       roomId: roomId,
       message: `Rocket in ${room.title || "Room"} has been launched`,
-      rocketLevel: level,
+      rocketLevel: launchLevel,
       roomPhoto: room.roomPhoto || "",
     });
 
     // Schedule the room-specific events for 10s later
-    // We capture current values in the closure to handle race conditions if multiple levels launch
     setTimeout(() => {
       // notifying the app about the rocket launch (scope: room)
       socketServer.emitToRoom(roomId, AudioRoomChannels.LaunchRocket, {
         roomId,
         fuel,
-        // rewardedUser: rewardedUsers,
-        level,
+        level: launchLevel,
       });
       // Notify Level Update
       socketServer.emitToRoom(roomId, AudioRoomChannels.NewRocketLevel, {
         roomId,
-        level: level,
-        milestone: ROCKET_MILESTONES[level - 1],
+        level: nextLevel,
+        milestone: ROCKET_MILESTONES[nextLevel - 1],
       } as IRocketServiceResponse);
     }, 10000);
 
@@ -170,34 +174,27 @@ export default class RocketService {
     const fuelKey = `${RocketService.FUEL_KEY_PREFIX}${roomId}`;
     const levelKey = `${RocketService.LEVEL_KEY_PREFIX}${roomId}`;
     const milestoneKey = `${RocketService.ROCKET_MILESTONE_KEY_PREFIX}${roomId}`;
-    // The rocket Reached its Maximum Level, Reset to Level 1
-    if (level > 5) {
-      level = 1;
-      await this.redis.set(fuelKey, "0");
-      await this.redis.set(levelKey, "1");
-      await this.redis.set(milestoneKey, ROCKET_MILESTONES[0].toString());
-    } else {
-      await this.redis.set(fuelKey, "0");
-      await this.redis.set(levelKey, level.toString());
-      await this.redis.set(
-        milestoneKey,
-        ROCKET_MILESTONES[level - 1].toString(),
-      );
-    }
+
+    await this.redis.set(fuelKey, "0");
+    await this.redis.set(levelKey, nextLevel.toString());
+    await this.redis.set(
+      milestoneKey,
+      ROCKET_MILESTONES[nextLevel - 1].toString(),
+    );
 
     // recursive call (if the remaining fuel is greater than the next milestone)
-    if (remainingFuel > ROCKET_MILESTONES[level - 1]) {
-      await this.launchRocket(roomId, remainingFuel, level + 1, room);
+    if (remainingFuel > ROCKET_MILESTONES[nextLevel - 1]) {
+      await this.launchRocket(roomId, remainingFuel, nextLevel + 1, room);
       return;
     }
     // fuel notification (scope: room)
     socketServer.emitToRoom(roomId, AudioRoomChannels.NewRocketFuelPercentage, {
       roomId,
       fuel: remainingFuel,
-      level: level,
-      milestone: ROCKET_MILESTONES[level - 1],
+      level: nextLevel,
+      milestone: ROCKET_MILESTONES[nextLevel - 1],
       percentage: parseFloat(
-        ((remainingFuel / ROCKET_MILESTONES[level - 1]) * 100).toFixed(2),
+        ((remainingFuel / ROCKET_MILESTONES[nextLevel - 1]) * 100).toFixed(2),
       ),
     } as IRocketServiceResponse);
   }
