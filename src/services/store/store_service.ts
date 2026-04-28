@@ -186,11 +186,37 @@ export default class StoreService implements IStoreService {
     const existingCategory = await this.CategoryRepository.getCategoryById(id);
     if (!existingCategory)
       throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
-    // deleting the items being effected
-    await this.ItemRepository.deleteByCategory(id);
-    await this.ItemRepository.deleteByBundleCategoryName(
-      existingCategory.title,
-    );
+
+    // 1. Get all items directly in this category
+    const normalItems = await this.ItemRepository.getAllStoreItemByCategory(id);
+
+    // 2. Get all premium items that include this category in their bundle
+    const premiumItems =
+      await this.ItemRepository.getStoreItemsByBundleCategoryName(
+        existingCategory.title,
+      );
+
+    // 3. Combine and get unique item IDs to avoid double deletion
+    const itemIdsToDelete = new Set([
+      ...normalItems.map((item) => (item as any)._id.toString()),
+      ...premiumItems.map((item) => (item as any)._id.toString()),
+    ]);
+
+    // 4. Delete each item using the full cleanup logic
+    // We use a loop to ensure Cloudinary and Bucket cleanup for every single item
+    for (const itemId of itemIdsToDelete) {
+      try {
+        await this.deleteStoreItem(itemId);
+      } catch (error) {
+        console.error(
+          `[StoreService] Failed to perform full deletion for item ${itemId} during category deletion:`,
+          error,
+        );
+        // We continue to ensure as many items as possible are cleaned up
+      }
+    }
+
+    // 5. Finally delete the category document
     return await this.CategoryRepository.deleteCategory(id);
   }
 
@@ -613,6 +639,9 @@ export default class StoreService implements IStoreService {
       { itemId: id, useStatus: true },
       { useStatus: false },
     );
+
+    // Delete all user bucket records for this item
+    await this.BucketRepository.deleteByItemId(id);
 
     return await this.ItemRepository.deleteStoreItemHard(id);
   }

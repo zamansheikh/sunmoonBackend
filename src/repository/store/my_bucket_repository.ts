@@ -6,7 +6,7 @@ import {
   IMyBucketDocument,
   IMyBucketModel,
 } from "../../models/store/my_bucket_model";
-import mongoose, { ClientSession, UpdateResult } from "mongoose";
+import mongoose, { ClientSession, DeleteResult, UpdateResult } from "mongoose";
 import { DatabaseNames } from "../../core/Utils/enums";
 
 export interface IMyBucketRepository {
@@ -55,6 +55,11 @@ export interface IMyBucketRepository {
   getAllBucketsByCategoryGrouped(
     ownerId: string,
   ): Promise<Record<string, IMyBucketDocument[]>>;
+  deleteByItemId(itemId: string, session?: ClientSession): Promise<DeleteResult>;
+  deleteByCategoryId(
+    categoryId: string,
+    session?: ClientSession,
+  ): Promise<DeleteResult>;
 }
 
 export default class MyBucketRepository implements IMyBucketRepository {
@@ -269,5 +274,19 @@ export default class MyBucketRepository implements IMyBucketRepository {
       .toArray();
 
     return results[0] || {};
+  }
+
+  async deleteByItemId(
+    itemId: string,
+    session?: ClientSession,
+  ): Promise<DeleteResult> {
+    return await this.Model.deleteMany({ itemId }).session(session || null);
+  }
+
+  async deleteByCategoryId(
+    categoryId: string,
+    session?: ClientSession,
+  ): Promise<DeleteResult> {
+    return await this.Model.deleteMany({ categoryId }).session(session || null);
   }
 }
