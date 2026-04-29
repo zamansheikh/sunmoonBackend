@@ -21,6 +21,7 @@ interface IClaimedCoinUser {
   avatar: string;
   name: string;
   claimedAt: Date;
+  luckiestDraw: boolean;
 }
 
 import { RedisFolderProvider } from "../../core/redis/redis_folder_provider";
@@ -217,6 +218,8 @@ export default class CoinBagService {
         session.coinAmount * (coinPercentage / 100),
       );
 
+      const luckiestDraw = userRank === 0;
+
       // prepare claimed user data
       const claimedUserData: IClaimedCoinUser = {
         rank: userRank + 1, // 1-indexed for UX
@@ -224,6 +227,7 @@ export default class CoinBagService {
         avatar: userBrief.avatar,
         name: userBrief.name,
         claimedAt: new Date(),
+        luckiestDraw,
       };
 
       // add claimed user data to a Redis Sorted Set to maintain winner order
@@ -238,7 +242,7 @@ export default class CoinBagService {
       // add the reward to the userstats
       await this.userStatsRepository.updateCoins(userId, coinAmount);
 
-      return coinAmount;
+      return { coinAmount, luckiestDraw };
     } catch (error) {
       // Rollback: If anything fails (like DB update), allow the user to try again
       await this.redis.removeFromSet(claimedSetKey, userId);
