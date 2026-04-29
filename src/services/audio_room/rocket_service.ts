@@ -184,6 +184,8 @@ export default class RocketService {
 
     // recursive call (if the remaining fuel is greater than the next milestone)
     if (remainingFuel > ROCKET_MILESTONES[nextLevel - 1]) {
+      // delay the next launch by 45 seconds
+      await new Promise((resolve) => setTimeout(resolve, 45000));
       await this.launchRocket(roomId, remainingFuel, nextLevel + 1, room);
       return;
     }
