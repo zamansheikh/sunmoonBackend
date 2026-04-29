@@ -89,7 +89,7 @@ export default class RocketService {
     // Step 1: Check if new fuel reaches or exceeds the milestone
     if (newFuel >= milestone) {
       // Rocket launch logic
-      await this.launchRocket(roomId, newFuel, level + 1);
+      await this.launchRocket(roomId, newFuel, level);
     } else {
       // Step 2: Update the current fuel in Redis and notify the room
       await this.redis.set(fuelKey, newFuel.toString());
@@ -133,11 +133,11 @@ export default class RocketService {
     }
 
     // Capture values for the current launch and next state to avoid closure bugs
-    const launchLevel = level > 5 ? 5 : level;
-    const nextLevel = level > 5 ? 1 : level;
+    const launchLevel = level;
+    const nextLevel = (level % 5) + 1;
 
     // calculate the remaining fuel
-    const remainingFuel = fuel - ROCKET_MILESTONES[level - 2];
+    const remainingFuel = fuel - ROCKET_MILESTONES[level - 1];
 
     // reward the users
     const rewardedUsers = await this.rewardUsers(room, launchLevel);
@@ -183,10 +183,10 @@ export default class RocketService {
     );
 
     // recursive call (if the remaining fuel is greater than the next milestone)
-    if (remainingFuel > ROCKET_MILESTONES[nextLevel - 1]) {
+    if (remainingFuel >= ROCKET_MILESTONES[nextLevel - 1]) {
       // delay the next launch by 45 seconds
       await new Promise((resolve) => setTimeout(resolve, 45000));
-      await this.launchRocket(roomId, remainingFuel, nextLevel + 1, room);
+      await this.launchRocket(roomId, remainingFuel, nextLevel, room);
       return;
     }
     // fuel notification (scope: room)

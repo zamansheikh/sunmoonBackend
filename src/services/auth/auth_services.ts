@@ -523,9 +523,7 @@ export default class AuthService implements IAuthService {
       ),
     ];
     if (roomId) {
-      secondaryUpdates.push(
-        RocketService.getInstance().addFuel(roomId, coinCost),
-      );
+      RocketService.getInstance().addFuel(roomId, coinCost);
       secondaryUpdates.push(
         AudioRoomHelper.getInstance().addTransactionToRoomSupport(
           roomId,
