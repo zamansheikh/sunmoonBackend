@@ -62,6 +62,7 @@ export enum DatabaseNames {
   CoinBagOptions = "coin_bag_options",
   CoinBagDistribution = "coin_bag_distributions",
   ActivityReward = "activity_rewards",
+  FamilyRewards = "family_rewards",
 }
 
 export enum ReelStatus {
