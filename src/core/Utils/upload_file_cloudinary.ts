@@ -14,7 +14,17 @@ export const uploadFileToCloudinary = ({
     const extension = file.originalname.split(".").pop()?.toLowerCase();
 
     // Standard media types that Cloudinary handles automatically (appending extensions in URLs)
-    const standardMedia = ["jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "mov", "avi"];
+    const standardMedia = [
+      "jpg",
+      "jpeg",
+      "png",
+      "gif",
+      "webp",
+      "svg",
+      "mp4",
+      "mov",
+      "avi",
+    ];
     const isRaw = !extension || !standardMedia.includes(extension);
 
     const options: any = {
