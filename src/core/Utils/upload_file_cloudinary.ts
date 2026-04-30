@@ -27,6 +27,7 @@ export const uploadFileToCloudinary = ({
     if (isRaw && extension) {
       const uniqueId = `${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
       options.public_id = `${uniqueId}.${extension}`;
+      options.resource_type = "raw";
     }
 
     const stream = cloudinary.uploader.upload_stream(
