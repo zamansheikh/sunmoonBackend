@@ -481,11 +481,18 @@ export function getCloudinaryPublicId(url: string): string {
   const decodedUrl = decodeURIComponent(url);
   const parts = new URL(decodedUrl).pathname.split("/");
 
+  // Identify the resource type (image, video, raw)
+  // URL structure: /<cloud_name>/<resource_type>/<delivery_type>/v<version>/<public_id>
+  const resourceType = parts[2];
+  const isRaw = resourceType === "raw";
+
   // The public ID starts after the version segment (e.g., /v123456789/)
   const versionIndex = parts.findIndex((part) => /^v\d+$/.test(part));
 
   if (versionIndex !== -1 && versionIndex < parts.length - 1) {
     const publicIdWithExt = parts.slice(versionIndex + 1).join("/");
+    if (isRaw) return publicIdWithExt; // Keep extension for raw files
+
     const lastDot = publicIdWithExt.lastIndexOf(".");
     return lastDot === -1
       ? publicIdWithExt
@@ -499,6 +506,8 @@ export function getCloudinaryPublicId(url: string): string {
   );
   if (deliveryIndex !== -1 && deliveryIndex < parts.length - 1) {
     const publicIdWithExt = parts.slice(deliveryIndex + 1).join("/");
+    if (isRaw) return publicIdWithExt;
+
     const lastDot = publicIdWithExt.lastIndexOf(".");
     return lastDot === -1
       ? publicIdWithExt
@@ -508,6 +517,9 @@ export function getCloudinaryPublicId(url: string): string {
   // Fallback 2: Just use the last two parts (folder/id)
   const fileName = parts[parts.length - 1];
   const folderName = parts[parts.length - 2];
+
+  if (isRaw) return `${folderName}/${fileName}`;
+
   const lastDot = fileName.lastIndexOf(".");
   const fileId = lastDot === -1 ? fileName : fileName.substring(0, lastDot);
   return `${folderName}/${fileId}`;
