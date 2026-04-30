@@ -22,7 +22,6 @@ import IUserStatsRepository from "../../repository/users/userstats_repository_in
 import mongoose, { mongo } from "mongoose";
 import { IMyBucketDocument } from "../../models/store/my_bucket_model";
 
-
 export interface IPremiumFiles {
   categoryName: string;
   svgaFile: Express.Multer.File;
@@ -269,6 +268,7 @@ export default class StoreService implements IStoreService {
       svgaFile: svgaUrl,
       previewFile: previewUrl,
       privilege: item.privilege,
+      canUserBuyThis: item.canUserBuyThis ?? true,
     };
     return await this.ItemRepository.createStoreItem(itemToCreate);
   }
@@ -471,9 +471,13 @@ export default class StoreService implements IStoreService {
 
     if (svgaFile) {
       // deleting the previous file
-      const deleteStatus = await deleteFileFromCloudinary(existingItem.svgaFile!);
+      const deleteStatus = await deleteFileFromCloudinary(
+        existingItem.svgaFile!,
+      );
       if (!deleteStatus) {
-        console.warn(`[StoreService] Failed to delete previous SVGA file from Cloudinary: ${existingItem.svgaFile}`);
+        console.warn(
+          `[StoreService] Failed to delete previous SVGA file from Cloudinary: ${existingItem.svgaFile}`,
+        );
       }
       const url = await uploadFileToCloudinary({
         folder: "store_items",
@@ -622,7 +626,8 @@ export default class StoreService implements IStoreService {
       );
 
     // cleaning files
-    if (existingItem.svgaFile) await deleteFileFromCloudinary(existingItem.svgaFile);
+    if (existingItem.svgaFile)
+      await deleteFileFromCloudinary(existingItem.svgaFile);
     if (existingItem.previewFile)
       await deleteFileFromCloudinary(existingItem.previewFile);
     if (existingItem.logo) await deleteFileFromCloudinary(existingItem.logo);

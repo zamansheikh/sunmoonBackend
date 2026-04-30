@@ -96,7 +96,8 @@ export default class StoreController {
     if (typeof req.body.privilege === "string") {
       req.body.privilege = JSON.parse(req.body.privilege);
     }
-    const { name, validity, categoryId, price, privilege } = req.body;
+    const { name, validity, categoryId, price, privilege, canUserBuyThis } =
+      req.body;
 
     validateCreateStoreItem(req.body);
 
@@ -109,10 +110,7 @@ export default class StoreController {
     validateFieldExistance(previewFile, "previewFile");
 
     if (logoFile && !isImageFile(logoFile.originalname)) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "logo must be an image",
-      );
+      throw new AppError(StatusCodes.BAD_REQUEST, "logo must be an image");
     }
 
     if (!isSvgaFile(svgaFile!.originalname)) {
@@ -129,7 +127,13 @@ export default class StoreController {
     }
 
     const item = await this.Service.createStoreItemSingle(
-      { name, categoryId, prices: [{ validity, price }], privilege },
+      {
+        name,
+        categoryId,
+        prices: [{ validity, price }],
+        privilege,
+        canUserBuyThis,
+      },
       svgaFile!,
       previewFile!,
       logoFile,
@@ -181,10 +185,7 @@ export default class StoreController {
     }
 
     if (logoFile && !isImageFile(logoFile.originalname)) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "logo must be an image",
-      );
+      throw new AppError(StatusCodes.BAD_REQUEST, "logo must be an image");
     }
     const item = await this.Service.createStoreItemBatch(
       { name, categoryId, prices, privilege },
@@ -230,7 +231,7 @@ export default class StoreController {
   });
 
   getAllStoreItems = catchAsync(async (req: Request, res: Response) => {
-    const {id} = req.user!;
+    const { id } = req.user!;
     const items = await this.Service.getAllStoreItems(id);
     sendResponse(res, {
       statusCode: 200,
@@ -287,10 +288,7 @@ export default class StoreController {
       );
     }
     if (logoFile && !isImageFile(logoFile.originalname)) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "logo must be an image",
-      );
+      throw new AppError(StatusCodes.BAD_REQUEST, "logo must be an image");
     }
 
     const item = await this.Service.updateStoreItemSingle(
@@ -324,10 +322,7 @@ export default class StoreController {
     const logoFile = files?.["logo"]?.[0];
 
     if (logoFile && !isImageFile(logoFile.originalname)) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "logo must be an image",
-      );
+      throw new AppError(StatusCodes.BAD_REQUEST, "logo must be an image");
     }
 
     if (categoryNames) {
