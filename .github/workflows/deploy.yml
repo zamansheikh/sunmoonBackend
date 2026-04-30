@@ -21,18 +21,22 @@ jobs:
         run: |
           if [ "${{ github.repository }}" = "zamansheikh/sunmoonBackend" ]; then
             APP_NAME="sunmoonBackend"
+            SERVER_HOST="88.222.213.235"
+            GIT_PULL_CMD='GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_deploy" git pull origin main'
           elif [ "${{ github.repository }}" = "zamansheikh/AddaLiveBackend" ]; then
             APP_NAME="AddaLiveBackend"
+            SERVER_HOST="178.128.26.45"
+            GIT_PULL_CMD='git pull origin main'
           else
             echo "Unsupported repository: ${{ github.repository }}"
             exit 1
           fi
 
-          ssh -o StrictHostKeyChecking=no root@88.222.213.235 "
+          ssh -o StrictHostKeyChecking=no root@$SERVER_HOST "
             export PATH=/root/.nvm/versions/node/v20.19.5/bin:\$PATH &&  # Use Node path for Yarn
             cd /var/www/$APP_NAME &&
             git stash &&
-            GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_ed25519_deploy\" git pull origin main &&
+            $GIT_PULL_CMD &&
             yarn install &&
             yarn build &&
             if tmux has-session -t $APP_NAME 2>/dev/null; then
