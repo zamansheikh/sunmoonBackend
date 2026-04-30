@@ -82,6 +82,7 @@ export default class StoreItemRepository implements IStoreItemRepository {
         $match: {
           categoryId: new Types.ObjectId(category),
           deleteStatus: false,
+          canUserBuyThis: true,
         },
       },
       {
@@ -121,6 +122,7 @@ export default class StoreItemRepository implements IStoreItemRepository {
     const total = await this.Model.countDocuments({
       categoryId: category,
       deleteStatus: false,
+      canUserBuyThis: true,
     });
 
     const pagination: IPagination = {
@@ -153,6 +155,7 @@ export default class StoreItemRepository implements IStoreItemRepository {
               {
                 $match: {
                   deleteStatus: false,
+                  canUserBuyThis: true,
                 },
               },
               {
@@ -323,6 +326,7 @@ export default class StoreItemRepository implements IStoreItemRepository {
         $match: {
           categoryId: new Types.ObjectId(categoryId),
           deleteStatus: false,
+          canUserBuyThis: true,
         },
       },
     ];

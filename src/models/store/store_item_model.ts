@@ -27,6 +27,7 @@ export interface IStoreItem {
   deleteStatus?: boolean;
   totalSold?: number;
   expireAt?: Date;
+  canUserBuyThis?: boolean;
   isBought?: boolean;
 }
 
@@ -112,6 +113,10 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
     totalSold: {
       type: Number,
       default: 0,
+    },
+    canUserBuyThis: {
+      type: Boolean,
+      default: true,
     },
     expireAt: {
       type: Date,
