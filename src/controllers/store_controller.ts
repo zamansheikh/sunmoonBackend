@@ -105,7 +105,7 @@ export default class StoreController {
     const previewFile = files["previewFile"]?.[0];
     const logoFile = files["logo"]?.[0];
 
-    validateFieldExistance(svgaFile, "svgaFile");
+    // validateFieldExistance(svgaFile, "svgaFile");
     validateFieldExistance(previewFile, "previewFile");
 
     if (logoFile && !isImageFile(logoFile.originalname)) {
