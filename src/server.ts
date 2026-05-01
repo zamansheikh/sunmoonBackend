@@ -1,4 +1,6 @@
 // src/server.ts
+import dns from "node:dns";
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 import express, { Application, Request, Response } from "express";
 import cors from "cors";
 import morgan from "morgan";
@@ -31,6 +33,7 @@ import ReportRouter from "./router/report_routes";
 import MagicBallHostRouter from "./router/magic_ball_host_routes";
 import FamilyRouter from "./router/family_router";
 import CoinBagRouter from "./router/coin_bag_router";
+import FamilyRewardRouter from "./router/family_reward_router";
 import path from "path";
 import StoreItemModel from "./models/store/store_item_model";
 import { IStoreCategoryDocument } from "./models/store/store_category_model";
@@ -137,6 +140,7 @@ app.use("/api/room-support", RoomSupportRouter);
 app.use("/api/reports", ReportRouter);
 app.use("/api/magic-ball", MagicBallHostRouter);
 app.use("/api/family", FamilyRouter);
+app.use("/api/family-rewards", FamilyRewardRouter);
 app.use("/api/coin-bag", CoinBagRouter);
 
 app.post(
