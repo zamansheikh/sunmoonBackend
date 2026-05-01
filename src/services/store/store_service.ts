@@ -57,6 +57,7 @@ export interface IStoreService {
   getVIPStoreItems(id: string): Promise<IStoreItemDocument[]>;
   getSVIPStoreItems(id: string): Promise<IStoreItemDocument[]>;
   getAllStoreItems(id: string): Promise<Record<string, IStoreItemDocument[]>>;
+  getExlusiveStoreItems(): Promise<Record<string, IStoreItemDocument[]>>;
   getStoreItemsByCategory(
     category: string,
     query: Record<string, any>,
@@ -375,6 +376,10 @@ export default class StoreService implements IStoreService {
     id: string,
   ): Promise<Record<string, IStoreItemDocument[]>> {
     return await this.ItemRepository.getAllStoreItemsByCategoryGrouped(id);
+  }
+
+  async getExlusiveStoreItems(): Promise<Record<string, IStoreItemDocument[]>> {
+    return await this.ItemRepository.getExclusiveStoreItemsGrouped();
   }
 
   async getVIPStoreItems(id: string): Promise<IStoreItemDocument[]> {

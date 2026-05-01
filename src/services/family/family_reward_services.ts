@@ -6,6 +6,7 @@ import {
   IFamilyRewardConfig,
   IFamilyRewardConfigDocument,
 } from "../../models/family/family_reward_model";
+import { isValidObjectId } from "mongoose";
 
 export interface IFamilyRewardService {
   createRewardConfig(data: {
@@ -46,6 +47,7 @@ export interface IFamilyRewardService {
 export class FamilyRewardService implements IFamilyRewardService {
   private rewardRepository: IFamilyRewardRepository =
     RepositoryProviders.familyRewardRepositoryProvider;
+  private storeItemRepository = RepositoryProviders.storeItemRepositoryProvider;
 
   /**
    * Creates a new reward configuration.
@@ -74,6 +76,9 @@ export class FamilyRewardService implements IFamilyRewardService {
         `This rank range (${startRank}-${endRank}) overlaps with existing config "${overlap.label}" (${overlap.startRank}-${overlap.endRank})`,
       );
     }
+
+    // check if the provided itemids are valid
+    await this.validateItemIds(data.items);
 
     const config: IFamilyRewardConfig = {
       startRank,
@@ -114,7 +119,6 @@ export class FamilyRewardService implements IFamilyRewardService {
     // Step 2: Resolve new rank range
     const { startRank, endRank } = this.resolveRankRange(data, existing);
 
-
     // Step 3: Check for overlaps with OTHER configs (excluding this one)
     const overlap = await this.rewardRepository.checkOverlappingRange(
       startRank,
@@ -128,7 +132,12 @@ export class FamilyRewardService implements IFamilyRewardService {
       );
     }
 
-    // Step 4: Build update object with only provided fields
+    // Step 4: Validate items if provided
+    if (data.items) {
+      await this.validateItemIds(data.items);
+    }
+
+    // Step 5: Build update object with only provided fields
     const updateData: Partial<IFamilyRewardConfig> = {
       startRank,
       endRank,
@@ -235,4 +244,30 @@ export class FamilyRewardService implements IFamilyRewardService {
     return { startRank, endRank };
   }
 
+  /**
+   * Validates that all provided item IDs exist in the store.
+   */
+  private async validateItemIds(
+    items: IFamilyRewardConfig["items"],
+  ): Promise<void> {
+    if (!items || items.length === 0) return;
+
+    for (const item of items) {
+      if (!isValidObjectId(item.itemId)) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          `Store item with id ${item.itemId} is not valid`,
+        );
+      }
+      const exists = await this.storeItemRepository.getStoreItemById(
+        item.itemId.toString(),
+      );
+      if (!exists) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          `Store item with id ${item.itemId} not found`,
+        );
+      }
+    }
+  }
 }

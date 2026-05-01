@@ -230,6 +230,15 @@ export default class StoreController {
     });
   });
 
+  getExlusiveStoreItems = catchAsync(async (req: Request, res: Response) => {
+    const items = await this.Service.getExlusiveStoreItems();
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: items,
+    });
+  });
+
   getAllStoreItems = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.user!;
     const items = await this.Service.getAllStoreItems(id);

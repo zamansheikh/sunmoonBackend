@@ -44,6 +44,8 @@ export interface IStoreItemRepository {
   getStoreItemsByBundleCategoryName(
     categoryName: string,
   ): Promise<IStoreItemDocument[]>;
+  getExclusiveStoreItems(): Promise<IStoreItemDocument[]>;
+  getExclusiveStoreItemsGrouped(): Promise<Record<string, IStoreItemDocument[]>>;
 }
 
 export default class StoreItemRepository implements IStoreItemRepository {
@@ -374,5 +376,58 @@ export default class StoreItemRepository implements IStoreItemRepository {
     return await this.Model.find({
       "bundleFiles.categoryName": categoryName,
     });
+  }
+
+  async getExclusiveStoreItems(): Promise<IStoreItemDocument[]> {
+    return await this.Model.find({
+      canUserBuyThis: false,
+      deleteStatus: false,
+    });
+  }
+
+  async getExclusiveStoreItemsGrouped(): Promise<
+    Record<string, IStoreItemDocument[]>
+  > {
+    const results = await this.Model.db
+      .collection(DatabaseNames.StoreCategory)
+      .aggregate([
+        {
+          $lookup: {
+            from: DatabaseNames.StoreItem,
+            localField: "_id",
+            foreignField: "categoryId",
+            pipeline: [
+              {
+                $match: {
+                  deleteStatus: false,
+                  canUserBuyThis: false,
+                },
+              },
+            ],
+            as: "items",
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            categories: {
+              $push: {
+                k: "$title",
+                v: "$items",
+              },
+            },
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: {
+              $arrayToObject: "$categories",
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    return results[0] || {};
   }
 }
