@@ -107,19 +107,19 @@ export default class StoreController {
     const logoFile = files["logo"]?.[0];
 
     // validateFieldExistance(svgaFile, "svgaFile");
-    validateFieldExistance(previewFile, "previewFile");
+    // validateFieldExistance(previewFile, "previewFile");
 
     if (logoFile && !isImageFile(logoFile.originalname)) {
       throw new AppError(StatusCodes.BAD_REQUEST, "logo must be an image");
     }
 
-    if (!isSvgaFile(svgaFile!.originalname)) {
+    if (svgaFile && !isSvgaFile(svgaFile.originalname)) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
         "svgaFile must be a .svga file",
       );
     }
-    if (!isImageFile(previewFile!.originalname)) {
+    if (previewFile && !isImageFile(previewFile.originalname)) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
         "previewFile must be an image",
@@ -134,8 +134,8 @@ export default class StoreController {
         privilege,
         canUserBuyThis,
       },
-      svgaFile!,
-      previewFile!,
+      svgaFile,
+      previewFile,
       logoFile,
     );
     sendResponse(res, {

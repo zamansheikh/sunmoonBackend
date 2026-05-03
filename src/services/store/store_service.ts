@@ -44,8 +44,8 @@ export interface IStoreService {
   // 📌 store items
   createStoreItemSingle(
     item: IStoreItem,
-    svgaFile: Express.Multer.File,
-    previewFile: Express.Multer.File,
+    svgaFile?: Express.Multer.File,
+    previewFile?: Express.Multer.File,
     logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument>;
   createStoreItemBatch(
@@ -223,8 +223,8 @@ export default class StoreService implements IStoreService {
   // 📌 store items
   async createStoreItemSingle(
     item: IStoreItem,
-    svgaFile: Express.Multer.File,
-    previewFile: Express.Multer.File,
+    svgaFile?: Express.Multer.File,
+    previewFile?: Express.Multer.File,
     logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument> {
     const existingName = await this.ItemRepository.getStoreItemByName(
@@ -244,14 +244,21 @@ export default class StoreService implements IStoreService {
       throw new AppError(StatusCodes.NOT_FOUND, "Category not found");
     if (category.isPremium)
       throw new AppError(StatusCodes.BAD_REQUEST, "This is a premium category");
-    const svgaUrl = await uploadFileToCloudinary({
-      folder: "store_items",
-      file: svgaFile,
-    });
-    const previewUrl = await uploadFileToCloudinary({
-      folder: "store_items",
-      file: previewFile,
-    });
+    let svgaUrl: string | undefined;
+    if (svgaFile) {
+      svgaUrl = await uploadFileToCloudinary({
+        folder: "store_items",
+        file: svgaFile,
+      });
+    }
+
+    let previewUrl: string | undefined;
+    if (previewFile) {
+      previewUrl = await uploadFileToCloudinary({
+        folder: "store_items",
+        file: previewFile,
+      });
+    }
     let logoUrl: string | undefined;
     if (logoFile) {
       logoUrl = await uploadFileToCloudinary({
