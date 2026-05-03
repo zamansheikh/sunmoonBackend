@@ -9,6 +9,6 @@ const router = express.Router();
 const service = new MagicBallHostService();
 const controller = new MagicBallHostController(service);
 
-router.get("/", authenticate([UserRoles.Host]), controller.getAllMagicBall);
+router.get("/", authenticate(), controller.getAllMagicBall);
 
 export default router;
