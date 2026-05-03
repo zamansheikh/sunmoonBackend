@@ -76,7 +76,10 @@ const userSchema = new mongoose.Schema<IUserDocument>(
       expire: { type: Date },
     },
     verified: { type: Boolean, default: false },
-    familyId: { type: String },
+    familyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: DatabaseNames.Family,
+    },
   },
   {
     timestamps: true,

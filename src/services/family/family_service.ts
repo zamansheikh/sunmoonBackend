@@ -57,6 +57,8 @@ export interface IFamilyService {
     memberId: string,
     newRole: FamilyMemberRole,
   ): Promise<IFamilyMemberDocument>;
+  getLastWeekRanking(): Promise<any>;
+  getThisWeekRanking(): Promise<any>;
 }
 
 export class FamilyService implements IFamilyService {
@@ -419,8 +421,11 @@ export class FamilyService implements IFamilyService {
     newRole: FamilyMemberRole,
   ): Promise<IFamilyMemberDocument> {
     //step 0: validate inputs
-    if (!isValidMongooseToken(memberId)) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid member ID");
+    if (!isValidMongooseToken(memberId) || !isValidMongooseToken(callerId)) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Invalid member or caller ID",
+      );
     }
 
     //step1: check if newRole is allowed (cannot assign 'leader' role)
@@ -439,6 +444,7 @@ export class FamilyService implements IFamilyService {
 
     //step2: check if caller is the leader
     const caller = await this.familyMemberRepository.getByUserId(callerId);
+
     if (!caller || caller.role !== FamilyMemberRole.Leader) {
       throw new AppError(
         StatusCodes.FORBIDDEN,
@@ -467,7 +473,30 @@ export class FamilyService implements IFamilyService {
       );
     }
 
-    //step5: update role
+    //step5: catch redundant role assignment
+    if (targetMember.role === newRole) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `Member is already assigned the role: ${newRole}`,
+      );
+    }
+
+    //step6: enforce role limits
+    if (newRole === FamilyMemberRole.CoLeader) {
+      // Use the newly added countByRole method in the repository
+      const coLeaderCount = await this.familyMemberRepository.countByRole(
+        caller.familyId,
+        FamilyMemberRole.CoLeader,
+      );
+      if (coLeaderCount >= 5) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Maximum number of Co-Leaders (5) reached",
+        );
+      }
+    }
+
+    //step7: update role
     const updatedMember = await this.familyMemberRepository.update(memberId, {
       role: newRole,
     });

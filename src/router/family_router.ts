@@ -23,6 +23,13 @@ router.route("/join-status").get(authenticate(), controller.getJoinStatus);
 
 router
   .route("/member/role/:userId")
-  .patch(authenticate(), controller.changeMemberRole);
+  .put(authenticate(), controller.changeMemberRole);
+
+router
+  .route("/ranking/last-week")
+  .get(authenticate(), controller.getLastWeekRanking);
+router
+  .route("/ranking/this-week")
+  .get(authenticate(), controller.getThisWeekRanking);
 
 export default router;

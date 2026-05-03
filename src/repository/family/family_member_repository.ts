@@ -4,6 +4,7 @@ export interface IFamilyMemberRepository {
     create(data:IFamilyMember, session?: any):Promise<IFamilyMemberDocument>;
     getByUserId(userId: string): Promise<IFamilyMemberDocument | null>;
     update(userId: string, data: Partial<IFamilyMember>): Promise<IFamilyMemberDocument | null>;
+    countByRole(familyId: string | any, role: string): Promise<number>;
 }
 
 export class FamilyMemberRepository implements IFamilyMemberRepository {
@@ -22,5 +23,9 @@ export class FamilyMemberRepository implements IFamilyMemberRepository {
 
     async update(userId: string, data: Partial<IFamilyMember>): Promise<IFamilyMemberDocument | null> {
         return await this.model.findOneAndUpdate({ userId }, data, { new: true });
+    }
+    
+    async countByRole(familyId: string | any, role: string): Promise<number> {
+        return await this.model.countDocuments({ familyId, role });
     }
 }

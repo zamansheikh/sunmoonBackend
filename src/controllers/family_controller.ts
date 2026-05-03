@@ -156,4 +156,24 @@ export default class FamilyController {
       message: "Member role updated successfully",
     });
   });
+
+  getLastWeekRanking = catchAsync(async (req: Request, res: Response) => {
+    const ranking = await this.Service.getLastWeekRanking();
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: ranking,
+      message: "Last week family ranking fetched successfully",
+    });
+  });
+
+  getThisWeekRanking = catchAsync(async (req: Request, res: Response) => {
+    const ranking = await this.Service.getThisWeekRanking();
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: ranking,
+      message: "This week family ranking fetched successfully",
+    });
+  });
 }

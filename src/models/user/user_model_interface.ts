@@ -51,7 +51,7 @@ export interface UserData {
   stats?: IUserStats;
   verified: boolean;
   equippedStoreItems?: Record<string, any>;
-  familyId?: string;
+  familyId?: mongoose.Schema.Types.ObjectId | string | null;
 }
 
 //  Create the document type (instance methods + fields)

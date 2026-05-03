@@ -52,7 +52,7 @@ export class UserCache {
       name: user.name || user.username || "Unknown",
       avatar: user.avatar || "",
       level: user.level || 0,
-      familyId: user.familyId,
+      familyId: user.familyId ? user.familyId.toString() : undefined,
     };
     this.cachedUserBriefs.set(userId, {
       ...brief,
@@ -104,7 +104,7 @@ export class UserCache {
           name: user.name || user.username || "Unknown",
           avatar: user.avatar || "",
           level: user.level || 0,
-          familyId: user.familyId,
+          familyId: user.familyId ? user.familyId.toString() : undefined,
         };
         this.cachedUserBriefs.set((user as any)._id.toString(), {
           ...brief,
@@ -127,7 +127,7 @@ export class UserCache {
         name: user.name || user.username || "Unknown",
         avatar: user.avatar || "",
         level: user.level || 0,
-        familyId: user.familyId,
+        familyId: user.familyId ? user.familyId.toString() : undefined,
       };
       this.cachedUserBriefs.set(userId, {
         ...brief,
