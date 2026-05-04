@@ -27,12 +27,22 @@ import StoreCategoryModel from "../../models/store/store_category_model";
 import { CurrentRoomMemberRepository } from "../../repository/audio_room/current_room_member_repository";
 import CurrentRoomMemberModel from "../../models/audio_room/current_room_member";
 import { AudioRoomHelper } from "../helper_classes/audioRoomHelper";
+import { UserCache } from "../cache/user_chache";
+
+export interface IOnlineUserBrief {
+  _id: string;
+  userId?: number;
+  name?: string;
+  email?: string;
+  avatar?: string;
+  socketId: string;
+}
 
 export default class SingletonSocketServer {
   private static instance: SingletonSocketServer;
   private io: Server;
 
-  private onlineUsers = new Map<string, string>(); // Map<userId, socketId>
+  private onlineUsers = new Map<string, IOnlineUserBrief>(); // Map<userId, userBrief>
   private disconnectedUsers = new Map<
     string,
     { timeOut: NodeJS.Timeout; roomId?: string }
@@ -133,8 +143,35 @@ export default class SingletonSocketServer {
     return this.onlineUsers.has(userId);
   }
 
+  public getOnlineUsersProfiles(page: number, limit: number): {
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+    users: Partial<IOnlineUserBrief>[];
+  } {
+    const allUsers = Array.from(this.onlineUsers.values());
+    const total = allUsers.length;
+    const totalPages = Math.ceil(total / limit);
+    const start = (page - 1) * limit;
+    const end = start + limit;
+    
+    const paginatedUsers = allUsers.slice(start, end).map(user => {
+      // Exclude socketId for security
+      const { socketId, ...safeUser } = user;
+      return safeUser;
+    });
+
+    return {
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+      users: paginatedUsers,
+    };
+  }
+
   public getSocketId(userId: string): string | undefined {
-    return this.onlineUsers.get(userId);
+    return this.onlineUsers.get(userId)?.socketId;
   }
 
   public joinRoomSocket(userId: string, roomId: string) {
@@ -281,7 +318,20 @@ export default class SingletonSocketServer {
     // to put this socket into the room — if onlineUsers is set after the
     // DB await, joinRoomSocket silently no-ops and no broadcasts reach the
     // client until it reconnects.
-    this.onlineUsers.set(userId, socket.id);
+    this.onlineUsers.set(userId, { socketId: socket.id, _id: userId });
+
+    UserCache.getInstance().getUserBrief(userId).then(brief => {
+      if (brief && this.onlineUsers.has(userId) && this.onlineUsers.get(userId)?.socketId === socket.id) {
+        this.onlineUsers.set(userId, {
+          socketId: socket.id,
+          _id: brief._id,
+          userId: brief.userId,
+          name: brief.name,
+          email: brief.email,
+          avatar: brief.avatar,
+        });
+      }
+    }).catch(err => console.error("Error hydrating user socket", err));
     if (this.disconnectedUsers.has(userId)) {
       const { timeOut, roomId } = this.disconnectedUsers.get(userId)!;
       clearTimeout(timeOut);

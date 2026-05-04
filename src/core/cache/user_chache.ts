@@ -13,6 +13,8 @@ export class UserCache {
       expiry: number;
       level: number;
       familyId?: string;
+      email?: string;
+      userId?: number;
     }
   >();
   private readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hour = 1 day
@@ -35,6 +37,8 @@ export class UserCache {
     avatar: string;
     level: number;
     familyId?: string;
+    email?: string;
+    userId?: number;
   } | null> {
     const cached = this.cachedUserBriefs.get(userId);
     if (cached && cached.expiry > Date.now())
@@ -44,6 +48,8 @@ export class UserCache {
         avatar: cached.avatar,
         level: cached.level,
         familyId: cached.familyId,
+        email: cached.email,
+        userId: cached.userId,
       };
     const user = await this.userRepository.findUserById(userId);
     if (!user) return null;
@@ -53,6 +59,8 @@ export class UserCache {
       avatar: user.avatar || "",
       level: user.level || 0,
       familyId: user.familyId ? user.familyId.toString() : undefined,
+      email: user.email,
+      userId: user.userId,
     };
     this.cachedUserBriefs.set(userId, {
       ...brief,
@@ -70,6 +78,8 @@ export class UserCache {
       avatar: string;
       level: number;
       familyId?: string;
+      email?: string;
+      userId?: number;
     }[]
   > {
     const uncachedIds: string[] = [];
@@ -79,6 +89,8 @@ export class UserCache {
       avatar: string;
       level: number;
       familyId?: string;
+      email?: string;
+      userId?: number;
     }[] = [];
 
     userIds.forEach((id) => {
@@ -90,6 +102,8 @@ export class UserCache {
           avatar: cached.avatar,
           level: cached.level,
           familyId: cached.familyId,
+          email: cached.email,
+          userId: cached.userId,
         });
       } else {
         uncachedIds.push(id);
@@ -105,6 +119,8 @@ export class UserCache {
           avatar: user.avatar || "",
           level: user.level || 0,
           familyId: user.familyId ? user.familyId.toString() : undefined,
+          email: user.email,
+          userId: user.userId,
         };
         this.cachedUserBriefs.set((user as any)._id.toString(), {
           ...brief,
@@ -128,6 +144,8 @@ export class UserCache {
         avatar: user.avatar || "",
         level: user.level || 0,
         familyId: user.familyId ? user.familyId.toString() : undefined,
+        email: user.email,
+        userId: user.userId,
       };
       this.cachedUserBriefs.set(userId, {
         ...brief,

@@ -195,6 +195,8 @@ router.route("/is-premium").get(authenticate(), authController.isPremiumUser);
 
 router.route("/bucket-items").get(authenticate(), authController.getAllBucketItems);
 
+router.route("/online-users").get(authenticate(), authController.getOnlineUsers);
+
 // router.route("/set-verified-false").put(async (req: Request, res: Response) => {
 //   try {
 //     const users = await User.find({});

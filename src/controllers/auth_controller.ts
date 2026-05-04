@@ -17,6 +17,7 @@ import {
   validateWithdrawBonus,
 } from "../core/Utils/helper_functions";
 import Stream from "stream";
+import SingletonSocketServer from "../core/sockets/singleton_socket_server";
 
 export default class AuthController {
   authService: IAuthService;
@@ -294,6 +295,14 @@ export default class AuthController {
   getAllBucketItems = catchAsync(async (req: Request, res: Response) => {
     const items = await this.authService.getAllBucketItems(req.query);
     sendResponseEnhanced(res, items);
+  });
+
+  getOnlineUsers = catchAsync(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+
+    const onlineData = SingletonSocketServer.getInstance().getOnlineUsersProfiles(page, limit);
+    sendResponseEnhanced(res, onlineData);
   });
   
 }
