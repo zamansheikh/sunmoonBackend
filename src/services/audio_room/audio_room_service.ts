@@ -35,6 +35,9 @@ export interface IAudioRoomService {
   createAudioRoom(audioRoom: Partial<IAudioRoom>): Promise<IAudioRoomDocument>;
   getAudioRoomById(roomId: string): Promise<IAudioRoomDocument | null>;
   getAllAudioRooms(): Promise<IAudioRoomDocument[]>;
+  fetchAllRooms(): Promise<IAudioRoomDocument[]>;
+  fetchActiveRooms(): Promise<IAudioRoomDocument[]>;
+  fetchLockedRooms(): Promise<IAudioRoomDocument[]>;
   joinAudioRoom(
     roomId: string,
     userId: string,
@@ -265,6 +268,18 @@ export class AudioRoomService implements IAudioRoomService {
   async getAllAudioRooms(): Promise<IAudioRoomDocument[]> {
     const result = await this.audioRoomRepository.getAllAudioRooms();
     return result;
+  }
+
+  async fetchAllRooms(): Promise<IAudioRoomDocument[]> {
+    return await this.audioRoomRepository.findAllRooms();
+  }
+
+  async fetchActiveRooms(): Promise<IAudioRoomDocument[]> {
+    return await this.audioRoomRepository.findActiveRooms();
+  }
+
+  async fetchLockedRooms(): Promise<IAudioRoomDocument[]> {
+    return await this.audioRoomRepository.findLockedRooms();
   }
 
   async joinAudioRoom(

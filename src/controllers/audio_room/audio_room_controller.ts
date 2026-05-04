@@ -63,6 +63,45 @@ export class AudioRoomController {
     });
   });
 
+  fetchAllRooms = catchAsync(async (req: Request, res: Response) => {
+    const result = await this.Service.fetchAllRooms();
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "All audio rooms fetched successfully",
+      result: {
+        count: result.length,
+        rooms: result,
+      },
+    });
+  });
+
+  fetchActiveRooms = catchAsync(async (req: Request, res: Response) => {
+    const result = await this.Service.fetchActiveRooms();
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Active audio rooms fetched successfully",
+      result: {
+        count: result.length,
+        rooms: result,
+      },
+    });
+  });
+
+  fetchLockedRooms = catchAsync(async (req: Request, res: Response) => {
+    const result = await this.Service.fetchLockedRooms();
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Locked audio rooms fetched successfully",
+      result: {
+        count: result.length,
+        rooms: result,
+      },
+    });
+  });
+
   joinAudioRoom = catchAsync(async (req: Request, res: Response) => {
     const myUserId = req.user!.id;
     const roomId = req.params.roomId;

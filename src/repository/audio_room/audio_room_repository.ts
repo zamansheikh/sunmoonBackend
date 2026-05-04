@@ -33,6 +33,9 @@ export interface IAudioRoomRepository {
   getAllAudioRooms(): Promise<IAudioRoomDocument[]>;
   isMemberInAnyRoom(userId: string): Promise<IAudioRoomDocument | null>;
   getRoomsByRoomIds(roomIds: string[]): Promise<IAudioRoomDocument[]>;
+  findAllRooms(): Promise<IAudioRoomDocument[]>;
+  findActiveRooms(): Promise<IAudioRoomDocument[]>;
+  findLockedRooms(): Promise<IAudioRoomDocument[]>;
 }
 
 export class AudioRoomRepository implements IAudioRoomRepository {
@@ -45,11 +48,11 @@ export class AudioRoomRepository implements IAudioRoomRepository {
     if (!created) throw new AppError(500, "Failed to create audio room");
     return created;
   }
-  async getAudioRoomById(roomId: string): Promise<IAudioRoomDocument> {
-    const qb = new QueryBuilder(this.audioRoomModel, {});
-    const res = qb.aggregate([
+
+  private _getHydratedRoomsPipeline(matchStage: any): any[] {
+    return [
       {
-        $match: { roomId },
+        $match: matchStage,
       },
       lookupRichUser("hostId", "hostId"),
       {
@@ -79,7 +82,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
       },
       {
         $addFields: {
-          membersArray: "$membersArrayInfo", // ← just copy the array reference
+          membersArray: "$membersArrayInfo",
           admins: "$adminsInfo",
           bannedFromMessages: "$bannedFromMessagesInfo",
           membersCount: { $size: { $ifNull: ["$membersArray", []] } },
@@ -160,7 +163,12 @@ export class AudioRoomRepository implements IAudioRoomRepository {
           giftTotals: 0,
         },
       },
-    ]);
+    ];
+  }
+  async getAudioRoomById(roomId: string): Promise<IAudioRoomDocument> {
+    const qb = new QueryBuilder(this.audioRoomModel, {});
+    const pipeline = this._getHydratedRoomsPipeline({ roomId });
+    const res = qb.aggregate(pipeline);
 
     const result = await res.exec();
     if (result.length === 0) throw new AppError(404, "Audio room not found");
@@ -177,42 +185,39 @@ export class AudioRoomRepository implements IAudioRoomRepository {
   }
   async getAllAudioRooms(): Promise<IAudioRoomDocument[]> {
     const qb = new QueryBuilder(this.audioRoomModel, {});
-    const res = qb.aggregate([
-      {
-        $match: {
-          $or: [
-            { "membersArray.0": { $exists: true } },
-            { members: { $exists: true, $ne: {} } },
-          ],
-        },
-      },
-      lookupRichUser("hostId", "hostId"),
-      {
-        $unwind: {
-          path: "$hostId",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      lookupEnrichedUsersArray("membersArray", "membersArrayInfo"),
-      lookupEnrichedUsersArray("admins", "adminsInfo"),
-      lookupEnrichedUsersArray("bannedFromMessages", "bannedFromMessagesInfo"),
+    const pipeline = this._getHydratedRoomsPipeline({
+      $or: [
+        { "membersArray.0": { $exists: true } },
+        { members: { $exists: true, $ne: {} } },
+      ],
+    });
+    const res = qb.aggregate(pipeline);
+    return await res.exec();
+  }
 
-      {
-        $addFields: {
-          membersArray: "$membersArrayInfo", // ← just copy the array reference
-          admins: "$adminsInfo",
-          bannedFromMessages: "$bannedFromMessagesInfo",
-          membersCount: { $size: { $ifNull: ["$membersArray", []] } },
-        },
-      },
-      {
-        $project: {
-          membersArrayInfo: 0,
-          adminsInfo: 0,
-          bannedFromMessagesInfo: 0,
-        },
-      },
-    ]);
+  async findAllRooms(): Promise<IAudioRoomDocument[]> {
+    const qb = new QueryBuilder(this.audioRoomModel, {});
+    const pipeline = this._getHydratedRoomsPipeline({});
+    const res = qb.aggregate(pipeline);
+    return await res.exec();
+  }
+
+  async findActiveRooms(): Promise<IAudioRoomDocument[]> {
+    const qb = new QueryBuilder(this.audioRoomModel, {});
+    const pipeline = this._getHydratedRoomsPipeline({
+      $or: [
+        { "membersArray.0": { $exists: true } },
+        { members: { $exists: true, $ne: {} } },
+      ],
+    });
+    const res = qb.aggregate(pipeline);
+    return await res.exec();
+  }
+
+  async findLockedRooms(): Promise<IAudioRoomDocument[]> {
+    const qb = new QueryBuilder(this.audioRoomModel, {});
+    const pipeline = this._getHydratedRoomsPipeline({ isLocked: true });
+    const res = qb.aggregate(pipeline);
     return await res.exec();
   }
   async findByIdAndUpdate(

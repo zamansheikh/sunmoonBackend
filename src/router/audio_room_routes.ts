@@ -4,6 +4,7 @@ import { AudioRoomService } from "../services/audio_room/audio_room_service";
 import { AudioRoomRepository } from "../repository/audio_room/audio_room_repository";
 import AudioRoomModel from "../models/audio_room/audio_room_model";
 import { authenticate } from "../core/middlewares/auth_middleware";
+import { UserRoles } from "../core/Utils/enums";
 import UserRepository from "../repository/users/user_repository";
 import User from "../models/user/user_model";
 import MyBucketRepository from "../repository/store/my_bucket_repository";
@@ -41,6 +42,18 @@ router
   .route("/")
   .post(authenticate(), audioRoomController.createAudioRoom)
   .get(audioRoomController.getAllAudioRooms);
+
+router
+  .route("/admin/all")
+  .get(authenticate([UserRoles.Admin]), audioRoomController.fetchAllRooms);
+
+router
+  .route("/admin/active")
+  .get(authenticate([UserRoles.Admin]), audioRoomController.fetchActiveRooms);
+
+router
+  .route("/admin/locked")
+  .get(authenticate([UserRoles.Admin]), audioRoomController.fetchLockedRooms);
 
 router
   .route("/remove-from-seat")
