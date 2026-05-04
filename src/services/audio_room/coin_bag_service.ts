@@ -130,6 +130,8 @@ export default class CoinBagService {
         AudioRoomChannels.NewCoinBag,
         {
           rewardStartTime: sessionData.rewardStartTime,
+          senderName: userBrief.name,
+          senderAvatar: userBrief.avatar,
         },
       );
       return { rewardStartTime: sessionData.rewardStartTime };
