@@ -536,6 +536,8 @@ export default class AuthService implements IAuthService {
     if (roomId)
       isValid = await AudioRoomCache.getInstance().validateRoomId(roomId);
     for (const targetUserId of targetUserIds) {
+      const targetUserBrief =
+        await UserCache.getInstance().getUserBrief(targetUserId);
       secondaryUpdates.push(
         GiftUserCache.getInstance().giftRecordRepository.createGiftRecord({
           senderId: myId,
@@ -545,7 +547,7 @@ export default class AuthService implements IAuthService {
           totalCoinCost: gift.coinPrice * qty,
           totalDiamonds: diamonds,
           roomId: isValid ? roomId : undefined, // only adding room id if the room is valid
-          familyId: senderBrief.familyId,
+          familyId: targetUserBrief?.familyId || "",
         }),
       );
     }
