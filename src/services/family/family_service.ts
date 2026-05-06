@@ -288,7 +288,7 @@ export class FamilyService implements IFamilyService {
     if (!user || !user.familyId) return [];
 
     return await this.familyJoinRequestRepository.findAllByFamily(
-      user.familyId.toString(),
+      user.familyId as string,
       StatusTypes.pending,
     );
   }

@@ -301,7 +301,10 @@ export default class UserRepository implements IUserRepository {
     if (!isValidMongooseToken(id)) {
       throw new AppError(StatusCodes.BAD_REQUEST, "Invalid mongoose _id");
     }
-    return await this.UserModel.findById(id);
+    return await this.UserModel.findById(id).populate({
+      path: "familyId",
+      select: "name _id",
+    });
   }
 
   async getUserDetails(details: { Id: string; myId: string }) {
@@ -309,6 +312,21 @@ export default class UserRepository implements IUserRepository {
     const myObjectId = new mongoose.Types.ObjectId(details.myId);
     const user = await this.UserModel.aggregate([
       { $match: { _id: userObjectId } },
+      {
+        $lookup: {
+          from: DatabaseNames.Family,
+          localField: "familyId",
+          foreignField: "_id",
+          pipeline: [{ $project: { name: 1, _id: 1 } }],
+          as: "familyId",
+        },
+      },
+      {
+        $unwind: {
+          path: "$familyId",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
       {
         $lookup: {
           from: DatabaseNames.friendships,
