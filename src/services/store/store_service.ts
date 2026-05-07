@@ -329,33 +329,39 @@ export default class StoreService implements IStoreService {
           `category -> ${categoryName} is not valid name`,
         );
     }
-    // to upload and get the links
-    let premimumURLs: IBundle[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const extension = files[i].svgaFile.originalname.split(".").pop();
-      const svgaUrl = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: files[i].svgaFile,
-      });
-      const previewUrl = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: files[i].previewFile,
-      });
-      premimumURLs.push({
-        categoryName: files[i].categoryName,
+    // to upload and get the links in parallel
+    const uploadPromises = files.map(async (fileGroup) => {
+      const extension = fileGroup.svgaFile.originalname.split(".").pop() || "";
+      const [svgaUrl, previewUrl] = await Promise.all([
+        uploadFileToCloudinary({
+          folder: "store_items",
+          file: fileGroup.svgaFile,
+        }),
+        uploadFileToCloudinary({
+          folder: "store_items",
+          file: fileGroup.previewFile,
+        }),
+      ]);
+
+      return {
+        categoryName: fileGroup.categoryName,
         svgaFile: svgaUrl,
         previewFile: previewUrl,
-        fileType: extension ?? "",
-      });
-    }
+        fileType: extension,
+      };
+    });
 
-    let logoUrl: string | undefined;
-    if (logoFile) {
-      logoUrl = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: logoFile,
-      });
-    }
+    const logoPromise = logoFile
+      ? uploadFileToCloudinary({
+          folder: "store_items",
+          file: logoFile,
+        })
+      : Promise.resolve(undefined);
+
+    const [premimumURLs, logoUrl] = await Promise.all([
+      Promise.all(uploadPromises),
+      logoPromise,
+    ]);
 
     let itemToCreate: IStoreItem = {
       name: item.name,
@@ -559,43 +565,53 @@ export default class StoreService implements IStoreService {
       }
     }
 
-    for (let i = 0; i < urlsBeDeleted.length; i++) {
-      const deleteFile = await deleteFileFromCloudinary(urlsBeDeleted[i]);
-      if (!deleteFile) {
-        console.error(`Failed to delete file: ${urlsBeDeleted[i]}`);
-        continue;
-      }
+    // Parallel deletion of replaced files
+    if (urlsBeDeleted.length > 0) {
+      await Promise.all(
+        urlsBeDeleted.map((url) =>
+          deleteFileFromCloudinary(url).catch((err) =>
+            console.error(`Failed to delete file: ${url}`, err),
+          ),
+        ),
+      );
     }
 
-    let newFilesToBeAdded: IBundle[] = [];
+    // Parallel upload of new files
+    const uploadPromises = (files || []).map(async (fileGroup) => {
+      const extension = fileGroup.svgaFile.originalname.split(".").pop() || "";
+      const [svgaUrl, previewUrl] = await Promise.all([
+        uploadFileToCloudinary({
+          folder: "store_items",
+          file: fileGroup.svgaFile,
+        }),
+        uploadFileToCloudinary({
+          folder: "store_items",
+          file: fileGroup.previewFile,
+        }),
+      ]);
 
-    for (let i = 0; i < files!.length; i++) {
-      const extenstion = files![i].svgaFile.originalname.split(".").pop();
-      let svgaUrl = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: files![i].svgaFile,
-      });
-      let previewUrl = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: files![i].previewFile,
-      });
-      newFilesToBeAdded.push({
-        categoryName: files![i].categoryName,
+      return {
+        categoryName: fileGroup.categoryName,
         svgaFile: svgaUrl,
         previewFile: previewUrl,
-        fileType: extenstion ?? "",
-      });
-    }
+        fileType: extension,
+      };
+    });
 
-    if (logoFile) {
-      if (existingItem.logo) {
-        await deleteFileFromCloudinary(existingItem.logo);
-      }
-      const url = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: logoFile,
-      });
-      item.logo = url;
+    const logoPromise = logoFile
+      ? uploadFileToCloudinary({
+          folder: "store_items",
+          file: logoFile,
+        })
+      : Promise.resolve(undefined);
+
+    const [newFilesToBeAdded, updatedLogoUrl] = await Promise.all([
+      Promise.all(uploadPromises),
+      logoPromise,
+    ]);
+
+    if (updatedLogoUrl) {
+      item.logo = updatedLogoUrl;
     }
 
     let profileToBeUpdated: IStoreItem = {
@@ -637,18 +653,34 @@ export default class StoreService implements IStoreService {
         `Store item with id ${id} not found`,
       );
 
-    // cleaning files
+    // Parallel cleaning of all associated files
+    const deletePromises: Promise<any>[] = [];
+
     if (existingItem.svgaFile)
-      await deleteFileFromCloudinary(existingItem.svgaFile);
+      deletePromises.push(deleteFileFromCloudinary(existingItem.svgaFile));
     if (existingItem.previewFile)
-      await deleteFileFromCloudinary(existingItem.previewFile);
-    if (existingItem.logo) await deleteFileFromCloudinary(existingItem.logo);
+      deletePromises.push(deleteFileFromCloudinary(existingItem.previewFile));
+    if (existingItem.logo)
+      deletePromises.push(deleteFileFromCloudinary(existingItem.logo));
 
     if (existingItem.bundleFiles) {
       for (const bundle of existingItem.bundleFiles) {
-        await deleteFileFromCloudinary(bundle.svgaFile);
-        await deleteFileFromCloudinary(bundle.previewFile);
+        deletePromises.push(deleteFileFromCloudinary(bundle.svgaFile));
+        deletePromises.push(deleteFileFromCloudinary(bundle.previewFile));
       }
+    }
+
+    if (deletePromises.length > 0) {
+      await Promise.all(
+        deletePromises.map((p) =>
+          p.catch((err) =>
+            console.warn(
+              `[StoreService] Non-critical cleanup error for item ${id}:`,
+              err,
+            ),
+          ),
+        ),
+      );
     }
 
     // if this items has been used by some users, we need to deselect them
