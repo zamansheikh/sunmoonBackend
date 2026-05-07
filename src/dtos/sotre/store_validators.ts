@@ -61,23 +61,74 @@ export function ValidateStoreItemBatch(
     }
   }
 
+  // svgaFile and previewFile are each independently optional. The client
+  // sends per-row presence masks (svgaFlags / previewFlags) so the backend
+  // can map the flattened multer arrays back to category indices. We
+  // validate the mask shape here; the controller does the row-by-row
+  // alignment.
   const { svgaFile, previewFile } = files;
-  if (!svgaFile || svgaFile.length < 1)
-    throw new AppError(StatusCodes.BAD_REQUEST, "svgaFiles are required");
-  if (!previewFile || previewFile.length < 1)
-    throw new AppError(StatusCodes.BAD_REQUEST, "previewFiles are required");
+  const svgaCount = svgaFile?.length ?? 0;
+  const previewCount = previewFile?.length ?? 0;
+  if (svgaCount < 1 && previewCount < 1)
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "Each bundle category needs at least one of svgaFile or previewFile",
+    );
 
   const categories = categoryNames.split(",");
-  if (categories.length !== svgaFile.length)
+  validateBundleFlagsAgainstFiles(
+    body.svgaFlags,
+    "svgaFlags",
+    "svgaFile",
+    categories.length,
+    svgaCount,
+  );
+  validateBundleFlagsAgainstFiles(
+    body.previewFlags,
+    "previewFlags",
+    "previewFile",
+    categories.length,
+    previewCount,
+  );
+}
+
+/**
+ * Each flag string is comma-separated "1"/"0" with one entry per category,
+ * where "1" means a file was attached for that row. The 1-count must match
+ * the multer file array length for the corresponding field. Backward-
+ * compatible: when the flag string is missing, accept the legacy contract
+ * that the file array length must equal the category count.
+ */
+function validateBundleFlagsAgainstFiles(
+  rawFlags: unknown,
+  flagsField: string,
+  filesField: string,
+  categoryCount: number,
+  fileCount: number,
+) {
+  if (typeof rawFlags !== "string" || rawFlags.length === 0) {
+    if (fileCount > 0 && fileCount !== categoryCount) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `categoryNames and ${filesField} must be the same length when ${filesField}s are provided`,
+      );
+    }
+    return;
+  }
+  const flags = rawFlags.split(",");
+  if (flags.length !== categoryCount) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "categoryNames and svgaFiles must be the same length",
+      `${flagsField} must have one entry per category (got ${flags.length}, expected ${categoryCount})`,
     );
-  if (categories.length !== previewFile.length)
+  }
+  const presentCount = flags.filter((f) => f === "1").length;
+  if (presentCount !== fileCount) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "categoryNames and previewFiles must be the same length",
+      `${flagsField} marks ${presentCount} files but ${filesField} array has ${fileCount}`,
     );
+  }
 }
 
 export function ValidateStoreItemUpdateBatch(

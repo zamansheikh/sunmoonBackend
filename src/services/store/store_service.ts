@@ -24,8 +24,10 @@ import { IMyBucketDocument } from "../../models/store/my_bucket_model";
 
 export interface IPremiumFiles {
   categoryName: string;
-  svgaFile: Express.Multer.File;
-  previewFile: Express.Multer.File;
+  /** Optional — admin can upload an SVIP/VIP frame as a static image only. */
+  svgaFile?: Express.Multer.File;
+  /** Optional — admin can upload only an animated svga without a thumbnail. */
+  previewFile?: Express.Multer.File;
 }
 
 export interface IStoreService {
@@ -309,18 +311,19 @@ export default class StoreService implements IStoreService {
         "This is not a premium category",
       );
 
-    // checking category name validity
+    // checking category name validity. Either svgaFile or previewFile (or
+    // both) is present — controller already enforced that.
     for (let i = 0; i < files.length; i++) {
-      const fileSize = files[i].svgaFile.size;
-      const extension = files[i].svgaFile.originalname.split(".").pop();
+      const reference = files[i].svgaFile ?? files[i].previewFile;
+      if (!reference)
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          `category -> ${files[i].categoryName} has no file`,
+        );
+      const extension = reference.originalname.split(".").pop();
       const categoryName = files[i].categoryName;
       const isValidCategory =
         await this.CategoryRepository.isValidCategory(categoryName);
-      // if (fileSize > 10485760)
-      //   throw new AppError(
-      //     StatusCodes.BAD_REQUEST,
-      //     `${files[i].categoryName} is too large`
-      //   );
       if (!extension)
         throw new AppError(StatusCodes.BAD_REQUEST, "Invalid file format");
       if (!isValidCategory)
@@ -329,22 +332,35 @@ export default class StoreService implements IStoreService {
           `category -> ${categoryName} is not valid name`,
         );
     }
-    // to upload and get the links in parallel
-    const uploadPromises = files.map(async (fileGroup) => {
-      const extension = fileGroup.svgaFile.originalname.split(".").pop() || "";
+    // Build one upload-promise per bundle. Each entry's svgaFile and
+    // previewFile are independently optional — the controller already
+    // enforced that at least one is present. We keep these as promises
+    // (rather than awaiting in place) so the outer Promise.all below can
+    // run them alongside the logo upload, capping total wall-clock time
+    // at the slowest single asset rather than the sum of all of them.
+    const uploadPromises = files.map(async (entry) => {
+      const svgaSource = entry.svgaFile;
+      const previewSource = entry.previewFile;
+      const extensionSource = svgaSource ?? previewSource!;
+      const extension = extensionSource.originalname.split(".").pop() ?? "";
+
       const [svgaUrl, previewUrl] = await Promise.all([
-        uploadFileToCloudinary({
-          folder: "store_items",
-          file: fileGroup.svgaFile,
-        }),
-        uploadFileToCloudinary({
-          folder: "store_items",
-          file: fileGroup.previewFile,
-        }),
+        svgaSource
+          ? uploadFileToCloudinary({
+              folder: "store_items",
+              file: svgaSource,
+            })
+          : Promise.resolve(""),
+        previewSource
+          ? uploadFileToCloudinary({
+              folder: "store_items",
+              file: previewSource,
+            })
+          : Promise.resolve(""),
       ]);
 
       return {
-        categoryName: fileGroup.categoryName,
+        categoryName: entry.categoryName,
         svgaFile: svgaUrl,
         previewFile: previewUrl,
         fileType: extension,
@@ -565,7 +581,9 @@ export default class StoreService implements IStoreService {
       }
     }
 
-    // Parallel deletion of replaced files
+    // Delete obsolete cloudinary assets in parallel. Failures are logged but
+    // not propagated — the new files have already been chosen and we'd
+    // rather complete the update than block on stale cleanup.
     if (urlsBeDeleted.length > 0) {
       await Promise.all(
         urlsBeDeleted.map((url) =>
@@ -576,25 +594,36 @@ export default class StoreService implements IStoreService {
       );
     }
 
-    // Parallel upload of new files
-    const uploadPromises = (files || []).map(async (fileGroup) => {
-      const extension = fileGroup.svgaFile.originalname.split(".").pop() || "";
+    // Build one upload-promise per new bundle. Each entry's svgaFile and
+    // previewFile are independently optional; the controller already
+    // enforced that at least one is present. Promises stay deferred so the
+    // outer Promise.all below can run them alongside the logo upload.
+    const uploadPromises = (files || []).map(async (entry) => {
+      const svgaSource = entry.svgaFile;
+      const previewSource = entry.previewFile;
+      const extensionSource = svgaSource ?? previewSource!;
+      const extenstion = extensionSource.originalname.split(".").pop() ?? "";
+
       const [svgaUrl, previewUrl] = await Promise.all([
-        uploadFileToCloudinary({
-          folder: "store_items",
-          file: fileGroup.svgaFile,
-        }),
-        uploadFileToCloudinary({
-          folder: "store_items",
-          file: fileGroup.previewFile,
-        }),
+        svgaSource
+          ? uploadFileToCloudinary({
+              folder: "store_items",
+              file: svgaSource,
+            })
+          : Promise.resolve(""),
+        previewSource
+          ? uploadFileToCloudinary({
+              folder: "store_items",
+              file: previewSource,
+            })
+          : Promise.resolve(""),
       ]);
 
       return {
-        categoryName: fileGroup.categoryName,
+        categoryName: entry.categoryName,
         svgaFile: svgaUrl,
         previewFile: previewUrl,
-        fileType: extension,
+        fileType: extenstion,
       };
     });
 
