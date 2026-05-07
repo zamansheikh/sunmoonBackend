@@ -16,6 +16,31 @@ import {
   validateUpdateStoreItem,
 } from "../dtos/sotre/store_validators";
 
+/**
+ * Parse the comma-separated "1"/"0" presence mask sent by the admin client
+ * into a boolean[] indexed by category position. When the client doesn't
+ * send a mask (legacy callers), fall back to the contract that one file
+ * was sent per category — i.e. every slot present.
+ *
+ * The validator already enforced shape (mask length === categoryCount and
+ * 1-count === fileCount), so the result is safe to use directly.
+ */
+function parseBundleFlags(
+  rawFlags: unknown,
+  categoryCount: number,
+  fileCount: number,
+): boolean[] {
+  if (typeof rawFlags === "string" && rawFlags.length > 0) {
+    return rawFlags.split(",").map((f) => f === "1");
+  }
+  // Legacy fallback: if the client sent N files for N categories, every
+  // slot is present. If counts mismatch, mark only the first `fileCount`
+  // slots so we don't dereference past the end of the file array.
+  return Array.from({ length: categoryCount }, (_, i) =>
+    fileCount === categoryCount ? true : i < fileCount,
+  );
+}
+
 export default class StoreController {
   Service: IStoreService;
   constructor(service: IStoreService) {
@@ -163,13 +188,24 @@ export default class StoreController {
 
     let categories = categoryNames.split(",");
     categories = categories.map((cat: string) => cat.trim());
+    const svgaPresence = parseBundleFlags(
+      req.body.svgaFlags,
+      categories.length,
+      svgaFiles.length,
+    );
+    const previewPresence = parseBundleFlags(
+      req.body.previewFlags,
+      categories.length,
+      previewFiles.length,
+    );
     let premiumFiles: IPremiumFiles[] = [];
-    // svgaFiles and/or previewFiles may be empty — pair by index against
-    // categories, validating each provided file individually. The validator
-    // already ensured at least one of the two arrays matches categories.
+    let svgaCursor = 0;
+    let previewCursor = 0;
     for (let i = 0; i < categories.length; i++) {
-      const svga = svgaFiles[i];
-      const preview = previewFiles[i];
+      const svga = svgaPresence[i] ? svgaFiles[svgaCursor++] : undefined;
+      const preview = previewPresence[i]
+        ? previewFiles[previewCursor++]
+        : undefined;
       if (svga && !isSvgaFile(svga.originalname)) {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
@@ -350,9 +386,23 @@ export default class StoreController {
       names = names.map((cat: string) => cat.trim());
       const svgaFiles = files["svgaFile"] || [];
       const previewFiles = files["previewFile"] || [];
+      const svgaPresence = parseBundleFlags(
+        req.body.svgaFlags,
+        names.length,
+        svgaFiles.length,
+      );
+      const previewPresence = parseBundleFlags(
+        req.body.previewFlags,
+        names.length,
+        previewFiles.length,
+      );
+      let svgaCursor = 0;
+      let previewCursor = 0;
       for (let i = 0; i < names.length; i++) {
-        const svga = svgaFiles[i];
-        const preview = previewFiles[i];
+        const svga = svgaPresence[i] ? svgaFiles[svgaCursor++] : undefined;
+        const preview = previewPresence[i]
+          ? previewFiles[previewCursor++]
+          : undefined;
         if (svga && !isSvgaFile(svga.originalname)) {
           throw new AppError(
             StatusCodes.BAD_REQUEST,
