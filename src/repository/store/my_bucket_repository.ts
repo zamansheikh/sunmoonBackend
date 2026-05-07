@@ -60,6 +60,7 @@ export interface IMyBucketRepository {
     categoryId: string,
     session?: ClientSession,
   ): Promise<DeleteResult>;
+  getEquippedPrivileges(userId: string): Promise<string[]>;
 }
 
 export default class MyBucketRepository implements IMyBucketRepository {
@@ -288,5 +289,25 @@ export default class MyBucketRepository implements IMyBucketRepository {
     session?: ClientSession,
   ): Promise<DeleteResult> {
     return await this.Model.deleteMany({ categoryId }).session(session || null);
+  }
+
+  async getEquippedPrivileges(userId: string): Promise<string[]> {
+    const equipped = await this.Model.find({
+      ownerId: userId,
+      useStatus: true,
+    }).populate({
+      path: "itemId",
+      select: "privilege",
+    });
+
+    const privileges = new Set<string>();
+    equipped.forEach((bucket) => {
+      const item = bucket.itemId as any;
+      if (item?.privilege && Array.isArray(item.privilege)) {
+        item.privilege.forEach((p: string) => privileges.add(p));
+      }
+    });
+
+    return Array.from(privileges);
   }
 }

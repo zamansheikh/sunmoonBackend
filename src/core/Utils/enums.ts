@@ -359,3 +359,9 @@ export enum GlobalBannerTypes {
   CoinBagBanner = "coin_bag_banner",
   GiftBanner = "gift_banner",
 }
+
+export enum PrivilegeTypes {
+  AntiBanChat = "anti-ban-chat",
+  AntiKick = "anti-kick",
+  AntiMute = "anti-mute",
+}

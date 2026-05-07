@@ -30,6 +30,7 @@ import { IUserRepository } from "../../repository/users/user_repository";
 import { IRecentVisitedRoomRepository } from "../../repository/audio_room/recent_visited_room_reposiory";
 import { RepositoryProviders } from "../../core/providers/repository_providers";
 import { IRanking } from "../../repository/gifts/gift_record_repository";
+import PrivilegeService from "../store/privilege_service";
 
 export interface IAudioRoomService {
   createAudioRoom(audioRoom: Partial<IAudioRoom>): Promise<IAudioRoomDocument>;
@@ -318,7 +319,10 @@ export class AudioRoomService implements IAudioRoomService {
     const userInfo: IMemberDetails = audioHelper.generateMemberDetails(userObj);
 
     // remove text-bubble from join message
-    if (userObj.equippedStoreItems && userObj.equippedStoreItems["text-bubble"]) {
+    if (
+      userObj.equippedStoreItems &&
+      userObj.equippedStoreItems["text-bubble"]
+    ) {
       delete userObj.equippedStoreItems["text-bubble"];
     }
 
@@ -666,6 +670,12 @@ export class AudioRoomService implements IAudioRoomService {
     targetId: string,
     roomId: string,
   ): Promise<IAudioRoomDocument> {
+    // check if the target Id is immune to this action
+    const privilegeService = PrivilegeService.getInstance();
+    const canUserBeMuted = await privilegeService.canUserBeMuted(targetId);
+    if (!canUserBeMuted) {
+      throw new AppError(403, "User is immune to this action");
+    }
     //client side data validation
     let audioRoom = await this.audioRoomRepository.checkRoomExisistance(roomId);
     if (!audioRoom) {
@@ -1043,6 +1053,12 @@ export class AudioRoomService implements IAudioRoomService {
     banType: ActivityZoneState,
     bannedTill?: string,
   ): Promise<IAudioRoomDocument> {
+    // check if the target Id is immune to this action
+    const privilegeService = PrivilegeService.getInstance();
+    const canUserBeKicked = await privilegeService.canUserBeKicked(targetId);
+    if (!canUserBeKicked) {
+      throw new AppError(403, "User is immune to this action");
+    }
     // can't ban yourself
     if (myId === targetId) {
       throw new AppError(403, "You cannot ban yourself");
@@ -1221,27 +1237,41 @@ export class AudioRoomService implements IAudioRoomService {
     targetId: string,
     roomId: string,
   ): Promise<IAudioRoomDocument> {
+    // check if the target Id is immune to this action
+    const privilegeService = PrivilegeService.getInstance();
+    const canUserBeBannedFromChat =
+      await privilegeService.canUserBeBannedFromChat(targetId);
+    if (!canUserBeBannedFromChat) {
+      throw new AppError(403, "User is immune to this action");
+    }
+    // 1. Safety Guard: Prevent users from performing administrative actions on themselves.
     if (myId === targetId) {
       throw new AppError(403, "You cannot ban yourself");
     }
+
+    // 2. Room Validation: Verify the room exists in the repository before continuing.
     const audioRoom =
       await this.audioRoomRepository.checkRoomExisistance(roomId);
     if (!audioRoom) {
       throw new AppError(404, "Audio room not found");
     }
 
+    // 3. Permission Check: Ensure the requester has Admin (level 1) or Host (level 0) authority.
     const audioHelper = AudioRoomHelper.getInstance();
     audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 1, targetId);
 
+    // 4. Target Integrity: Confirm the user being restricted actually exists in the system.
     const targetUser = await this.userRepository.findUserById(targetId);
     if (!targetUser) {
       throw new AppError(404, "User not found");
     }
 
+    // 5. Context Validation: Restrictions are only meaningful if the target is currently in the room.
     if (!audioRoom.members.has(targetId)) {
       throw new AppError(400, "User is not a member of this room");
     }
 
+    // 6. Idempotency Guard: Check if the user is already restricted to avoid redundant operations.
     if (
       audioRoom.bannedFromMessages &&
       audioRoom.bannedFromMessages.some((id) => id.toString() === targetId)
@@ -1249,17 +1279,21 @@ export class AudioRoomService implements IAudioRoomService {
       throw new AppError(400, "User is already banned from chat");
     }
 
+    // 7. Persistence: Atomically add the user to the restricted messages list using $addToSet.
     await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
       $addToSet: {
         bannedFromMessages: targetId,
       },
     });
 
+    // 8. Real-time Synchronization: Fetch the updated state and broadcast changes via Socket.io.
     const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
     const socketInstance = SingletonSocketServer.getInstance();
     socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
       bannedFromMessages: updatedRoom.bannedFromMessages,
     });
+
+    // 9. Full State Sync: Emit the serialized room data to keep all clients in sync.
     if (updatedRoom) this.emitRoomData(updatedRoom);
     return updatedRoom;
   }

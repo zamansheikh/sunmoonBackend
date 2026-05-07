@@ -1,8 +1,9 @@
 import { StatusCodes } from "http-status-codes";
 import AppError from "../../core/errors/app_errors";
+import { PrivilegeTypes } from "../../core/Utils/enums";
 
 export function validateCreateStoreItem(body: any) {
-  const { name, validity, categoryId, price } = body;
+  const { name, validity, categoryId, price, privilege } = body;
   if (!name || !validity || !categoryId || !price)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
@@ -10,16 +11,22 @@ export function validateCreateStoreItem(body: any) {
     );
   validateNumber(validity, "validity");
   validateNumber(price, "price");
+  if (privilege) {
+    validatePrivileges(privilege);
+  }
 }
 export function validateUpdateStoreItem(body: any) {
-  const { name, categoryId, prices } = body;
-  if (!name && !categoryId && !prices)
+  const { name, categoryId, prices, privilege } = body;
+  if (!name && !categoryId && !prices && !privilege)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, categoryId, prices at least one is required",
+      "name, categoryId, prices or privilege at least one is required",
     );
   if (prices) {
     validatePrices(prices);
+  }
+  if (privilege) {
+    validatePrivileges(privilege);
   }
 }
 
@@ -38,7 +45,7 @@ export function ValidateStoreItemBatch(
       "name, categoryId, prices, privilege are required",
     );
   if (privilege) {
-    validateArray(privilege, "privilege");
+    validatePrivileges(privilege);
   }
 
   //check if prices is the right type of IPrices
@@ -88,7 +95,7 @@ export function ValidateStoreItemUpdateBatch(
       "name, categoryId, prices at least one is required",
     );
   if (privilege) {
-    validateArray(privilege, "privilege");
+    validatePrivileges(privilege);
   }
   if (prices) {
     validatePrices(prices);
@@ -206,5 +213,32 @@ export function validatePrices(prices: any) {
     }
     validateNumber(p.validity, "validity");
     validateNumber(p.price, "price");
+  });
+}
+export function validatePrivileges(privileges: any) {
+  let parsedPrivileges = privileges;
+  if (typeof privileges === "string") {
+    try {
+      parsedPrivileges = JSON.parse(privileges);
+    } catch (error) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "privilege must be a valid JSON string or array",
+      );
+    }
+  }
+
+  if (!Array.isArray(parsedPrivileges)) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "privilege must be an array");
+  }
+
+  // If empty array, it's fine (as per model default)
+  if (parsedPrivileges.length === 0) return;
+
+  const validPrivileges = Object.values(PrivilegeTypes) as string[];
+  parsedPrivileges.forEach((p: any) => {
+    if (!validPrivileges.includes(p)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, `Invalid privilege: ${p}`);
+    }
   });
 }

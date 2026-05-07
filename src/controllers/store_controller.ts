@@ -15,6 +15,7 @@ import {
   ValidateStoreItemUpdateBatch,
   validateUpdateStoreItem,
 } from "../dtos/sotre/store_validators";
+import PrivilegeService from "../services/store/privilege_service";
 
 export default class StoreController {
   Service: IStoreService;
@@ -461,6 +462,15 @@ export default class StoreController {
       statusCode: 200,
       success: true,
       result: item,
+    });
+  });
+
+  getPrivileges = catchAsync(async (req: Request, res: Response) => {
+    const privileges = await PrivilegeService.getInstance().getPrivilages();
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      result: privileges,
     });
   });
 }

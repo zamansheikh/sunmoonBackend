@@ -96,6 +96,11 @@ router
   .get(authenticate(), controller.getStoreItemsByCategory)
   .put(authenticate([UserRoles.Admin]), controller.changeItemCategory);
 
+// 📌 store privileges
+router
+  .route("/privileges")
+  .get(authenticate([UserRoles.Admin]), controller.getPrivileges);
+
 // 📌 my buckets
 router
   .route("/bucket")
