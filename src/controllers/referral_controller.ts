@@ -12,7 +12,8 @@ export default class ReferralController {
     const { inviteCode } = req.params;
 
     // 1. Grab IP Address (handling potential proxy headers)
-    const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    const ipAddress =
+      req.headers["x-forwarded-for"] || req.socket.remoteAddress;
 
     // 2. Grab Device Info (User-Agent)
     const userAgent = req.headers["user-agent"];
@@ -32,8 +33,8 @@ export default class ReferralController {
       result: {
         ipAddress,
         userAgent,
-        inviteCode
-      }
+        inviteCode,
+      },
     });
   });
 }
