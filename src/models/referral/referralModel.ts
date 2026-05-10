@@ -18,6 +18,8 @@ export interface IReferral {
   totalRechargedAmount: number;
   /** Cumulative earnings the referrer has made from this specific friend's gifts */
   totalCommissionEarned: number;
+  /** Total value of gifts sent by the referee */
+  totalGiftValueSent: number;
 }
 
 export interface IReferralDocument extends IReferral, Document {}
@@ -32,6 +34,7 @@ const referralSchema = new Schema<IReferralDocument>(
     isRechargeRewardGiven: { type: Boolean, default: false },
     totalRechargedAmount: { type: Number, default: 0 },
     totalCommissionEarned: { type: Number, default: 0 },
+    totalGiftValueSent: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

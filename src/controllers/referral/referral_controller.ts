@@ -59,6 +59,28 @@ class ReferralController {
       message: "Referral configuration deleted successfully.",
     });
   });
+
+  getReferralDashboard = catchAsync(async (req: Request, res: Response) => {
+    const userId = (req.user as any).id;
+    const dashboardData = await this.referralService.getReferralDashboard(userId);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: dashboardData,
+      message: "Referral dashboard data retrieved successfully.",
+    });
+  });
+
+  requestWithdrawal = catchAsync(async (req: Request, res: Response) => {
+    const userId = (req.user as any).id;
+    const withdrawal = await this.referralService.requestWithdrawal(userId);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: withdrawal,
+      message: "Referral balance successfully transferred to main wallet.",
+    });
+  });
 }
 
 export default ReferralController;

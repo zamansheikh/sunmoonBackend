@@ -380,19 +380,25 @@ export default class SharedPowerService implements ISharedPowerService {
         coins,
         session,
       );
-
-      // --- Referral Recharge Hook ---
-      try {
-        await this.ReferralService.handleRechargeReferral(userId, coins);
-      } catch (error) {
-        console.error("Referral recharge tracking failed:", error);
-        // Non-blocking
-      }
     }
     await this.CoinHistoryRepository.createHistory(historyObj, session);
 
     await session.commitTransaction();
     session.endSession();
+
+    // --- Referral Recharge Hook ---
+    // Called AFTER commit to prevent phantom rewards if transaction rolls back.
+    if (
+      userRole !== UserRoles.Merchant &&
+      userRole !== UserRoles.Reseller
+    ) {
+      try {
+        await this.ReferralService.handleRechargeReferral(userId, coins);
+      } catch (error) {
+        console.error("Referral recharge tracking failed:", error);
+        // Non-blocking: referral tracking failure should not affect coin assignment
+      }
+    }
 
     return returnBody;
   }

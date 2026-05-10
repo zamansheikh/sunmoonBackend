@@ -1,5 +1,5 @@
-import RedisConfig from "./redis_config";
-import { IReferralConfigDocument } from "../../models/referral/referralConfigModel";
+import RedisConfig from "../config/redis_config";
+import { IReferralConfig, IReferralConfigDocument } from "../../models/referral/referralConfigModel";
 
 export class ReferralCache {
   private static instance: ReferralCache | null = null;
@@ -26,7 +26,7 @@ export class ReferralCache {
 
   // --- Config Cache ---
 
-  async setConfig(config: IReferralConfigDocument): Promise<void> {
+  async setConfig(config: IReferralConfig | IReferralConfigDocument): Promise<void> {
     try {
       await this.redis.set(this.KEYS.CONFIG, JSON.stringify(config), {
         EX: this.TTL.CONFIG,
@@ -36,7 +36,8 @@ export class ReferralCache {
     }
   }
 
-  async getConfig(): Promise<IReferralConfigDocument | null> {
+  /** Returns a plain config object (not a Mongoose Document) from cache */
+  async getConfig(): Promise<IReferralConfig | null> {
     try {
       const data = await this.redis.get(this.KEYS.CONFIG);
       return data ? JSON.parse(data) : null;

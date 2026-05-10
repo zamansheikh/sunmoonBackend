@@ -5,7 +5,6 @@ import { UserRoles } from "../core/Utils/enums";
 import { ReferralConfigRepository } from "../repository/referral/referral_config_repository";
 import { ReferralConfigModel } from "../models/referral/referralConfigModel";
 import { ReferralService } from "../services/referral/referral_service";
-
 import { ReferralRepository } from "../repository/referral/referral_repository";
 import { ReferralModel } from "../models/referral/referralModel";
 import { ReferralWalletRepository } from "../repository/referral/referral_wallet_repository";
@@ -14,28 +13,41 @@ import { ReferralWithdrawalRepository } from "../repository/referral/referral_wi
 import { ReferralWithdrawalModel } from "../models/referral/referralWithdrawalModel";
 import UserRepository from "../repository/users/user_repository";
 import User from "../models/user/user_model";
+import UserStatsRepository from "../repository/users/userstats_repository";
+import UserStats from "../models/userstats/userstats_model";
 
 const router = express.Router();
 
 const referralRepository = new ReferralRepository(ReferralModel);
 const walletRepository = new ReferralWalletRepository(ReferralWalletModel);
-const withdrawalRepository = new ReferralWithdrawalRepository(ReferralWithdrawalModel);
+const withdrawalRepository = new ReferralWithdrawalRepository(
+  ReferralWithdrawalModel,
+);
 const configRepository = new ReferralConfigRepository(ReferralConfigModel);
 const userRepository = new UserRepository(User);
+const userStatsRepository = new UserStatsRepository(UserStats);
 
 const referralService = new ReferralService(
   referralRepository,
   walletRepository,
   withdrawalRepository,
   configRepository,
-  userRepository
+  userRepository,
+  userStatsRepository,
 );
 const referralController = new ReferralController(referralService);
+
+// User Routes
+router.get("/dashboard", authenticate(), referralController.getReferralDashboard);
+router.post("/withdraw", authenticate(), referralController.requestWithdrawal);
 
 // Admin Routes
 router
   .route("/config")
-  .post(authenticate([UserRoles.Admin]), referralController.createOrUpdateConfig)
+  .post(
+    authenticate([UserRoles.Admin]),
+    referralController.createOrUpdateConfig,
+  )
   .get(authenticate([UserRoles.Admin]), referralController.getConfig);
 
 router

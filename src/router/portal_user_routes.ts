@@ -62,6 +62,7 @@ const referralService = new ReferralService(
   withdrawalRepository,
   configRepository,
   userRepository,
+  userStatsRepository,
 );
 
 const sharedPowerService = new SharedPowerService(

@@ -110,6 +110,7 @@ const referralService = new ReferralService(
   withdrawalRepository,
   configRepository,
   userRepository,
+  userstatsRepository,
 );
 
 const authService = new AuthService(

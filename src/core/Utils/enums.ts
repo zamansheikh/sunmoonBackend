@@ -318,6 +318,7 @@ export enum WithdrawAccountTypes {
   Bkash = "bkash",
   Nagad = "nagad",
   Bank = "bank",
+  Internal = "internal",
 }
 
 export enum StatusTypes {
