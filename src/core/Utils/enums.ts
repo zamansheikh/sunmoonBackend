@@ -63,6 +63,10 @@ export enum DatabaseNames {
   CoinBagDistribution = "coin_bag_distributions",
   ActivityReward = "activity_rewards",
   FamilyRewards = "family_rewards",
+  Referral = "referrals",
+  ReferralWallet = "referral_wallets",
+  ReferralWithdrawal = "referral_withdrawals",
+  ReferralConfig = "referral_configs",
 }
 
 export enum ReelStatus {

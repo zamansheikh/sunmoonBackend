@@ -649,3 +649,110 @@ export function aggregatedUserOmmitedFields() {
     email: 0,
   };
 }
+
+export function validateReferralConfig(body: Record<string, any>): void {
+  const {
+    inviteReward,
+    rechargeThreshold,
+    rechargeReward,
+    giftCommissionPercentage,
+  } = body;
+
+  if (
+    inviteReward === undefined ||
+    rechargeThreshold === undefined ||
+    rechargeReward === undefined ||
+    giftCommissionPercentage === undefined
+  ) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "All fields (inviteReward, rechargeThreshold, rechargeReward, giftCommissionPercentage) are required",
+    );
+  }
+
+  if (isNaN(Number(inviteReward)) || Number(inviteReward) < 0) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "inviteReward must be a non-negative number",
+    );
+  }
+
+  if (isNaN(Number(rechargeThreshold)) || Number(rechargeThreshold) < 0) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "rechargeThreshold must be a non-negative number",
+    );
+  }
+
+  if (isNaN(Number(rechargeReward)) || Number(rechargeReward) < 0) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "rechargeReward must be a non-negative number",
+    );
+  }
+
+  if (
+    isNaN(Number(giftCommissionPercentage)) ||
+    Number(giftCommissionPercentage) < 0 ||
+    Number(giftCommissionPercentage) > 100
+  ) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "giftCommissionPercentage must be a number between 0 and 100",
+    );
+  }
+}
+
+export function validateReferralConfigUpdate(body: Record<string, any>): void {
+  const {
+    inviteReward,
+    rechargeThreshold,
+    rechargeReward,
+    giftCommissionPercentage,
+  } = body;
+
+  if (
+    inviteReward === undefined &&
+    rechargeThreshold === undefined &&
+    rechargeReward === undefined &&
+    giftCommissionPercentage === undefined
+  ) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "At least one field (inviteReward, rechargeThreshold, rechargeReward, or giftCommissionPercentage) is required for update",
+    );
+  }
+
+  if (inviteReward !== undefined && (isNaN(Number(inviteReward)) || Number(inviteReward) < 0)) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "inviteReward must be a non-negative number",
+    );
+  }
+
+  if (rechargeThreshold !== undefined && (isNaN(Number(rechargeThreshold)) || Number(rechargeThreshold) < 0)) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "rechargeThreshold must be a non-negative number",
+    );
+  }
+
+  if (rechargeReward !== undefined && (isNaN(Number(rechargeReward)) || Number(rechargeReward) < 0)) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "rechargeReward must be a non-negative number",
+    );
+  }
+
+  if (
+    giftCommissionPercentage !== undefined &&
+    (isNaN(Number(giftCommissionPercentage)) ||
+      Number(giftCommissionPercentage) < 0 ||
+      Number(giftCommissionPercentage) > 100)
+  ) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "giftCommissionPercentage must be a number between 0 and 100",
+    );
+  }
+}
