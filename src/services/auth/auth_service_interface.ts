@@ -26,7 +26,7 @@ export interface IGiftUser {
 export interface IAuthService {
   registerWithGoogle(
     UserData: IUserEntity,
-  ): Promise<{ user: IUserDocument; token: string }>;
+  ): Promise<{ user: IUserDocument; token: string; referralMessage?: string }>;
   loginWithEmailPassword(
     email: string,
     password: string,

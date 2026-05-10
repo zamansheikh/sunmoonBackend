@@ -44,4 +44,5 @@ export interface IUserEntity {
     objectId?: string;
     activityZone?: Partial<ActivityZone>;
     verified?: boolean;
+    inviteCode?: string;
 }

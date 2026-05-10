@@ -6,9 +6,30 @@ import { ReferralConfigRepository } from "../repository/referral/referral_config
 import { ReferralConfigModel } from "../models/referral/referralConfigModel";
 import { ReferralService } from "../services/referral/referral_service";
 
+import { ReferralRepository } from "../repository/referral/referral_repository";
+import { ReferralModel } from "../models/referral/referralModel";
+import { ReferralWalletRepository } from "../repository/referral/referral_wallet_repository";
+import { ReferralWalletModel } from "../models/referral/referralWalletModel";
+import { ReferralWithdrawalRepository } from "../repository/referral/referral_withdrawal_repository";
+import { ReferralWithdrawalModel } from "../models/referral/referralWithdrawalModel";
+import UserRepository from "../repository/users/user_repository";
+import User from "../models/user/user_model";
+
 const router = express.Router();
+
+const referralRepository = new ReferralRepository(ReferralModel);
+const walletRepository = new ReferralWalletRepository(ReferralWalletModel);
+const withdrawalRepository = new ReferralWithdrawalRepository(ReferralWithdrawalModel);
 const configRepository = new ReferralConfigRepository(ReferralConfigModel);
-const referralService = new ReferralService(configRepository);
+const userRepository = new UserRepository(User);
+
+const referralService = new ReferralService(
+  referralRepository,
+  walletRepository,
+  withdrawalRepository,
+  configRepository,
+  userRepository
+);
 const referralController = new ReferralController(referralService);
 
 // Admin Routes

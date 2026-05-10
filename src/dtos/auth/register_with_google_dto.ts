@@ -1,4 +1,10 @@
-import { IsEmail, IsNumber,  IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
 
 export class RegisterUserDto {
   @IsString()
@@ -10,4 +16,7 @@ export class RegisterUserDto {
   @IsString()
   uid!: string;
 
+  @IsString()
+  @IsOptional()
+  inviteCode?: string;
 }

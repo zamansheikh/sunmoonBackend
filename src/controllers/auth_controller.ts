@@ -25,12 +25,20 @@ export default class AuthController {
     this.authService = authService;
   }
   registerWithGoogle = catchAsync(async (req: Request, res: Response) => {
-    const { user, token } = await this.authService.registerWithGoogle(req.body);
+    const { email, name, uid, inviteCode } = req.body;
+    const { user, token, referralMessage } =
+      await this.authService.registerWithGoogle({
+        email,
+        name,
+        uid,
+        inviteCode,
+      } as any);
     sendResponse(res, {
       statusCode: StatusCodes.ACCEPTED,
       success: true,
       access_token: token,
       result: [user],
+      message: referralMessage || "User registered successfully",
     });
   });
 
@@ -106,20 +114,20 @@ export default class AuthController {
     if (!Object.values(StreamType).includes(type))
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `${type} is not a valid stream type`
+        `${type} is not a valid stream type`,
       );
     if (isNaN(Number(totalTime)))
       throw new AppError(StatusCodes.BAD_REQUEST, "totalTime must be a number");
     if (totalTime < 0)
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "totalTime must be greater than or equal to 0"
+        "totalTime must be greater than or equal to 0",
       );
 
     const updatedUser = await this.authService.getDailyBonus(
       id,
       totalTime,
-      type
+      type,
     );
     sendResponseEnhanced(res, updatedUser);
   });
@@ -163,26 +171,26 @@ export default class AuthController {
     if (!Object.values(WhoCanTextMe).includes(whoCanTextMe))
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `${whoCanTextMe} is not a valid option`
+        `${whoCanTextMe} is not a valid option`,
       );
     if (whoCanTextMe === WhoCanTextMe.HighLevel) {
       if (!highLevelRequirements || highLevelRequirements.length < 1)
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "highLevelRequirements is required when whoCanTextMe is HighLevel"
+          "highLevelRequirements is required when whoCanTextMe is HighLevel",
         );
       for (const requirement of highLevelRequirements) {
         if (!requirement.levelType || !requirement.level)
           throw new AppError(
             StatusCodes.BAD_REQUEST,
-            "levelType and level are required for each highLevelRequirement"
+            "levelType and level are required for each highLevelRequirement",
           );
         if (
           !Object.values(WhoCanTextMeLevelTypes).includes(requirement.levelType)
         )
           throw new AppError(
             StatusCodes.BAD_REQUEST,
-            `${requirement.levelType} is not a valid level type`
+            `${requirement.levelType} is not a valid level type`,
           );
         if (typeof requirement.level !== "number")
           throw new AppError(StatusCodes.BAD_REQUEST, "level must be a number");
@@ -195,7 +203,7 @@ export default class AuthController {
     )
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "highLevelRequirements can only be used when whoCanTextMe is HighLevel"
+        "highLevelRequirements can only be used when whoCanTextMe is HighLevel",
       );
     const updatedUser = await this.authService.setChatPrivacy({
       id,
@@ -267,7 +275,7 @@ export default class AuthController {
     const user = await this.authService.verifyAccount(
       id,
       phoneNumber,
-      password
+      password,
     );
     sendResponseEnhanced(res, user);
   });
@@ -280,7 +288,7 @@ export default class AuthController {
     const user = await this.authService.setMyPassword(
       id,
       password,
-      newPassword
+      newPassword,
     );
     sendResponseEnhanced(res, user);
   });
@@ -301,8 +309,8 @@ export default class AuthController {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
 
-    const onlineData = SingletonSocketServer.getInstance().getOnlineUsersProfiles(page, limit);
+    const onlineData =
+      SingletonSocketServer.getInstance().getOnlineUsersProfiles(page, limit);
     sendResponseEnhanced(res, onlineData);
   });
-  
 }

@@ -78,6 +78,7 @@ import { AudioRoomHelper } from "../../core/helper_classes/audioRoomHelper";
 import { AudioRoomCache } from "../../core/cache/audio_room_cache";
 import { MgbGiftTrackingSystem } from "../magic_ball/mgb_gift_tracking_system";
 import SingletonSocketServer from "../../core/sockets/singleton_socket_server";
+import { IReferralService } from "../referral/referral_service";
 
 export default class AuthService implements IAuthService {
   UserRepository: IUserRepository;
@@ -101,6 +102,7 @@ export default class AuthService implements IAuthService {
   CategoryRepository: IStoreCategoryRepository;
   RoomBonusRecordsRepository: IRoomBonusRecordsRepository;
   UpdateCostRepository: IUpdateCostRepository;
+  ReferralService: IReferralService;
 
   constructor(
     UserRepository: IUserRepository,
@@ -124,6 +126,7 @@ export default class AuthService implements IAuthService {
     CategoryRepository: IStoreCategoryRepository,
     RoomBonusRecords: IRoomBonusRecordsRepository,
     UpdateCostRepository: IUpdateCostRepository,
+    ReferralService: IReferralService,
   ) {
     this.UserRepository = UserRepository;
     this.UserStatsRepository = UserStatsRepository;
@@ -146,6 +149,7 @@ export default class AuthService implements IAuthService {
     this.CategoryRepository = CategoryRepository;
     this.RoomBonusRecordsRepository = RoomBonusRecords;
     this.UpdateCostRepository = UpdateCostRepository;
+    this.ReferralService = ReferralService;
   }
 
   async registerWithGoogle(UserData: IUserEntity) {
@@ -175,15 +179,29 @@ export default class AuthService implements IAuthService {
           StatusCodes.INTERNAL_SERVER_ERROR,
           "creating the user failed",
         );
+
+      // --- Referral Hook ---
+      let referralMessage = "";
+      if (UserData.inviteCode) {
+        try {
+          await this.ReferralService.handleRegistrationReferral(
+            newUser._id as string,
+            UserData.inviteCode,
+          );
+        } catch (error: any) {
+          referralMessage = error.message || "Referral attribution failed";
+          console.error("Referral attribution failed:", error);
+          // We don't throw here to avoid blocking registration if referral logic fails
+        }
+      }
+
       const userWithStats = newUser.toObject();
       userWithStats.stats = newStats;
-      // console.log("new userstats", newStats);
-      // console.log("new user modified", newUser);
       const token = jwt.sign(
         { id: newUser._id, role: newUser.userRole },
         SECRET,
       );
-      return { user: userWithStats, token };
+      return { user: userWithStats, token, referralMessage };
     }
 
     let userStats = await this.UserStatsRepository.getUserStats(

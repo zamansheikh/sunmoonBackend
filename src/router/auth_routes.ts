@@ -88,6 +88,31 @@ const roomBonousRepository = new RoomBonusRecordRepository(
 );
 const updateCostRepository = new UpdateCostRepository(UpdateCostModel);
 
+import { ReferralService } from "../services/referral/referral_service";
+import { ReferralRepository } from "../repository/referral/referral_repository";
+import { ReferralModel } from "../models/referral/referralModel";
+import { ReferralWalletRepository } from "../repository/referral/referral_wallet_repository";
+import { ReferralWalletModel } from "../models/referral/referralWalletModel";
+import { ReferralWithdrawalRepository } from "../repository/referral/referral_withdrawal_repository";
+import { ReferralWithdrawalModel } from "../models/referral/referralWithdrawalModel";
+import { ReferralConfigRepository } from "../repository/referral/referral_config_repository";
+import { ReferralConfigModel } from "../models/referral/referralConfigModel";
+
+const referralRepository = new ReferralRepository(ReferralModel);
+const walletRepository = new ReferralWalletRepository(ReferralWalletModel);
+const withdrawalRepository = new ReferralWithdrawalRepository(
+  ReferralWithdrawalModel,
+);
+const configRepository = new ReferralConfigRepository(ReferralConfigModel);
+
+const referralService = new ReferralService(
+  referralRepository,
+  walletRepository,
+  withdrawalRepository,
+  configRepository,
+  userRepository,
+);
+
 const authService = new AuthService(
   userRepository,
   userstatsRepository,
@@ -109,7 +134,8 @@ const authService = new AuthService(
   bucketRepository,
   categoryRepository,
   roomBonousRepository,
-  updateCostRepository
+  updateCostRepository,
+  referralService,
 );
 const authController = new AuthController(authService);
 
