@@ -113,6 +113,8 @@ export interface ISharedPowerService {
   ): Promise<{ status: StatusTypes }>;
 }
 
+import { IReferralService } from "../referral/referral_service";
+
 export default class SharedPowerService implements ISharedPowerService {
   UserRepository: IUserRepository;
   UserStatsRepository: IUserStatsRepository;
@@ -123,6 +125,7 @@ export default class SharedPowerService implements ISharedPowerService {
   CoinHistoryRepository: ICoinHistoryRepository;
   AgencyJoinRequestRepository: IAgencyJoinRequestRepository;
   LevelTagBgRepository: ILevelTagBgRepository;
+  ReferralService: IReferralService;
 
   constructor(
     UserRepository: IUserRepository,
@@ -134,6 +137,7 @@ export default class SharedPowerService implements ISharedPowerService {
     CoinHistoryRepository: ICoinHistoryRepository,
     AgencyJoinRequestRepository: IAgencyJoinRequestRepository,
     LevelTagBgRepository: ILevelTagBgRepository,
+    ReferralService: IReferralService,
   ) {
     this.UserRepository = UserRepository;
     this.UserStatsRepository = UserStatsRepository;
@@ -144,6 +148,7 @@ export default class SharedPowerService implements ISharedPowerService {
     this.CoinHistoryRepository = CoinHistoryRepository;
     this.AgencyJoinRequestRepository = AgencyJoinRequestRepository;
     this.LevelTagBgRepository = LevelTagBgRepository;
+    this.ReferralService = ReferralService;
   }
 
   async loginPortalUser(
@@ -280,6 +285,7 @@ export default class SharedPowerService implements ISharedPowerService {
     }
     return updatedUser;
   }
+
   async assignCoinToUser(
     userId: string,
     userRole: UserRoles,
@@ -374,6 +380,14 @@ export default class SharedPowerService implements ISharedPowerService {
         coins,
         session,
       );
+
+      // --- Referral Recharge Hook ---
+      try {
+        await this.ReferralService.handleRechargeReferral(userId, coins);
+      } catch (error) {
+        console.error("Referral recharge tracking failed:", error);
+        // Non-blocking
+      }
     }
     await this.CoinHistoryRepository.createHistory(historyObj, session);
 

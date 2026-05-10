@@ -1,4 +1,13 @@
 import express, { Request, Response } from "express";
+import { ReferralService } from "../services/referral/referral_service";
+import { ReferralRepository } from "../repository/referral/referral_repository";
+import { ReferralModel } from "../models/referral/referralModel";
+import { ReferralWalletRepository } from "../repository/referral/referral_wallet_repository";
+import { ReferralWalletModel } from "../models/referral/referralWalletModel";
+import { ReferralWithdrawalRepository } from "../repository/referral/referral_withdrawal_repository";
+import { ReferralWithdrawalModel } from "../models/referral/referralWithdrawalModel";
+import { ReferralConfigRepository } from "../repository/referral/referral_config_repository";
+import { ReferralConfigModel } from "../models/referral/referralConfigModel";
 import User from "../models/user/user_model";
 import UserRepository from "../repository/users/user_repository";
 import AuthService from "../services/auth/auth_services";
@@ -87,16 +96,6 @@ const roomBonousRepository = new RoomBonusRecordRepository(
   RoomBonusRecordsModel
 );
 const updateCostRepository = new UpdateCostRepository(UpdateCostModel);
-
-import { ReferralService } from "../services/referral/referral_service";
-import { ReferralRepository } from "../repository/referral/referral_repository";
-import { ReferralModel } from "../models/referral/referralModel";
-import { ReferralWalletRepository } from "../repository/referral/referral_wallet_repository";
-import { ReferralWalletModel } from "../models/referral/referralWalletModel";
-import { ReferralWithdrawalRepository } from "../repository/referral/referral_withdrawal_repository";
-import { ReferralWithdrawalModel } from "../models/referral/referralWithdrawalModel";
-import { ReferralConfigRepository } from "../repository/referral/referral_config_repository";
-import { ReferralConfigModel } from "../models/referral/referralConfigModel";
 
 const referralRepository = new ReferralRepository(ReferralModel);
 const walletRepository = new ReferralWalletRepository(ReferralWalletModel);

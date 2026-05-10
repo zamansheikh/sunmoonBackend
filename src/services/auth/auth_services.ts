@@ -539,7 +539,13 @@ export default class AuthService implements IAuthService {
         targetUserIds,
         roomId,
       ),
+      this.ReferralService.handleGiftCommission(myId, coinCost).catch(
+        (error) => {
+          console.error("Referral gift commission failed:", error);
+        },
+      ),
     ];
+
     if (roomId) {
       RocketService.getInstance().addFuel(roomId, coinCost);
       secondaryUpdates.push(

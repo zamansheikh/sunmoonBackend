@@ -1,3 +1,12 @@
+import { ReferralService } from "../services/referral/referral_service";
+import { ReferralRepository } from "../repository/referral/referral_repository";
+import { ReferralModel } from "../models/referral/referralModel";
+import { ReferralWalletRepository } from "../repository/referral/referral_wallet_repository";
+import { ReferralWalletModel } from "../models/referral/referralWalletModel";
+import { ReferralWithdrawalRepository } from "../repository/referral/referral_withdrawal_repository";
+import { ReferralWithdrawalModel } from "../models/referral/referralWithdrawalModel";
+import { ReferralConfigRepository } from "../repository/referral/referral_config_repository";
+import { ReferralConfigModel } from "../models/referral/referralConfigModel";
 import express from "express";
 import { authenticate } from "../core/middlewares/auth_middleware";
 import { UserRoles } from "../core/Utils/enums";
@@ -40,6 +49,21 @@ const agencyJoinRequestRepository = new AgencyJoinRequestRepository(
 
 const tagBgRepository = new LevelTagBgRepository(LevelTagBgModel);
 
+const referralRepository = new ReferralRepository(ReferralModel);
+const walletRepository = new ReferralWalletRepository(ReferralWalletModel);
+const withdrawalRepository = new ReferralWithdrawalRepository(
+  ReferralWithdrawalModel,
+);
+const configRepository = new ReferralConfigRepository(ReferralConfigModel);
+
+const referralService = new ReferralService(
+  referralRepository,
+  walletRepository,
+  withdrawalRepository,
+  configRepository,
+  userRepository,
+);
+
 const sharedPowerService = new SharedPowerService(
   userRepository,
   userStatsRepository,
@@ -50,6 +74,7 @@ const sharedPowerService = new SharedPowerService(
   coinHistoryRepository,
   agencyJoinRequestRepository,
   tagBgRepository,
+  referralService,
 );
 const portalUserControllers = new PortalUserControllers(sharedPowerService);
 
