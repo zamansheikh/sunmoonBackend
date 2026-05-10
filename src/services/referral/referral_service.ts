@@ -10,6 +10,7 @@ import {
 import { IReferralWithdrawalDocument } from "../../models/referral/referralWithdrawalModel";
 import AppError from "../../core/errors/app_errors";
 import { StatusCodes } from "http-status-codes";
+import { ReferralCache } from "../../core/cache/referral_cache";
 
 export interface IReferralService {
   createOrUpdateConfig(config: IReferralConfig): Promise<IReferralConfigDocument>;
@@ -24,6 +25,8 @@ export interface IReferralService {
 }
 
 export class ReferralService implements IReferralService {
+  private cache = ReferralCache.getInstance();
+
   constructor(
     private referralRepository: IReferralRepository,
     private walletRepository: IReferralWalletRepository,
@@ -36,38 +39,54 @@ export class ReferralService implements IReferralService {
   async createOrUpdateConfig(
     config: IReferralConfig,
   ): Promise<IReferralConfigDocument> {
-    return await this.configRepository.createOrUpdateConfig(config);
+    const newConfig = await this.configRepository.createOrUpdateConfig(config);
+    await this.cache.setConfig(newConfig);
+    return newConfig;
   }
 
   async getConfig(): Promise<IReferralConfigDocument | null> {
-    return await this.configRepository.getConfig();
+    // 1. Check Redis first
+    const cached = await this.cache.getConfig();
+    if (cached) return cached;
+
+    // 2. Fallback to DB
+    const config = await this.configRepository.getConfig();
+    if (config) {
+      await this.cache.setConfig(config);
+    }
+    return config;
   }
 
   async updateConfig(
     id: string,
     config: Partial<IReferralConfig>,
   ): Promise<IReferralConfigDocument | null> {
-    return await this.configRepository.updateConfig(id, config);
+    const updated = await this.configRepository.updateConfig(id, config);
+    if (updated) {
+      await this.cache.setConfig(updated);
+    }
+    return updated;
   }
 
   async deleteConfig(id: string): Promise<IReferralConfigDocument | null> {
-    return await this.configRepository.deleteConfig(id);
+    const deleted = await this.configRepository.deleteConfig(id);
+    await this.cache.invalidateConfig();
+    return deleted;
   }
 
   // --- Core Referral Engine (The Facade Methods) ---
 
   /**
    * Links a new user to their referrer during registration.
-   * Handles attribution and grants the initial invite reward.
    */
   async handleRegistrationReferral(
     refereeId: string,
     inviteCode: string,
   ): Promise<void> {
-    const config = await this.configRepository.getConfig();
-    if (!config) return; // Referral system not configured
+    const config = await this.getConfig();
+    if (!config) return;
 
-    // 1. Find the referrer by their userId (invite code)
+    // 1. Find the referrer
     const referrer = await this.userRepository.findUserByShortId(
       Number(inviteCode),
     );
@@ -77,20 +96,25 @@ export class ReferralService implements IReferralService {
         "Referrer not found with this code.",
       );
 
-    // 2. Prevent self-referral
-    if ((referrer as any)._id.toString() === refereeId) return;
+    const referrerId = (referrer as any)._id.toString();
 
-    // 3. Create the referral link
+    // 2. Prevent self-referral
+    if (referrerId === refereeId) return;
+
+    // 3. Create the referral link in DB
     await this.referralRepository.createReferral({
-      referrer: (referrer as any)._id,
+      referrer: referrerId as any,
       referee: refereeId as any,
       inviteCode: inviteCode,
       isRegistrationRewardGiven: true,
     });
 
-    // 4. Grant the registration reward to the referrer's wallet
+    // 4. Cache the mapping for future high-speed lookups
+    await this.cache.setReferrerId(refereeId, referrerId);
+
+    // 5. Grant reward
     await this.walletRepository.updateWalletBalance(
-      (referrer as any)._id,
+      referrerId,
       config.inviteReward,
       true,
     );
@@ -103,18 +127,16 @@ export class ReferralService implements IReferralService {
     refereeId: string,
     rechargeAmount: number,
   ): Promise<void> {
-    const config = await this.configRepository.getConfig();
+    const config = await this.getConfig();
     if (!config) return;
 
     const referral =
       await this.referralRepository.getReferralByReferee(refereeId);
     if (!referral || referral.isRechargeRewardGiven) return;
 
-    // Update cumulative recharge amount
     const newTotal = referral.totalRechargedAmount + rechargeAmount;
     const update: any = { totalRechargedAmount: newTotal };
 
-    // Check if threshold is crossed for the first time
     if (
       !referral.isRechargeMilestoneReached &&
       newTotal >= config.rechargeThreshold
@@ -122,7 +144,6 @@ export class ReferralService implements IReferralService {
       update.isRechargeMilestoneReached = true;
       update.isRechargeRewardGiven = true;
 
-      // Credit the reward
       await this.walletRepository.updateWalletBalance(
         referral.referrer,
         config.rechargeReward,
@@ -140,29 +161,37 @@ export class ReferralService implements IReferralService {
     refereeId: string,
     giftCoinValue: number,
   ): Promise<void> {
-    const config = await this.configRepository.getConfig();
+    const config = await this.getConfig();
     if (!config || config.giftCommissionPercentage <= 0) return;
 
-    const referral =
-      await this.referralRepository.getReferralByReferee(refereeId);
-    if (!referral) return;
+    // 1. Check cache for referrerId
+    let referrerId = await this.cache.getReferrerId(refereeId);
+
+    // 2. Fallback to DB if not in cache
+    if (!referrerId) {
+      const referral =
+        await this.referralRepository.getReferralByReferee(refereeId);
+      if (!referral) return;
+      referrerId = referral.referrer.toString();
+      await this.cache.setReferrerId(refereeId, referrerId);
+    }
 
     const commission = Math.floor(
       (giftCoinValue * config.giftCommissionPercentage) / 100,
     );
     if (commission <= 0) return;
 
-    // 1. Update cumulative commission in referral record
-    await this.referralRepository.updateReferral(refereeId, {
-      $inc: { totalCommissionEarned: commission },
-    } as any);
-
-    // 2. Add to referrer's wallet balance
-    await this.walletRepository.updateWalletBalance(
-      referral.referrer,
-      commission,
-      true,
-    );
+    // 3. Update DB (Asynchronous updates are fine here as per our design)
+    await Promise.all([
+      this.referralRepository.updateReferral(refereeId, {
+        $inc: { totalCommissionEarned: commission },
+      } as any),
+      this.walletRepository.updateWalletBalance(
+        referrerId,
+        commission,
+        true,
+      ),
+    ]);
   }
 
   /**
