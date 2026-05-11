@@ -4,6 +4,7 @@ import {
   IRoomLevelCriteriaDocument,
 } from "../../models/audio_room/room_level_criteria_model";
 import { IRoomLevelCriteriaRepository } from "../../repository/audio_room/room_level_criteria_repository";
+import { RepositoryProviders } from "../../core/providers/repository_providers";
 
 /**
  * Service interface for managing Audio Room Level Criteria.
@@ -28,6 +29,17 @@ export interface IRoomLevelCriteriaService {
 }
 
 export class RoomLevelCriteriaService implements IRoomLevelCriteriaService {
+  /**
+   * Bootstraps the room level criteria from the database.
+   * This is intended to be called once during server startup.
+   */
+  static async bootstrap(): Promise<void> {
+    const repository = RepositoryProviders.roomLevelCriteriaRepositoryProvider;
+    const service = new RoomLevelCriteriaService(repository);
+    await service.syncToMemory();
+    console.log("✅ Room Level Criteria synchronized from database.");
+  }
+
   private repository: IRoomLevelCriteriaRepository;
 
   constructor(repository: IRoomLevelCriteriaRepository) {
@@ -74,6 +86,8 @@ export class RoomLevelCriteriaService implements IRoomLevelCriteriaService {
       numberOfPartners: doc.numberOfPartners,
     }));
 
+    // Clear and populate the exported array reference
+    ROOM_LEVEL_CRITERIA.length = 0;
     if (formattedLevels.length > 0) {
       // Clear and populate the exported array reference
       ROOM_LEVEL_CRITERIA.length = 0;

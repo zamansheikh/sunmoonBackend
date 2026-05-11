@@ -54,6 +54,7 @@ import SingletonSocketServer from "./core/sockets/singleton_socket_server";
 import RedisConfig from "./core/config/redis_config";
 import { resetMagicBallJob } from "./core/corn/jobs/magic_ball_jobs";
 import { initializeMagicBallTrackers } from "./services/magic_ball";
+import { RoomLevelCriteriaService } from "./services/audio_room/room_level_criteria_service";
 
 // Initialize Magic Ball Trackers
 initializeMagicBallTrackers();
@@ -219,6 +220,13 @@ const MONGOURL =
 
 mongoose.connect(MONGOURL).then(async () => {
   console.log("DB Connected");
+
+  // Sync Room Level Criteria from DB to memory
+  try {
+    await RoomLevelCriteriaService.bootstrap();
+  } catch (err) {
+    console.error("Failed to bootstrap Room Level Criteria:", err);
+  }
 
   // Connect to Redis
   try {

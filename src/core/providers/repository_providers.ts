@@ -30,6 +30,8 @@ import CoinBagDistributionModel from "../../models/audio_room/coin_bag_distribut
 import { CoinBagDistributionRepository } from "../../repository/audio_room/coin_bag_distribution_repository";
 import FamilyRewardConfigModel from "../../models/family/family_reward_model";
 import FamilyRewardRepository from "../../repository/family/family_reward_repository";
+import RoomLevelCriteriaModel from "../../models/audio_room/room_level_criteria_model";
+import { RoomLevelCriteriaRepository } from "../../repository/audio_room/room_level_criteria_repository";
 
 export class RepositoryProviders {
   static readonly giftRecordRepositoryProvider = new GiftRecordRepository(
@@ -86,4 +88,6 @@ export class RepositoryProviders {
   static readonly familyRewardRepositoryProvider = new FamilyRewardRepository(
     FamilyRewardConfigModel,
   );
+  static readonly roomLevelCriteriaRepositoryProvider =
+    new RoomLevelCriteriaRepository(RoomLevelCriteriaModel);
 }

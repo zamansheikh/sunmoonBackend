@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { IRoomLevelCriteriaService } from "../../services/audio_room/room_level_criteria_service";
 import catchAsync from "../../core/Utils/catch_async";
 
-
 /**
  * Controller for managing Audio Room Level Criteria (Admin only).
  * Handles HTTP requests and delegates business logic to the RoomLevelCriteriaService.
