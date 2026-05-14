@@ -38,6 +38,7 @@ export interface IRocketServiceResponse {
   level: number;
   milestone: number;
   percentage?: number;
+  top1?: IRewarededUser;
 }
 
 export default class RocketService {
@@ -184,6 +185,7 @@ export default class RocketService {
         roomId,
         fuel,
         level: launchLevel,
+        top1: rewardedUsers[0] || null,
       });
       // Notify Level Update
       socketServer.emitToRoom(roomId, AudioRoomChannels.NewRocketLevel, {
