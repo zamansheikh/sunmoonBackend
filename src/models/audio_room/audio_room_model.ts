@@ -6,6 +6,7 @@ export interface IAudioSeat {
   member?: IMemberDetails;
   available: boolean;
   recievedGiftValue?: number;
+  isMute: boolean;
 }
 
 export interface IRoomMessage {
@@ -75,7 +76,7 @@ export interface IAudioRoomDocument extends IAudioRoom, Document {
   updatedAt: Date;
 }
 
-export interface IAudioRoomModel extends Model<IAudioRoomDocument> {}
+export interface IAudioRoomModel extends Model<IAudioRoomDocument> { }
 
 const RoomMessageSchema = new Schema<IRoomMessage>(
   {
@@ -128,7 +129,9 @@ const AudioSeatSchema = new Schema<IAudioSeat>(
       type: MemberDetailsSchema,
     },
     available: { type: Boolean, default: true },
+    isMute: { type: Boolean, default: false },
   },
+
   { _id: false },
 );
 
@@ -175,7 +178,7 @@ AudioRoomSchema.pre("save", function (next) {
     for (let i = 1; i <= this.numberOfSeats; i++) {
       const seatKey = `seat-${i}`;
       if (!this.seats.has(seatKey)) {
-        this.seats.set(seatKey, { available: true });
+        this.seats.set(seatKey, { available: true, isMute: false });
       }
     }
 

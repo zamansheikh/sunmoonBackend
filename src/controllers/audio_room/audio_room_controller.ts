@@ -222,6 +222,24 @@ export class AudioRoomController {
     });
   });
 
+  muteUnmuteSeat = catchAsync(async (req: Request, res: Response) => {
+    const myUserId = req.user!.id;
+    const { roomId, seatKey } = req.params;
+    validateFieldExistance(roomId, "roomId");
+    validateFieldExistance(seatKey, "seatKey");
+    const result = await this.Service.muteUnmuteSeat(
+      myUserId,
+      roomId,
+      seatKey,
+    );
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Seat mute status updated successfully",
+      result: result,
+    });
+  });
+
   leaveAudioRoom = catchAsync(async (req: Request, res: Response) => {
     const myUserId = req.user!.id;
     const roomId = req.params.roomId;

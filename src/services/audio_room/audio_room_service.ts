@@ -75,6 +75,11 @@ export interface IAudioRoomService {
     targetId: string,
     roomId: string,
   ): Promise<IAudioRoomDocument>;
+  muteUnmuteSeat(
+    myId: string,
+    roomId: string,
+    seatKey: string,
+  ): Promise<IAudioRoomDocument>;
   leaveAudioRoom(userId: string, roomId: string): Promise<IAudioRoomDocument>;
   sendRoomWideMessage(
     myId: string,
@@ -199,7 +204,7 @@ export class AudioRoomService implements IAudioRoomService {
     // prepare seats data
     const seats: Map<string, IAudioSeat> = new Map();
     for (let i = 1; i <= numberOfSeats!; i++) {
-      seats.set(`seat-${i}`, { available: true });
+      seats.set(`seat-${i}`, { available: true, isMute: false });
     }
 
     // create audio room
@@ -210,7 +215,7 @@ export class AudioRoomService implements IAudioRoomService {
       roomId: roomId!,
       roomPhoto: roomPhoto!,
       admins: [],
-      hostSeat: { available: true },
+      hostSeat: { available: true, isMute: false },
       seats: seats,
       messages: [],
       members: new Map([[hostId!.toString(), true]]),
@@ -663,6 +668,54 @@ export class AudioRoomService implements IAudioRoomService {
     const finalRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
     if (finalRoom) this.emitRoomData(finalRoom);
     return finalRoom;
+  }
+
+  async muteUnmuteSeat(
+    myId: string,
+    roomId: string,
+    seatKey: string,
+  ): Promise<IAudioRoomDocument> {
+    const audioRoom = await this.audioRoomRepository.checkRoomExisistance(roomId);
+    if (!audioRoom) {
+      throw new AppError(404, "Audio room not found");
+    }
+
+    // check authority validation for host only
+    const audioHelper = AudioRoomHelper.getInstance();
+    audioHelper.checkAuthorityInAudioRoom(myId, audioRoom, 0); // 0 -> host level authority
+
+    let isMuteCurrent = false;
+    if (seatKey === "hostSeat") {
+      isMuteCurrent = audioRoom.hostSeat?.isMute || false;
+    } else {
+      const seat = audioRoom.seats.get(seatKey);
+      if (!seat) {
+        throw new AppError(404, "Seat not found");
+      }
+      isMuteCurrent = seat.isMute || false;
+    }
+
+    const newMuteStatus = !isMuteCurrent;
+    const updatePath = seatKey === "hostSeat" ? "hostSeat.isMute" : `seats.${seatKey}.isMute`;
+
+    await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {
+      $set: {
+        [updatePath]: newMuteStatus,
+      },
+    });
+
+    const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
+    if (!updatedRoom) {
+      throw new AppError(404, "Updated audio room not found");
+    }
+
+    const socketInstance = SingletonSocketServer.getInstance();
+    socketInstance.emitToRoom(roomId, AudioRoomChannels.BasicRoomUpdate, {
+      seats: updatedRoom.seats,
+    });
+
+    this.emitRoomData(updatedRoom);
+    return updatedRoom;
   }
 
   async muteUnmuteUser(
@@ -1446,12 +1499,12 @@ export class AudioRoomService implements IAudioRoomService {
 
     const allowedUsersToChat = Array.isArray(chatPrivacy)
       ? chatPrivacy.reduce(
-          (acc, userId) => {
-            acc[userId] = true;
-            return acc;
-          },
-          {} as Record<string, boolean>,
-        )
+        (acc, userId) => {
+          acc[userId] = true;
+          return acc;
+        },
+        {} as Record<string, boolean>,
+      )
       : {};
 
     await this.audioRoomRepository.findByIdAndUpdate(audioRoom._id as string, {

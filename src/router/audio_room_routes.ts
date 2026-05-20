@@ -100,6 +100,10 @@ router
   .put(authenticate(), audioRoomController.muteUnmuteUser);
 
 router
+  .route("/:roomId/mute-unmute-seat/:seatKey")
+  .put(authenticate(), audioRoomController.muteUnmuteSeat);
+
+router
   .route("/:roomId/leave")
   .put(authenticate(), audioRoomController.leaveAudioRoom);
 
