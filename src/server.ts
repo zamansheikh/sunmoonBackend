@@ -36,6 +36,7 @@ import CoinBagRouter from "./router/coin_bag_router";
 import FamilyRewardRouter from "./router/family_reward_router";
 import ReferralRouter from "./router/referral_routes";
 import RocketConfigRouter from "./router/rocket_config_routes";
+import CoinExchangeRouter from "./router/coin_exchange_route";
 
 import path from "path";
 import StoreItemModel from "./models/store/store_item_model";
@@ -149,6 +150,7 @@ app.use("/api/family-rewards", FamilyRewardRouter);
 app.use("/api/coin-bag", CoinBagRouter);
 app.use("/api/referral", ReferralRouter);
 app.use("/api/admin/rocket-config", RocketConfigRouter);
+app.use("/api/coin-exchange", CoinExchangeRouter);
 
 app.post(
   "/api/upload-file-cloud",

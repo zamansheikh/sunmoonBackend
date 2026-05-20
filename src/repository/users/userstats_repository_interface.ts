@@ -7,7 +7,7 @@ import { ILeaderBoardResponse } from "../../services/game/game_service";
 
 export default interface IUserStatsRepository {
   createUserstats(stats: IUserStats): Promise<IUSerStatsDocument | null>;
-  getUserStats(id: string): Promise<IUSerStatsDocument | null>;
+  getUserStats(id: string, session?: ClientSession): Promise<IUSerStatsDocument | null>;
   getUserStatsById(id: string): Promise<IUSerStatsDocument | null>;
   deleteStats(userId: string): Promise<IUSerStatsDocument | null>;
   updateProperty(

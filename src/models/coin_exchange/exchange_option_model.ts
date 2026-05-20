@@ -21,6 +21,7 @@ const exchangeOptionSchema = new Schema<IExchangeOptionDocument>(
     coinsRequired: {
       type: Number,
       required: true,
+      unique: true,
     },
     diamondsAwarded: {
       type: Number,
@@ -39,6 +40,7 @@ const exchangeOptionSchema = new Schema<IExchangeOptionDocument>(
     displayOrder: {
       type: Number,
       required: true,
+      unique: true,
     },
   },
   {

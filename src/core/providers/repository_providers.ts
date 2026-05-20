@@ -34,6 +34,10 @@ import RoomLevelCriteriaModel from "../../models/audio_room/room_level_criteria_
 import { RoomLevelCriteriaRepository } from "../../repository/audio_room/room_level_criteria_repository";
 import RocketConfigModel from "../../models/audio_room/rocketconfig";
 import { RocketConfigRepository } from "../../repository/audio_room/rocket_config_repository";
+import ExchangeOptionModel from "../../models/coin_exchange/exchange_option_model";
+import ExchangeTransactionHistoryModel from "../../models/coin_exchange/exchange_transaction_history_model";
+import ExchangeOptionRepository from "../../repository/coin_exchange/exchange_option_repository";
+import ExchangeTransactionHistoryRepository from "../../repository/coin_exchange/exchange_transaction_history_repository";
 
 export class RepositoryProviders {
   static readonly giftRecordRepositoryProvider = new GiftRecordRepository(
@@ -94,4 +98,9 @@ export class RepositoryProviders {
     new RoomLevelCriteriaRepository(RoomLevelCriteriaModel);
   static readonly rocketConfigRepositoryProvider =
     new RocketConfigRepository(RocketConfigModel);
+  static readonly exchangeOptionRepositoryProvider = new ExchangeOptionRepository(
+    ExchangeOptionModel,
+  );
+  static readonly exchangeTransactionHistoryRepositoryProvider =
+    new ExchangeTransactionHistoryRepository(ExchangeTransactionHistoryModel);
 }

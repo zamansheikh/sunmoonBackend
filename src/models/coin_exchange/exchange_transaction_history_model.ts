@@ -7,6 +7,7 @@ export interface IExchangeTransactionHistory {
   coinsDeducted: number;
   diamondsAwarded: number;
   bonusDiamonds: number;
+  idempotencyKey: string;
 }
 
 export interface IExchangeTransactionHistoryDocument
@@ -41,6 +42,11 @@ const exchangeTransactionHistorySchema =
       bonusDiamonds: {
         type: Number,
         required: true,
+      },
+      idempotencyKey: {
+        type: String,
+        required: true,
+        unique: true,
       },
     },
     {

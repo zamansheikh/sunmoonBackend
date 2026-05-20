@@ -26,9 +26,9 @@ export default class UserStatsRepository implements IUserStatsRepository {
   async getUserStatsById(id: string): Promise<IUSerStatsDocument | null> {
     return await this.model.findById(id);
   }
-  async getUserStats(id: string): Promise<IUSerStatsDocument | null> {
+  async getUserStats(id: string, session?: ClientSession): Promise<IUSerStatsDocument | null> {
     const userId = new mongoose.Types.ObjectId(id);
-    return await this.model.findOne({ userId });
+    return await this.model.findOne({ userId }).session(session || null);
   }
 
   async updateGiftDiamond(
