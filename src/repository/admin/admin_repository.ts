@@ -1,4 +1,6 @@
 import { ClientSession } from "mongoose";
+import { StatusCodes } from "http-status-codes";
+import AppError from "../../core/errors/app_errors";
 import { IAdmin, IAdminDocument, IAdminModel } from "../../entities/admin/admin_interface";
 
 export interface IAdminRepository {
@@ -9,7 +11,7 @@ export interface IAdminRepository {
     updateAdmin(id: string, admin: Partial<IAdmin>): Promise<IAdminDocument | null>;
     deleteAdmin(id: string): Promise<IAdminDocument | null>;
     getAdmin(): Promise<IAdminDocument | null>;
-    updateCoin(id: string, coins: number, session?: ClientSession): Promise<IAdminDocument | null>;
+    updateCoin(id: string, coins: number, session?: ClientSession): Promise<IAdminDocument>;
 }
 
 
@@ -49,13 +51,16 @@ export default class AdminRepository implements IAdminRepository {
         return this.Model.findOne().select("-password");
     }
 
-    async updateCoin(id: string, coins: number, session?: ClientSession): Promise<IAdminDocument | null> {
+    async updateCoin(id: string, coins: number, session?: ClientSession): Promise<IAdminDocument> {
         const filter: Record<string, any> = { _id: id };
         // Guard against negative balances when deducting coins
         if (coins < 0) {
             filter.coins = { $gte: Math.abs(coins) };
         }
-        return this.Model.findOneAndUpdate(filter, { $inc: { coins: coins } }, { new: true }).session(session || null);
+        const updated = await this.Model.findOneAndUpdate(filter, { $inc: { coins: coins } }, { new: true }).session(session || null);
+        if (!updated)
+            throw new AppError(StatusCodes.BAD_REQUEST, "Insufficient coins");
+        return updated;
     }
 
 }

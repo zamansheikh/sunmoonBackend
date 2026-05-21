@@ -375,7 +375,7 @@ export default class SharedPowerService implements ISharedPowerService {
     };
     let returnBody;
 
-    // ── 8. Execute transaction (unchanged logic) ────────────────────────────
+    // ── 9. Execute transaction ───────────────────────────────────────────────
     const session = await mongoose.startSession();
     session.startTransaction();
 

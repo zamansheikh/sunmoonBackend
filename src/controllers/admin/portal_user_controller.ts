@@ -152,6 +152,7 @@ export class PortalUserControllers {
       );
     
     // Validate coins
+  
     if (isNaN(Number(coins)))
       throw new AppError(StatusCodes.BAD_REQUEST, "Coins must be a number");
     if (coins <= 0)
