@@ -446,6 +446,7 @@ export default class SingletonSocketServer {
         (m) => m.toString() !== userId,
       );
       if (!stillHasMembers) {
+        updateQuery.$set.isActive = false;
         this.emitToRoom("", AudioRoomChannels.AudioRoomClosed, {
           roomId: room.roomId,
         });

@@ -49,7 +49,18 @@ export class AudioRoomRepository implements IAudioRoomRepository {
     return created;
   }
 
-  private _getHydratedRoomsPipeline(matchStage: any): any[] {
+  private _getHydratedRoomsPipeline(matchStage: any, options?: { excludeMessages?: boolean }): any[] {
+    const projectStage: Record<string, any> = {
+      membersArrayInfo: 0,
+      adminsInfo: 0,
+      bannedFromMessagesInfo: 0,
+      giftTotals: 0,
+    };
+
+    if (options?.excludeMessages) {
+      projectStage.messages = 0;
+    }
+
     return [
       {
         $match: matchStage,
@@ -156,12 +167,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
         },
       },
       {
-        $project: {
-          membersArrayInfo: 0,
-          adminsInfo: 0,
-          bannedFromMessagesInfo: 0,
-          giftTotals: 0,
-        },
+        $project: projectStage,
       },
     ];
   }
@@ -185,38 +191,37 @@ export class AudioRoomRepository implements IAudioRoomRepository {
   }
   async getAllAudioRooms(): Promise<IAudioRoomDocument[]> {
     const qb = new QueryBuilder(this.audioRoomModel, {});
-    const pipeline = this._getHydratedRoomsPipeline({
-      $or: [
-        { "membersArray.0": { $exists: true } },
-        { members: { $exists: true, $ne: {} } },
-      ],
-    });
+    const pipeline = this._getHydratedRoomsPipeline(
+      { isActive: true },
+      { excludeMessages: true },
+    );
     const res = qb.aggregate(pipeline);
     return await res.exec();
   }
 
   async findAllRooms(): Promise<IAudioRoomDocument[]> {
     const qb = new QueryBuilder(this.audioRoomModel, {});
-    const pipeline = this._getHydratedRoomsPipeline({});
+    const pipeline = this._getHydratedRoomsPipeline({}, { excludeMessages: true });
     const res = qb.aggregate(pipeline);
     return await res.exec();
   }
 
   async findActiveRooms(): Promise<IAudioRoomDocument[]> {
     const qb = new QueryBuilder(this.audioRoomModel, {});
-    const pipeline = this._getHydratedRoomsPipeline({
-      $or: [
-        { "membersArray.0": { $exists: true } },
-        { members: { $exists: true, $ne: {} } },
-      ],
-    });
+    const pipeline = this._getHydratedRoomsPipeline(
+      { isActive: true },
+      { excludeMessages: true },
+    );
     const res = qb.aggregate(pipeline);
     return await res.exec();
   }
 
   async findLockedRooms(): Promise<IAudioRoomDocument[]> {
     const qb = new QueryBuilder(this.audioRoomModel, {});
-    const pipeline = this._getHydratedRoomsPipeline({ isLocked: true });
+    const pipeline = this._getHydratedRoomsPipeline(
+      { isLocked: true },
+      { excludeMessages: true },
+    );
     const res = qb.aggregate(pipeline);
     return await res.exec();
   }
@@ -277,6 +282,7 @@ export class AudioRoomRepository implements IAudioRoomRepository {
           membersArrayInfo: 0,
           adminsInfo: 0,
           bannedFromMessagesInfo: 0,
+          messages: 0,
         },
       },
     ]);

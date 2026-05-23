@@ -227,6 +227,7 @@ export class AudioRoomService implements IAudioRoomService {
       password: "",
       isHostPresent: true,
       isLocked: false,
+      isActive: true,
       hostId: hostId!,
       bannedFromMessages: [],
     };
@@ -348,6 +349,7 @@ export class AudioRoomService implements IAudioRoomService {
         $set: {
           [`members.${userId}`]: true,
           isHostPresent: isHost ? true : audioRoom.isHostPresent,
+          isActive: true,
         },
       };
 
@@ -1225,8 +1227,18 @@ export class AudioRoomService implements IAudioRoomService {
     if (!updateQuery.$pull) updateQuery.$pull = {};
     updateQuery.$pull["membersArray"] = targetId;
 
+    // if the room becomes empty, mark as inactive
+    const roomHasOtherMembers = audioRoom.membersArray.some(
+      (m) => m.toString() !== targetId,
+    );
+    if (!roomHasOtherMembers) {
+      if (!updateQuery.$set) updateQuery.$set = {};
+      updateQuery.$set.isActive = false;
+    }
+
     // clean up empty $unset / $set
     if (Object.keys(updateQuery.$unset).length === 0) delete updateQuery.$unset;
+    if (updateQuery.$set && Object.keys(updateQuery.$set).length === 0) delete updateQuery.$set;
 
     await this.audioRoomRepository.findByIdAndUpdate(
       audioRoom._id as string,

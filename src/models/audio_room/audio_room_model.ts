@@ -69,6 +69,7 @@ export interface IAudioRoom {
   hostId: mongoose.Schema.Types.ObjectId | string; // to track the host
   bannedFromMessages: (mongoose.Schema.Types.ObjectId | string)[];
   membersCount?: number;
+  isActive: boolean;
 }
 
 export interface IAudioRoomDocument extends IAudioRoom, Document {
@@ -167,9 +168,14 @@ const AudioRoomSchema = new Schema<IAudioRoomDocument>(
     bannedFromMessages: [
       { type: Schema.Types.ObjectId, ref: DatabaseNames.User },
     ],
+    isActive: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
+
+// Indexes for performance
+AudioRoomSchema.index({ isActive: 1 });
+AudioRoomSchema.index({ isLocked: 1 });
 
 // Auto-create or update the seats map whenever numberOfSeats changes
 AudioRoomSchema.pre("save", function (next) {
