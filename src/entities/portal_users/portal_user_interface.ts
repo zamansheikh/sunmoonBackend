@@ -8,7 +8,7 @@ export interface IPortalUser {
   password: string;
   coins: number;
   designation: string;
-  parentCreator: mongoose.Schema.Types.ObjectId | string;
+  parentCreator: mongoose.Schema.Types.ObjectId | string | null;
   diamonds: number;
   userRole: string;
   activityZone?: {
