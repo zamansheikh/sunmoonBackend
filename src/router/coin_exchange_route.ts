@@ -12,13 +12,13 @@ const controller = new CoinExchangeController(service);
 // Exchange Option Management (Admin-only for write, authenticated users for read)
 router
   .route("/")
-  .post(authenticate([UserRoles.Admin]), controller.createExchangeOption)
+  .post(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.createExchangeOption)
   .get(authenticate(), controller.getAllExchangeOptions);
 
 router
   .route("/:id")
-  .put(authenticate([UserRoles.Admin]), controller.updateExchangeOption)
-  .delete(authenticate([UserRoles.Admin]), controller.deleteExchangeOption);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.updateExchangeOption)
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.deleteExchangeOption);
 
 // Coin Exchange execution (authenticated users)
 router
