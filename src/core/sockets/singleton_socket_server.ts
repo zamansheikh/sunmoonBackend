@@ -125,9 +125,15 @@ export default class SingletonSocketServer {
         // * persist audio room connection
         const room = await this.audioRoomRepository.isMemberInAnyRoom(userId);
         if (room) {
-          const timeOut = setTimeout(() => {
+          const timeOut = setTimeout(async () => {
             this.disconnectedUsers.delete(userId);
-            this.handleAudioRoomDisconnection(userId, room);
+            // Re-query the DB to get the current room state — the user may
+            // have already left explicitly via the REST endpoint while this
+            // timeout was pending, making the captured `room` stale.
+            const currentRoom =
+              await this.audioRoomRepository.isMemberInAnyRoom(userId);
+            if (!currentRoom) return;
+            this.handleAudioRoomDisconnection(userId, currentRoom);
           }, PERSISTENT_CONNECTION_TIMEOUT);
           this.disconnectedUsers.set(userId, { timeOut, roomId: room.roomId });
         }
