@@ -101,14 +101,18 @@ export function validateCreatePortalUserData(
     throw new AppError(StatusCodes.BAD_REQUEST, "All fields are required");
   if (!Object.values(UserRoles).includes(userRole as UserRoles))
     throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user role");
-  if (
-    userRole == UserRoles.Admin ||
-    userRole == UserRoles.User ||
-    userRole == UserRoles.Host
-  )
+  const allowedAdminRoles = [
+    UserRoles.Merchant,
+    UserRoles.Reseller,
+    UserRoles.SubAdmin,
+    UserRoles.Agency,
+    UserRoles.CountryAdmin,
+    UserRoles.countrySubAdmin,
+  ];
+  if (!allowedAdminRoles.includes(userRole as UserRoles))
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      `Admin cannot create -> ${userRole}`,
+      `Admin cannot create portal user with role -> ${userRole}`,
     );
   validatePermissions(userPermissions);
 }

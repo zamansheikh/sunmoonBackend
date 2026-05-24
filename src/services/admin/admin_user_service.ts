@@ -614,63 +614,9 @@ export default class AdminUserService implements IAdminUserService {
         StatusCodes.CONFLICT,
         `UserId -> ${user.userId} already exists`,
       );
-    // if (user.userRole == UserRoles.Reseller && user.parentCreator == null)
-    //   throw new AppError(
-    //     StatusCodes.BAD_REQUEST,
-    //     "Reseller must have a parent creator",
-    //   );
-    if (
-      user.userRole == UserRoles.countrySubAdmin &&
-      user.parentCreator == null
-    )
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "Sub Country Admin must have a parent creator",
-      );
-    if (user.userRole == UserRoles.Agency && user.parentCreator == null)
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "Agency must have a parent creator",
-      );
-    // if (user.userRole == UserRoles.Reseller && user.parentCreator) {
-    //   const creatorUser = await this.PortalUserRepository.getPortalUserById(
-    //     user.parentCreator.toString(),
-    //   );
-    //   if (!creatorUser)
-    //     throw new AppError(StatusCodes.NOT_FOUND, "Parent creator not found");
-    //   if (creatorUser.userRole != UserRoles.Merchant)
-    //     throw new AppError(
-    //       StatusCodes.BAD_REQUEST,
-    //       "Parent creator must be a merchant",
-    //     );
-    // }
 
-    if (user.userRole == UserRoles.Agency) {
-      const creatorUser = await this.PortalUserRepository.getPortalUserById(
-        user.parentCreator!.toString(),
-      );
-      if (!creatorUser)
-        throw new AppError(StatusCodes.NOT_FOUND, "Parent creator not found");
-      if (creatorUser.userRole != UserRoles.SubAdmin)
-        throw new AppError(
-          StatusCodes.BAD_REQUEST,
-          "Parent creator must be a Sub Admin",
-        );
-    }
-
-    if (user.userRole == UserRoles.countrySubAdmin) {
-      const creatorUser = await this.PortalUserRepository.getPortalUserById(
-        user.parentCreator!.toString(),
-      );
-      if (!creatorUser)
-        throw new AppError(StatusCodes.NOT_FOUND, "Parent creator not found");
-      if (creatorUser.userRole != UserRoles.CountryAdmin)
-        throw new AppError(
-          StatusCodes.BAD_REQUEST,
-          "Parent creator must be a Country Admin",
-        );
-    }
-
+    // Remove parentCreator — admin is the sole authority
+    user.parentCreator = null;
     const hashedPassword = await bcrypt.hash(user.password, 10);
     user.password = hashedPassword;
     const newPortalUser =

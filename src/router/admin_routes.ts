@@ -152,7 +152,7 @@ router
 router
   .route("/create-role")
   .post(
-    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
+    authenticate([UserRoles.Admin]),
     adminUserController.createPortalUser,
   );
 
