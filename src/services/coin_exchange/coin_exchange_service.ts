@@ -123,21 +123,15 @@ export class CoinExchangeService implements ICoinExchangeService {
     session.startTransaction();
 
     try {
-      const userStats = await this.userStatsRepository.getUserStats(userId, session);
-      if (!userStats) {
-        throw new AppError(404, "User stats not found");
-      }
-
-      if ((userStats.diamonds ?? 0) < option.diamondsRequired) {
-        throw new AppError(400, "Insufficient diamonds balance");
-      }
-
       const totalCoins = option.coinsAwarded + option.bonusCoins;
 
-      // Deduct diamonds (pass negative value to $inc)
-      await this.userStatsRepository.updateDiamonds(userId, -option.diamondsRequired, session);
-      // Add coins (pass positive value to $inc)
-      await this.userStatsRepository.updateCoins(userId, totalCoins, session);
+      // Atomically deduct diamonds (with balance guard) and add coins
+      await this.userStatsRepository.diamondToCoinExchange(
+        userId,
+        option.diamondsRequired,
+        totalCoins,
+        session,
+      );
 
       const historyLog = await this.historyRepository.create({
         userId,

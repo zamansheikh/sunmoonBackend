@@ -92,6 +92,41 @@ export default class UserStatsRepository implements IUserStatsRepository {
     return updated;
   }
 
+  async diamondDeduction(
+    userId: string,
+    amount: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument | null> {
+    const updated = await this.model
+      .findOneAndUpdate(
+        { userId, diamonds: { $gte: amount } },
+        { $inc: { diamonds: -amount } },
+        { new: true },
+      )
+      .session(session || null);
+    if (!updated)
+      throw new AppError(StatusCodes.BAD_REQUEST, "not enough diamonds");
+    return updated;
+  }
+
+  async diamondToCoinExchange(
+    userId: string,
+    diamondsToDeduct: number,
+    coinsToAdd: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument | null> {
+    const updated = await this.model
+      .findOneAndUpdate(
+        { userId, diamonds: { $gte: diamondsToDeduct } },
+        { $inc: { diamonds: -diamondsToDeduct, coins: coinsToAdd } },
+        { new: true },
+      )
+      .session(session || null);
+    if (!updated)
+      throw new AppError(StatusCodes.BAD_REQUEST, "not enough diamonds");
+    return updated;
+  }
+
   async updateStars(
     userId: string,
     stars: number,

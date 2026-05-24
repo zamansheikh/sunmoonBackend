@@ -51,4 +51,15 @@ export default interface IUserStatsRepository {
     amount: number,
     session?: ClientSession,
   ): Promise<IUSerStatsDocument | null>;
+  diamondDeduction(
+    userId: string,
+    amount: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument | null>;
+  diamondToCoinExchange(
+    userId: string,
+    diamondsToDeduct: number,
+    coinsToAdd: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument | null>;
 }
