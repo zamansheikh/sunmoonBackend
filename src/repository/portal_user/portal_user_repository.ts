@@ -38,6 +38,9 @@ export interface IPortalUserRepository {
     query: Record<string, any>
   ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }>;
   getPortalUserCount(role: UserRoles): Promise<number>;
+  getAllPortalUsers(
+    query: Record<string, any>
+  ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }>;
   getAllAgency(
     query: Record<string, any>
   ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }>;
@@ -154,6 +157,25 @@ export default class PortalUserRepository implements IPortalUserRepository {
   }
   async getPortalUserCount(role: UserRoles): Promise<number> {
     return await this.Model.countDocuments({ userRole: role });
+  }
+
+  async getAllPortalUsers(
+    query: Record<string, any>
+  ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }> {
+    const filter: Record<string, any> = {};
+    if (query.role) {
+      filter.userRole = query.role;
+    }
+    const qb = new QueryBuilder(this.Model, query);
+    const res = qb
+      .find(filter)
+      .search(["name", "userId"])
+      .paginate()
+      .sort()
+      .selectField("-password");
+    const data = await res.exec();
+    const pagination = await res.countTotal();
+    return { data, pagination };
   }
 
   async getAllAgency(

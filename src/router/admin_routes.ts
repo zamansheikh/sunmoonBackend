@@ -328,6 +328,10 @@ router
   .get(authenticate([UserRoles.Admin]), adminUserController.getBannedUsers);
 
 router
+  .route("/portal-users")
+  .get(authenticate([UserRoles.Admin]), adminUserController.getAllPortalUsers);
+
+router
   .route("/user-roles")
   .get(authenticate([UserRoles.Admin]), adminUserController.getAllUserRoles);
 

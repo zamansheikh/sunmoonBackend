@@ -224,6 +224,10 @@ export interface IAdminUserService {
     pagination: IPagination;
     users: IUserDocument[];
   }>;
+
+  getAllPortalUsers(
+    query: Record<string, any>
+  ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }>;
 }
 
 export default class AdminUserService implements IAdminUserService {
@@ -1250,5 +1254,11 @@ export default class AdminUserService implements IAdminUserService {
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     const blockedUsers = await this.UserRepository.getBannedUsers(query);
     return blockedUsers;
+  }
+
+  async getAllPortalUsers(
+    query: Record<string, any>
+  ): Promise<{ pagination: IPagination; data: IPortalUserDocument[] }> {
+    return await this.PortalUserRepository.getAllPortalUsers(query);
   }
 }

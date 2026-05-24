@@ -907,6 +907,16 @@ export default class AdminUserController {
     });
   });
 
+  getAllPortalUsers = catchAsync(async (req: Request, res: Response) => {
+    const result = await this.AdminUserService.getAllPortalUsers(req.query);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: result,
+      message: "Portal users retrieved successfully",
+    });
+  });
+
   getAllUserRoles = catchAsync(async (_req: Request, res: Response) => {
     const roles = Object.values(UserRoles);
     sendResponse(res, {
