@@ -72,6 +72,7 @@ export enum DatabaseNames {
   ExchangeTransactionHistory = "exchange_transaction_histories",
   CoinPurchaseOption = "coin_purchase_options",
   AgoraConfig = "agora_configs",
+  XpConfig = "xp_configs",
 }
 
 export enum ReelStatus {
