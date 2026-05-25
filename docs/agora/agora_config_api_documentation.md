@@ -32,9 +32,9 @@ Creates a new Agora configuration entry with app credentials and default token p
 - `appId` — Required, must be a non-empty string (Agora App ID).
 - `appCertificate` — Required, must be a non-empty string (Agora App Certificate).
 - `defaultChannel` — Required, must be a non-empty string (default channel name for token generation).
-- `defaultUid` — Required, must be a non-negative number. **Note**: `0` is accepted as a valid UID (see implementation notes).
+- `defaultUid` — Required, must be a non-negative number. `0` is accepted as a valid UID (see implementation notes). Non-numeric values (e.g. strings) are rejected with a `400` error.
 - `defaultRole` — Required, must be a non-empty string (e.g. `"publisher"`, `"subscriber"`, `"admin"`).
-- `tokenExpiry` — Required, must be a positive number (expiration time in seconds).
+- `tokenExpiry` — Required, must be a positive number (expiration time in seconds). Non-numeric values are rejected with a `400` error.
 
 - **Example Request Payload**:
   ```json
@@ -154,9 +154,9 @@ Modifies an existing Agora configuration entry.
 - `appId` — If provided, must be a non-empty string.
 - `appCertificate` — If provided, must be a non-empty string.
 - `defaultChannel` — If provided, must be a non-empty string.
-- `defaultUid` — If provided, must be a non-negative number.
+- `defaultUid` — If provided, must be a non-negative number. `0` is accepted. Non-numeric values are rejected.
 - `defaultRole` — If provided, must be a non-empty string.
-- `tokenExpiry` — If provided, must be a positive number.
+- `tokenExpiry` — If provided, must be a positive number. Non-numeric values are rejected.
 - At least one field to update is required.
 
 - **Example Request Payload**:
@@ -300,6 +300,7 @@ The backend responds with standardized JSON errors when validation rules are vio
 - **Multiple Configurations**: Unlike some single-config features (e.g., GiftAudioRocket), this system allows storing multiple Agora configurations. Each entry is independent, enabling support for multiple Agora projects or environments (development/staging/production).
 - **Sensitive Data**: The `appCertificate` field stores the Agora App Certificate which is a secret key used for token generation. Ensure this data is transmitted over HTTPS and access is restricted to trusted admin accounts only.
 - **`defaultUid: 0`**: A `defaultUid` value of `0` is accepted and valid. When using Agora's token-based authentication, `uid: 0` instructs the Agora SDK to automatically assign a UID to the user upon joining the channel.
+- **Number Type Coercion**: Numeric fields (`defaultUid`, `tokenExpiry`) are validated at the controller level with `validateNumber()` before reaching the service layer. Non-numeric values (strings, objects, booleans) return a `400 Bad Request`. The values are also coerced to JavaScript `Number` type before being passed to the service, ensuring type safety.
 - **Token Expiry**: `tokenExpiry` is specified in seconds. Common values include `3600` (1 hour), `7200` (2 hours), or `86400` (24 hours). Choose a value appropriate for your session duration requirements.
 - **Role Values**: The `defaultRole` field accepts any string, but common Agora roles include:
   - `"publisher"` — Can publish audio/video and subscribe to streams (host role).
