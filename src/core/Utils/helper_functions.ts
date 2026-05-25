@@ -17,7 +17,7 @@ import { IMyBucketRepository } from "../../repository/store/my_bucket_repository
 import { Types } from "mongoose";
 import { IStoreItem } from "../../models/store/store_item_model";
 import { IStoreCategoryRepository } from "../../repository/store/store_category_repository";
-import { userLevels, xpLevels } from "./constants";
+import { userLevels } from "./constants";
 import { Server } from "socket.io";
 
 import { IUserRepository } from "../../repository/users/user_repository";
@@ -459,13 +459,16 @@ export function determineUserLevel(coins: number): number {
   return 40; // at maximum level
 }
 
-export function determineUserLevelFromXp(xpCount: number): number {
+export function determineUserLevelFromXp(
+  xpCount: number,
+  xpLevels: number[],
+): number {
   for (let i = 0; i < xpLevels.length; i++) {
     if (xpCount < xpLevels[i]) {
       return i; // Levels start from 0
     }
   }
-  return 52; // at maximum level
+  return xpLevels.length; // at maximum level
 }
 
 export function determineUserTagAndBg(level: number): string {

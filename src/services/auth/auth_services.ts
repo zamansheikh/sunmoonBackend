@@ -51,7 +51,6 @@ import { IStoreItem } from "../../models/store/store_item_model";
 import {
   checkBoughtSvip,
   checkBoughtVip,
-  determineUserLevelFromXp,
   getEquippedItemObjects,
   getMyBucketItems,
   getNextSalaryDate,
