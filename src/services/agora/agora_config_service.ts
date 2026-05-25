@@ -32,7 +32,7 @@ export class AgoraConfigService implements IAgoraConfigService {
     if (!data.defaultChannel || data.defaultChannel.trim().length === 0) {
       throw new AppError(400, "defaultChannel is required");
     }
-    if (!data.defaultUid || data.defaultUid < 0) {
+    if (data.defaultUid === undefined || data.defaultUid < 0) {
       throw new AppError(400, "defaultUid must be a non-negative number");
     }
     if (!data.defaultRole || data.defaultRole.trim().length === 0) {
