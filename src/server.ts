@@ -39,6 +39,7 @@ import CoinExchangeRouter from "./router/coin_exchange_route";
 import RoomLevelCriteriaRouter from "./router/room_level_criteria_router";
 import CoinPurchaseRouter from "./router/coin_purchase_route";
 import AgoraConfigRouter from "./router/agora_config_routes";
+import XpConfigRouter from "./router/xp_config_routes";
 
 import path from "path";
 import StoreItemModel from "./models/store/store_item_model";
@@ -60,6 +61,7 @@ import { resetMagicBallJob } from "./core/corn/jobs/magic_ball_jobs";
 import { initializeMagicBallTrackers } from "./services/magic_ball";
 import { RoomLevelCriteriaService } from "./services/audio_room/room_level_criteria_service";
 import { RocketConfigService } from "./services/audio_room/rocket_config_service";
+import { XpConfigService } from "./services/admin/xp_config_service";
 
 // Initialize Magic Ball Trackers
 initializeMagicBallTrackers();
@@ -155,6 +157,7 @@ app.use("/api/admin/room-level-criteria", RoomLevelCriteriaRouter);
 app.use("/api/coin-exchange", CoinExchangeRouter);
 app.use("/api/coin-purchase", CoinPurchaseRouter);
 app.use("/api/admin/agora-config", AgoraConfigRouter);
+app.use("/api/admin/xp-config", XpConfigRouter);
 
 app.post(
   "/api/upload-file-cloud",
@@ -241,6 +244,13 @@ mongoose.connect(MONGOURL).then(async () => {
     await RocketConfigService.bootstrap();
   } catch (err) {
     console.error("Failed to bootstrap Rocket Configuration:", err);
+  }
+
+  // Bootstrap XP Configuration (seed defaults + warm cache)
+  try {
+    await XpConfigService.bootstrap();
+  } catch (err) {
+    console.error("Failed to bootstrap XP Configuration:", err);
   }
 
   // Connect to Redis
