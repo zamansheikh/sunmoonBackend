@@ -1,3 +1,16 @@
+/**
+ * App Reseller Service
+ *
+ * Handles business logic for the app reseller feature. An "app reseller" is a
+ * regular app user (stored in the `users` collection) whose `userRole` has been
+ * promoted to `"re-seller"`. They are distinct from portal users.
+ *
+ * Responsibilities:
+ *   - Promote/demote users between "user" and "re-seller" roles
+ *   - List all resellers (paginated)
+ *   - Allow resellers to transfer coins from their own balance to any app user
+ */
+
 import { StatusCodes } from "http-status-codes";
 import mongoose from "mongoose";
 import AppError from "../../core/errors/app_errors";
@@ -8,13 +21,47 @@ import { IUserDocument } from "../../models/user/user_model_interface";
 import IUserStatsRepository from "../../repository/users/userstats_repository_interface";
 import { ICoinHistoryRepository } from "../../repository/coins/coinHistoryRepository";
 import { ICoinHistory } from "../../models/coins/coinHistoryModel";
+import { ILevelTagBgRepository } from "../../repository/users/level_tag_bg_repository";
+import {
+  determineUserLevel,
+  determineUserTagAndBg,
+} from "../../core/Utils/helper_functions";
+import { IReferralService } from "../referral/referral_service";
+
+// ────────────────────────────────────────────────────────────────────────────
+// Interface
+// ────────────────────────────────────────────────────────────────────────────
 
 export interface IAppResellerService {
-  updateUserRole(userId: string, newRole: UserRoles): Promise<{ id: string; userRole: string }>;
-  getAllResellers(query: Record<string, unknown>): Promise<{
+  /**
+   * Change a user's role to/from "user" and "re-seller".
+   * Only Admin / SubAdmin can call this.
+   */
+  updateUserRole(
+    userId: string,
+    newRole: UserRoles,
+  ): Promise<{ id: string; userRole: string }>;
+
+  /**
+   * Retrieve all users whose role is "re-seller", with pagination.
+   */
+  getAllResellers(
+    query: Record<string, unknown>,
+  ): Promise<{
     pagination: IPagination;
     users: IUserDocument[];
   }>;
+
+  /**
+   * Transfer coins from a reseller's wallet to a target user.
+   * The reseller is an **app user** (not a portal user) so their coins are
+   * stored in the `UserStats` collection — the same collection as the target.
+   *
+   * @param resellerId - _id of the reseller (app user performing the transfer)
+   * @param userId     - _id of the target app user receiving the coins
+   * @param coins      - amount to transfer (must be a positive integer)
+   * @returns Updated coin balances for both sender and receiver
+   */
   giveCoinsToUser(
     resellerId: string,
     userId: string,
@@ -25,31 +72,70 @@ export interface IAppResellerService {
   }>;
 }
 
+
+// ────────────────────────────────────────────────────────────────────────────
+// Implementation
+// ────────────────────────────────────────────────────────────────────────────
+
 export default class AppResellerService implements IAppResellerService {
+  // ── Dependencies ────────────────────────────────────────────────────────────
   UserRepository: IUserRepository;
   UserStatsRepository: IUserStatsRepository;
   CoinHistoryRepository: ICoinHistoryRepository;
+  LevelTagBgRepository: ILevelTagBgRepository;
+  ReferralService: IReferralService;
 
   constructor(
     UserRepository: IUserRepository,
     UserStatsRepository: IUserStatsRepository,
     CoinHistoryRepository: ICoinHistoryRepository,
+    LevelTagBgRepository: ILevelTagBgRepository,
+    ReferralService: IReferralService,
   ) {
     this.UserRepository = UserRepository;
     this.UserStatsRepository = UserStatsRepository;
     this.CoinHistoryRepository = CoinHistoryRepository;
+    this.LevelTagBgRepository = LevelTagBgRepository;
+    this.ReferralService = ReferralService;
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  //  getAllResellers
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Fetches paginated list of app users whose role is `"re-seller"`.
+   * Delegates to `UserRepository.getUserByRole()` which uses the QueryBuilder
+   * internally to support `page`, `limit`, `searchTerm`, etc.
+   */
   async getAllResellers(
     query: Record<string, unknown>,
   ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
     return this.UserRepository.getUserByRole(UserRoles.Reseller, query);
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  //  updateUserRole
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Updates an app user's role. The role can only be toggled between
+   * `"user"` and `"re-seller"` — no other roles are permitted.
+   *
+   * Validation steps:
+   *   1. `newRole` must be either `"user"` or `"re-seller"`
+   *   2. The target user must exist
+   *   3. The target's current role must also be one of the two allowed values
+   *   4. Rejects no-op requests (role is already the requested value)
+   *
+   * @throws AppError(400) if the role is invalid or the user is already that role
+   * @throws AppError(404) if the user is not found
+   */
   async updateUserRole(
     userId: string,
     newRole: UserRoles,
   ): Promise<{ id: string; userRole: string }> {
+    // ── 1. Validate the target role ──────────────────────────────────────────
     const allowedRoles = [UserRoles.User, UserRoles.Reseller];
     if (!allowedRoles.includes(newRole)) {
       throw new AppError(
@@ -58,11 +144,13 @@ export default class AppResellerService implements IAppResellerService {
       );
     }
 
+    // ── 2. Fetch the user ─────────────────────────────────────────────────────
     const user = await this.UserRepository.findUserById(userId);
     if (!user) {
       throw new AppError(StatusCodes.NOT_FOUND, "User not found");
     }
 
+    // ── 3. Ensure the user's current role is also one of the allowed values ───
     if (!allowedRoles.includes(user.userRole as UserRoles)) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
@@ -70,6 +158,7 @@ export default class AppResellerService implements IAppResellerService {
       );
     }
 
+    // ── 4. Prevent no-op updates ──────────────────────────────────────────────
     if (user.userRole === newRole) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
@@ -77,6 +166,7 @@ export default class AppResellerService implements IAppResellerService {
       );
     }
 
+    // ── 5. Persist the change ─────────────────────────────────────────────────
     const updatedUser = await this.UserRepository.findUserByIdAndUpdate(userId, {
       userRole: newRole,
     });
@@ -94,6 +184,28 @@ export default class AppResellerService implements IAppResellerService {
     };
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  //  giveCoinsToUser
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Transfers coins from a reseller (app user) to another app user.
+   *
+   * **Key design decisions:**
+   * - The reseller is an **app user**, NOT a portal user. Their coin balance
+   *   lives in the `UserStats` collection (same as the target).
+   * - Deduction uses `UserStatsRepository.balanceDeduction()`, which
+   *   atomically checks `coins >= amount` before deducting.
+   * - Addition uses `UserStatsRepository.updateCoins()` for a simple increment.
+   * - The entire transfer is wrapped in a MongoDB transaction so that either
+   *   both the deduction AND the addition succeed, or neither does.
+   * - A coin history record is created for audit purposes.
+   *
+   * @throws AppError(400) if coins <= 0 or the reseller tries self-transfer
+   * @throws AppError(400) if the reseller has insufficient coins
+   * @throws AppError(404) if either user is not found
+   * @throws AppError(401) if the sender is not a reseller
+   */
   async giveCoinsToUser(
     resellerId: string,
     userId: string,
@@ -102,7 +214,7 @@ export default class AppResellerService implements IAppResellerService {
     sender: { id: string; coins: number };
     receiver: { id: string; coins: number };
   }> {
-    // ── 1. Validate inputs ────────────────────────────────────────────────────
+    // ── 1. Validate inputs ──────────────────────────────────────────────────
     if (!coins || coins <= 0) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
@@ -117,7 +229,8 @@ export default class AppResellerService implements IAppResellerService {
       );
     }
 
-    // ── 2. Fetch reseller (app user) ───────────────────────────────────────────
+    // ── 2. Verify the sender exists and has the "re-seller" role ────────────
+    //      The reseller is fetched from the regular app users collection.
     const reseller = await this.UserRepository.findUserById(resellerId);
     if (!reseller) {
       throw new AppError(StatusCodes.NOT_FOUND, "Reseller not found");
@@ -129,13 +242,15 @@ export default class AppResellerService implements IAppResellerService {
       );
     }
 
-    // ── 3. Fetch target user ───────────────────────────────────────────────────
+    // ── 3. Verify the target user exists ─────────────────────────────────────
     const targetUser = await this.UserRepository.findUserById(userId);
     if (!targetUser) {
       throw new AppError(StatusCodes.NOT_FOUND, "Target user not found");
     }
 
-    // ── 4. Execute transaction ─────────────────────────────────────────────────
+    // ── 4. Execute the transfer inside a MongoDB transaction ────────────────
+    //      Purpose: if either the deduction or the addition fails, ALL changes
+    //      are rolled back so the system is never left in an inconsistent state.
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -143,13 +258,18 @@ export default class AppResellerService implements IAppResellerService {
     let updatedReceiver: { id: string; coins: number };
 
     try {
-      // Deduct coins from reseller's stats
+      // 4a. Deduct coins from the reseller's stats.
+      //      `balanceDeduction` internally checks `coins >= amount` so this
+      //      will throw "not enough coins" if the reseller's balance is low.
       const senderAfterDeduction =
         await this.UserStatsRepository.balanceDeduction(
           resellerId,
           coins,
           session,
         );
+
+      // TypeScript safety guard — `balanceDeduction` is typed as nullable but
+      // in practice always throws on failure rather than returning null.
       if (!senderAfterDeduction) {
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
@@ -157,14 +277,37 @@ export default class AppResellerService implements IAppResellerService {
         );
       }
 
-      // Add coins to target user's stats
+      // 4b. Add the same amount of coins to the target user's stats.
       const receiverStats = await this.UserStatsRepository.updateCoins(
         userId,
         coins,
         session,
       );
 
-      // Create coin history record
+      // 4c. XP mode check — if XP mode is OFF, recalculate the user's level
+      //     and level-tag/background based on cumulative bought coins.
+      const xpEnv = process.env.XP_MODE ?? "0";
+      const isXpMode = xpEnv.toString() === "1";
+      if (!isXpMode) {
+        const newLevel = determineUserLevel(
+          (targetUser.totalBoughtCoins ?? 0) + coins,
+        );
+        const newTagAndBg = determineUserTagAndBg(newLevel);
+        const tagAndBgDocument =
+          await this.LevelTagBgRepository.findByLevel(newTagAndBg);
+        await this.UserRepository.findUserByIdAndUpdate(
+          userId,
+          {
+            totalBoughtCoins: (targetUser.totalBoughtCoins ?? 0) + coins,
+            level: newLevel,
+            currentLevelTag: tagAndBgDocument?.levelTag,
+            currentLevelBackground: tagAndBgDocument?.levelBg,
+          },
+          session,
+        );
+      }
+
+      // 4d. Persist an audit record so we can trace who gave coins to whom.
       const historyObj: ICoinHistory = {
         senderRole: UserRoles.Reseller,
         senderId: resellerId,
@@ -174,8 +317,10 @@ export default class AppResellerService implements IAppResellerService {
       };
       await this.CoinHistoryRepository.createHistory(historyObj, session);
 
+      // 4e. Commit — all operations above are now permanent.
       await session.commitTransaction();
 
+      // Build the return object with the updated balances.
       updatedSender = {
         id: resellerId,
         coins: senderAfterDeduction.coins ?? 0,
@@ -185,10 +330,23 @@ export default class AppResellerService implements IAppResellerService {
         coins: receiverStats.coins ?? 0,
       };
     } catch (error) {
+      // If anything went wrong, roll back every change made in this session.
       await session.abortTransaction();
       throw error;
     } finally {
+      // Always release the session resources, regardless of success or failure.
       session.endSession();
+    }
+
+    // ── 5. Referral recharge hook (fire-and-forget) ──────────────────────────
+    //      If the target user was referred by someone, the referrer may receive
+    //      a milestone reward based on the cumulative recharge amount.
+    //      This runs outside the transaction so a referral failure never rolls
+    //      back the coin transfer.
+    try {
+      await this.ReferralService.handleRechargeReferral(userId, coins);
+    } catch (error) {
+      console.error("Referral recharge tracking failed:", error);
     }
 
     return {

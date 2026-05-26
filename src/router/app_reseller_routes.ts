@@ -7,6 +7,17 @@ import UserStatsRepository from "../repository/users/userstats_repository";
 import UserStats from "../models/userstats/userstats_model";
 import CoinHistoryRepository from "../repository/coins/coinHistoryRepository";
 import CoinHistoryModel from "../models/coins/coinHistoryModel";
+import LevelTagBgRepository from "../repository/users/level_tag_bg_repository";
+import LevelTagBgModel from "../models/user/level_tag_bg_model";
+import { ReferralService } from "../services/referral/referral_service";
+import { ReferralRepository } from "../repository/referral/referral_repository";
+import { ReferralModel } from "../models/referral/referralModel";
+import { ReferralWalletRepository } from "../repository/referral/referral_wallet_repository";
+import { ReferralWalletModel } from "../models/referral/referralWalletModel";
+import { ReferralWithdrawalRepository } from "../repository/referral/referral_withdrawal_repository";
+import { ReferralWithdrawalModel } from "../models/referral/referralWithdrawalModel";
+import { ReferralConfigRepository } from "../repository/referral/referral_config_repository";
+import { ReferralConfigModel } from "../models/referral/referralConfigModel";
 import { authenticate } from "../core/middlewares/auth_middleware";
 import { UserRoles } from "../core/Utils/enums";
 
@@ -15,11 +26,30 @@ const router = express.Router();
 const userRepository = new UserRepository(User);
 const userStatsRepository = new UserStatsRepository(UserStats);
 const coinHistoryRepository = new CoinHistoryRepository(CoinHistoryModel);
+const levelTagBgRepository = new LevelTagBgRepository(LevelTagBgModel);
+
+const referralRepository = new ReferralRepository(ReferralModel);
+const walletRepository = new ReferralWalletRepository(ReferralWalletModel);
+const withdrawalRepository = new ReferralWithdrawalRepository(
+  ReferralWithdrawalModel,
+);
+const configRepository = new ReferralConfigRepository(ReferralConfigModel);
+
+const referralService = new ReferralService(
+  referralRepository,
+  walletRepository,
+  withdrawalRepository,
+  configRepository,
+  userRepository,
+  userStatsRepository,
+);
 
 const appResellerService = new AppResellerService(
   userRepository,
   userStatsRepository,
   coinHistoryRepository,
+  levelTagBgRepository,
+  referralService,
 );
 const appResellerController = new AppResellerController(appResellerService);
 
