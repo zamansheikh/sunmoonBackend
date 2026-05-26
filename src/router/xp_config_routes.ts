@@ -14,7 +14,7 @@ const xpConfigController = new XpConfigController();
 
 router
   .route("/")
-  .get(authenticate([UserRoles.Admin]), xpConfigController.getConfig)
-  .post(authenticate([UserRoles.Admin]), xpConfigController.updateConfig);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), xpConfigController.getConfig)
+  .post(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), xpConfigController.updateConfig);
 
 export default router;

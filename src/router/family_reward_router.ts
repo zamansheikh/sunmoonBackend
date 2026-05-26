@@ -12,13 +12,13 @@ const controller = new FamilyRewardController(service);
 // Admin routes (require admin role)
 router
   .route("/admin")
-  .post(authenticate([UserRoles.Admin]), controller.createReward)
-  .get(authenticate([UserRoles.Admin]), controller.getAllRewards);
+  .post(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.createReward)
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getAllRewards);
 
 router
   .route("/admin/:id")
-  .put(authenticate([UserRoles.Admin]), controller.updateReward)
-  .delete(authenticate([UserRoles.Admin]), controller.deleteReward);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.updateReward)
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.deleteReward);
 
 // Public route for app UI
 router

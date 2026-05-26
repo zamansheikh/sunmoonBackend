@@ -16,8 +16,8 @@ const controller = new GiftAudioRocketController(service);
 
 router
   .route("/")
-  .post(authenticate([UserRoles.Admin]), controller.createGiftAudioRocket)
-  .get(authenticate([UserRoles.Admin]), controller.getGiftAudioRocket)
-  .put(authenticate([UserRoles.Admin]), controller.updateGiftAudioRocket);
+  .post(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.createGiftAudioRocket)
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getGiftAudioRocket)
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.updateGiftAudioRocket);
 
 export default router;

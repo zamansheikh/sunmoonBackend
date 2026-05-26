@@ -20,7 +20,7 @@ const rocketConfigController = new RocketConfigController(rocketConfigService);
 
 router
   .route("/")
-  .get(authenticate([UserRoles.Admin]), rocketConfigController.getConfig)
-  .post(authenticate([UserRoles.Admin]), rocketConfigController.updateConfig);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), rocketConfigController.getConfig)
+  .post(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), rocketConfigController.updateConfig);
 
 export default router;

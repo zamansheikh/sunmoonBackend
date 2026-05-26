@@ -83,7 +83,7 @@ router
 
 router
   .route("/auth/assign-coin")
-  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.assignCoinToAdmin);
+  .put(authenticate([UserRoles.Admin]), adminUserController.assignCoinToAdmin);
 
 router.route("/login").post(adminUserController.loginAdmin);
 
@@ -152,7 +152,7 @@ router
 router
   .route("/create-role")
   .post(
-    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
+    authenticate([UserRoles.Admin]),
     adminUserController.createPortalUser,
   );
 

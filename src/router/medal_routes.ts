@@ -16,7 +16,7 @@ const medalController = new MedalController(medalService);
 router
   .route("/")
   .post(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.single("icon"),
     medalController.createMedal,
   )
@@ -26,15 +26,15 @@ router
   .route("/:id")
   .get(authenticate(), medalController.getMedalById)
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.single("icon"),
     medalController.updateMedal,
   )
-  .delete(authenticate([UserRoles.Admin]), medalController.deleteMedal);
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), medalController.deleteMedal);
 
 router.post(
   "/retroactive",
-  authenticate([UserRoles.Admin]),
+  authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
   medalController.retroactiveAward,
 );
 

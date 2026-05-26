@@ -28,20 +28,20 @@ const controller = new StoreController(service);
 // 📌 store category
 router
   .route("/categories")
-  .post(authenticate([UserRoles.Admin]), controller.createCategory)
+  .post(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.createCategory)
   .get(authenticate(), controller.getAllCategories);
 router
   .route("/categories/:id")
   .get(authenticate(), controller.getCategoryById)
-  .put(authenticate([UserRoles.Admin]), controller.updateCategory)
-  .delete(authenticate([UserRoles.Admin]), controller.deleteCategory);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.updateCategory)
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.deleteCategory);
 router
   .route("/categories/effected-items/:id")
-  .get(authenticate([UserRoles.Admin]), controller.categoryDeleteEffectedItems);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.categoryDeleteEffectedItems);
 
 // 📌 store item
 router.route("/items/single").post(
-  authenticate([UserRoles.Admin]),
+  authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
   upload.fields([
     { name: "svgaFile", maxCount: 1 },
     { name: "previewFile", maxCount: 1 },
@@ -50,7 +50,7 @@ router.route("/items/single").post(
   controller.createStoreItemSingle,
 );
 router.route("/items/batch").post(
-  authenticate([UserRoles.Admin]),
+  authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
   upload.fields([
     { name: "svgaFile", maxCount: 10 },
     { name: "previewFile", maxCount: 10 },
@@ -60,7 +60,7 @@ router.route("/items/batch").post(
 );
 router
   .route("/items/effected-buckets/:itemId")
-  .get(authenticate([UserRoles.Admin]), controller.getEffectedBucketSummary);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getEffectedBucketSummary);
 router.route("/items/vip").get(authenticate(), controller.getVIPStoreItems);
 router.route("/items/svip").get(authenticate(), controller.getSVIPStoreItems);
 router
@@ -70,9 +70,9 @@ router.route("/items").get(authenticate(), controller.getAllStoreItems);
 router
   .route("/items/:id")
   .get(authenticate(), controller.getStoreItemById)
-  .delete(authenticate([UserRoles.Admin]), controller.deleteStoreItem);
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.deleteStoreItem);
 router.route("/items/single/:id").put(
-  authenticate([UserRoles.Admin]),
+  authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
   upload.fields([
     { name: "svgaFile", maxCount: 1 },
     { name: "previewFile", maxCount: 1 },
@@ -83,7 +83,7 @@ router.route("/items/single/:id").put(
 router
   .route("/items/batch/:id")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.fields([
       { name: "svgaFile", maxCount: 10 },
       { name: "previewFile", maxCount: 10 },
@@ -94,12 +94,12 @@ router
 router
   .route("/items/category/:category")
   .get(authenticate(), controller.getStoreItemsByCategory)
-  .put(authenticate([UserRoles.Admin]), controller.changeItemCategory);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.changeItemCategory);
 
 // 📌 store privileges
 router
   .route("/privileges")
-  .get(authenticate([UserRoles.Admin]), controller.getPrivileges);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getPrivileges);
 
 // 📌 my buckets
 router

@@ -45,15 +45,15 @@ router
 
 router
   .route("/admin/all")
-  .get(authenticate([UserRoles.Admin]), audioRoomController.fetchAllRooms);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), audioRoomController.fetchAllRooms);
 
 router
   .route("/admin/active")
-  .get(authenticate([UserRoles.Admin]), audioRoomController.fetchActiveRooms);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), audioRoomController.fetchActiveRooms);
 
 router
   .route("/admin/locked")
-  .get(authenticate([UserRoles.Admin]), audioRoomController.fetchLockedRooms);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), audioRoomController.fetchLockedRooms);
 
 router
   .route("/remove-from-seat")

@@ -45,14 +45,14 @@ router.post("/withdraw", authenticate(), referralController.requestWithdrawal);
 router
   .route("/config")
   .post(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     referralController.createOrUpdateConfig,
   )
-  .get(authenticate([UserRoles.Admin]), referralController.getConfig);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), referralController.getConfig);
 
 router
   .route("/config/:id")
-  .put(authenticate([UserRoles.Admin]), referralController.updateConfig)
-  .delete(authenticate([UserRoles.Admin]), referralController.deleteConfig);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), referralController.updateConfig)
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), referralController.deleteConfig);
 
 export default router;

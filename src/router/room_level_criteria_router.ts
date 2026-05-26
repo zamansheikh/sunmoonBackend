@@ -22,13 +22,13 @@ const controller = new RoomLevelCriteriaController(service);
 router
   .route("/")
   /** Get all configured levels sorted by level number */
-  .get(authenticate([UserRoles.Admin]), controller.getAllLevels)
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getAllLevels)
   /** Create or update a specific level's criteria */
-  .post(authenticate([UserRoles.Admin]), controller.upsertLevel);
+  .post(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.upsertLevel);
 
 router
   .route("/:level")
   /** Remove a specific level configuration */
-  .delete(authenticate([UserRoles.Admin]), controller.deleteLevel);
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.deleteLevel);
 
 export default router;
