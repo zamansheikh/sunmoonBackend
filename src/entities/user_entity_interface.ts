@@ -45,4 +45,5 @@ export interface IUserEntity {
     activityZone?: Partial<ActivityZone>;
     verified?: boolean;
     inviteCode?: string;
+    earnedMedals?: { medalId: string; earnedAt: Date }[];
 }

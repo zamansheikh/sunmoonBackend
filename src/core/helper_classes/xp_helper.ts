@@ -8,6 +8,8 @@ import UserRepository from "../../repository/users/user_repository";
 import SingletonSocketServer from "../sockets/singleton_socket_server";
 import { AudioRoomChannels } from "../Utils/enums";
 import { XpConfigService } from "../../services/admin/xp_config_service";
+import MedalModel from "../../models/medal/medal_model";
+import MedalRepository from "../../repository/medal/medal_repository";
 
 export class XpHelper {
   private static instance: XpHelper;
@@ -18,6 +20,7 @@ export class XpHelper {
   public storeCategoryRepository = new StoreCategoryRepository(
     StoreCategoryModel,
   );
+  public medalRepository = new MedalRepository(MedalModel);
 
   private constructor() {}
 
@@ -42,9 +45,15 @@ export class XpHelper {
       user.totalEarnedXp + xpAmount,
       config.xpLevels,
     );
-    if (level > (user.level || 0)) {
+    const oldLevel = user.level || 0;
+    if (level > oldLevel) {
       const socketInstance = SingletonSocketServer.getInstance();
       socketInstance.emitToUser(userId, AudioRoomChannels.LevelUp, { level });
+
+      // Auto-award medals for each level the user progressed through
+      for (let lvl = oldLevel + 1; lvl <= level; lvl++) {
+        await this.awardMedalForLevel(user, lvl);
+      }
     }
     user.totalEarnedXp += xpAmount;
     user.level = level;
@@ -69,9 +78,15 @@ export class XpHelper {
       user.totalEarnedXp + xpAmount,
       config.xpLevels,
     );
-    if (level > (user.level || 0)) {
+    const oldLevel = user.level || 0;
+    if (level > oldLevel) {
       const socketInstance = SingletonSocketServer.getInstance();
       socketInstance.emitToUser(userId, AudioRoomChannels.LevelUp, { level });
+
+      // Auto-award medals for each level the user progressed through
+      for (let lvl = oldLevel + 1; lvl <= level; lvl++) {
+        await this.awardMedalForLevel(user, lvl);
+      }
     }
     user.totalEarnedXp += xpAmount;
     user.level = level;
@@ -116,5 +131,31 @@ export class XpHelper {
       }
     }
     return xpLevels.length; // at maximum level
+  }
+
+  private async awardMedalForLevel(user: any, level: number): Promise<void> {
+    try {
+      const medal = await this.medalRepository.findByLevel(level);
+      if (!medal) return;
+
+      const alreadyEarned = (user.earnedMedals || []).some(
+        (em: any) =>
+          em.medalId?.toString() === medal._id?.toString(),
+      );
+      if (alreadyEarned) return;
+
+      user.earnedMedals.push({
+        medalId: medal._id,
+        earnedAt: new Date(),
+      });
+
+      console.log(
+        `[XpHelper] Awarded medal "${medal.name}" to user ${user._id} for reaching level ${level}`,
+      );
+    } catch (error: any) {
+      console.error(
+        `[XpHelper] Failed to award medal for level ${level}: ${error.message}`,
+      );
+    }
   }
 }

@@ -80,6 +80,15 @@ const userSchema = new mongoose.Schema<IUserDocument>(
       type: mongoose.Schema.Types.ObjectId,
       ref: DatabaseNames.Family,
     },
+    earnedMedals: [
+      {
+        medalId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: DatabaseNames.Medals,
+        },
+        earnedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

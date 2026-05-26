@@ -295,6 +295,10 @@ export default class AuthService implements IAuthService {
   async retrieveMyDetails(id: string): Promise<IUserDocument | null> {
     const user = await this.UserRepository.findUserById(id);
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "user not found");
+
+    // Populate earned medals
+    await user.populate("earnedMedals.medalId");
+
     const userStats = await this.UserStatsRepository.getUserStats(id);
     const userWithStats = user.toObject();
     userWithStats.stats = userStats;
@@ -370,8 +374,16 @@ export default class AuthService implements IAuthService {
     const myProfile = await this.UserRepository.findUserById(id);
     if (!profile || !myProfile)
       throw new AppError(StatusCodes.NOT_FOUND, "Invalid user Id");
+
+    // Populate earned medals on the profile
+    await profile.populate("earnedMedals.medalId");
+
     let user = await this.UserRepository.getUserDetails({ Id: id, myId });
     if (!user) throw new AppError(StatusCodes.NOT_FOUND, "user not found");
+
+    // Attach populated earnedMedals from the profile query
+    (user as any).earnedMedals = profile.earnedMedals;
+
     (user as any).equippedStoreItems = await getEquippedItemObjects(
       this.BucketRepository,
       this.CategoryRepository,

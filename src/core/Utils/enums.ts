@@ -73,6 +73,7 @@ export enum DatabaseNames {
   CoinPurchaseOption = "coin_purchase_options",
   AgoraConfig = "agora_configs",
   XpConfig = "xp_configs",
+  Medals = "medals",
 }
 
 export enum ReelStatus {
@@ -97,6 +98,7 @@ export enum CloudinaryFolder {
   BannerAssets = "banner_assets",
   PosterAssets = "poster_assets",
   LevelTagBgAssets = "level_tag_bg_assets",
+  MedalAssets = "medal_assets",
 }
 
 export enum FriendshipStatus {

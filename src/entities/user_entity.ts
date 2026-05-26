@@ -33,6 +33,7 @@ class UserEntity {
     objectId?: string;
     activityZone: ActivityZone;
     verified: boolean;
+    earnedMedals?: { medalId: string; earnedAt: Date }[];
 
     constructor(data: IUserEntity) {
         this.id = data.id;
@@ -71,6 +72,7 @@ class UserEntity {
             expire: data.activityZone?.expire,
         };
         this.verified = data.verified || false;
+        this.earnedMedals = data.earnedMedals || [];
     }
 
     static fromJson(json: any): UserEntity {
@@ -119,6 +121,21 @@ class UserEntity {
                   }
                 : undefined,
                 verified: json.verified,
+                earnedMedals: json.earnedMedals
+                    ? json.earnedMedals.map((em: any) => {
+                        // Handle both populated (object) and unpopulated (ObjectId/string) cases
+                        let medalId: string;
+                        if (typeof em.medalId === "object" && em.medalId !== null) {
+                            medalId = em.medalId._id?.toString() || em.medalId.toString();
+                        } else {
+                            medalId = em.medalId?.toString() || em.medalId;
+                        }
+                        return {
+                            medalId,
+                            earnedAt: new Date(em.earnedAt),
+                        };
+                    })
+                    : [],
         });
     }
 }

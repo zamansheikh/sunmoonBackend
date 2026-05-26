@@ -52,6 +52,7 @@ export interface UserData {
   verified: boolean;
   equippedStoreItems?: Record<string, any>;
   familyId?: mongoose.Schema.Types.ObjectId | string | null;
+  earnedMedals?: { medalId: mongoose.Schema.Types.ObjectId | string; earnedAt: Date }[];
 }
 
 //  Create the document type (instance methods + fields)
