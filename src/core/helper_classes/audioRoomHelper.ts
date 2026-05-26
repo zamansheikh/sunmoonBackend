@@ -82,12 +82,12 @@ export class AudioRoomHelper {
      * and the criteria includes roomTransactions and uniqueUsers
      */
     const level: number = support.roomLevel || 0;
-    if (level == 0) return;
+    if (level >= ROOM_LEVEL_CRITERIA.length || level < 0) return;
 
+    const criteria = ROOM_LEVEL_CRITERIA[level]!;
     if (
-      support.roomTransaction >=
-        ROOM_LEVEL_CRITERIA[level - 1].roomTransactions &&
-      support.uniqueUsers.length >= ROOM_LEVEL_CRITERIA[level - 1].roomVisitor
+      support.roomTransaction >= criteria.roomTransactions &&
+      support.uniqueUsers.length >= criteria.roomVisitor
     ) {
       await this.roomSupportRepository.incrementLevel(support.roomId);
     }

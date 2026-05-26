@@ -987,18 +987,21 @@ export class AudioRoomService implements IAudioRoomService {
     };
     if (!newAvailability && seat.member) {
       updateQuery.$set[`seats.${seatKey}.member`] = null;
-      // notify the room that the user left the seat
-      const socketInstance = SingletonSocketServer.getInstance();
-      socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
-        seatKey,
-        member: {},
-      });
     }
 
     await this.audioRoomRepository.findByIdAndUpdate(
       audioRoom._id as string,
       updateQuery,
     );
+
+    // notify the room that the user left the seat (after successful DB write)
+    if (!newAvailability && seat.member) {
+      const socketInstance = SingletonSocketServer.getInstance();
+      socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
+        seatKey,
+        member: {},
+      });
+    }
 
     const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
     const socketInstance = SingletonSocketServer.getInstance();
@@ -1213,7 +1216,7 @@ export class AudioRoomService implements IAudioRoomService {
         if (!updateQuery.$set) updateQuery.$set = {};
         updateQuery.$set[`seats.${key}`] = { available: true, member: null };
         socketInstance.emitToRoom(roomId, AudioRoomChannels.AudioSeatLeft, {
-          seatKey: `seats.${key}`,
+          seatKey: key,
           member: {},
         });
       }
@@ -1473,10 +1476,40 @@ export class AudioRoomService implements IAudioRoomService {
       }
     }
 
-    // update the seat count. The pre-save hook in the model will handle
-    // adding/removing the actual seat entries in the map
-    audioRoom.numberOfSeats = seatCount;
-    await (audioRoom as any).save();
+    // build atomic update for seat count and seat map changes
+    const seatUpdateQuery: any = {
+      $set: {
+        numberOfSeats: seatCount,
+      },
+    };
+
+    if (seatCount > audioRoom.numberOfSeats) {
+      // adding new seats
+      for (let i = audioRoom.numberOfSeats + 1; i <= seatCount; i++) {
+        seatUpdateQuery.$set[`seats.seat-${i}`] = {
+          available: true,
+          isMute: false,
+        };
+      }
+    } else if (seatCount < audioRoom.numberOfSeats) {
+      // removing seats beyond the new limit — use $unset
+      seatUpdateQuery.$unset = {};
+      for (let i = seatCount + 1; i <= audioRoom.numberOfSeats; i++) {
+        seatUpdateQuery.$unset[`seats.seat-${i}`] = "";
+      }
+    }
+
+    if (
+      seatUpdateQuery.$unset &&
+      Object.keys(seatUpdateQuery.$unset).length === 0
+    ) {
+      delete seatUpdateQuery.$unset;
+    }
+
+    await this.audioRoomRepository.findByIdAndUpdate(
+      audioRoom._id as string,
+      seatUpdateQuery,
+    );
 
     const updatedRoom = await this.audioRoomRepository.getAudioRoomById(roomId);
     const socketInstance = SingletonSocketServer.getInstance();
