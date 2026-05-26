@@ -132,7 +132,16 @@ export default class MedalService implements IMedalService {
     if (!medal) {
       throw new AppError(StatusCodes.NOT_FOUND, "Medal not found");
     }
+
+    // Clean up Cloudinary icon
     await deleteFileFromCloudinary(medal.icon);
+
+    // Remove the medal from all users' earnedMedals arrays to prevent orphaned references
+    await User.updateMany(
+      {},
+      { $pull: { earnedMedals: { medalId: medal._id } } },
+    );
+
     return await this.MedalRepository.delete(id);
   }
 
