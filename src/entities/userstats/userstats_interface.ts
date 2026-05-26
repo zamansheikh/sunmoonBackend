@@ -12,7 +12,8 @@ export interface IUserStats {
     coins?: number;
     diamonds?: number;
     levels?: number;
-    gifts?: IGifts[],    
+    gifts?: IGifts[],
+    resellerCoin?: number;
 }
 
 

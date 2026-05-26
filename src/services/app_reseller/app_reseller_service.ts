@@ -233,8 +233,8 @@ export default class AppResellerService implements IAppResellerService {
    *   both the deduction AND the addition succeed, or neither does.
    * - A coin history record is created for audit purposes.
    *
-   * @throws AppError(400) if coins <= 0 or the reseller tries self-transfer
-   * @throws AppError(400) if the reseller has insufficient coins
+   * @throws AppError(400) if coins <= 0
+   * @throws AppError(400) if the reseller has insufficient reseller coins
    * @throws AppError(404) if either user is not found
    * @throws AppError(401) if the sender is not a reseller
    */
@@ -254,12 +254,7 @@ export default class AppResellerService implements IAppResellerService {
       );
     }
 
-    if (resellerId === userId) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "Self-transfer is not allowed",
-      );
-    }
+
 
     // ── 2. Verify the sender exists and has the "re-seller" role ────────────
     //      The reseller is fetched from the regular app users collection.
@@ -290,22 +285,22 @@ export default class AppResellerService implements IAppResellerService {
     let updatedReceiver: { id: string; coins: number };
 
     try {
-      // 4a. Deduct coins from the reseller's stats.
-      //      `balanceDeduction` internally checks `coins >= amount` so this
-      //      will throw "not enough coins" if the reseller's balance is low.
+      // 4a. Deduct coins from the reseller's resellerCoin field.
+      //      `resellerCoinDeduction` internally checks `resellerCoin >= amount`
+      //      so this will throw "not enough reseller coins" if the balance is low.
       const senderAfterDeduction =
-        await this.UserStatsRepository.balanceDeduction(
+        await this.UserStatsRepository.resellerCoinDeduction(
           resellerId,
           coins,
           session,
         );
 
-      // TypeScript safety guard — `balanceDeduction` is typed as nullable but
-      // in practice always throws on failure rather than returning null.
+      // TypeScript safety guard — `resellerCoinDeduction` is typed as nullable
+      // but in practice always throws on failure rather than returning null.
       if (!senderAfterDeduction) {
         throw new AppError(
           StatusCodes.INTERNAL_SERVER_ERROR,
-          "Failed to deduct coins from reseller",
+          "Failed to deduct reseller coins",
         );
       }
 
@@ -355,7 +350,7 @@ export default class AppResellerService implements IAppResellerService {
       // Build the return object with the updated balances.
       updatedSender = {
         id: resellerId,
-        coins: senderAfterDeduction.coins ?? 0,
+        coins: senderAfterDeduction.resellerCoin ?? 0,
       };
       updatedReceiver = {
         id: userId,
@@ -518,14 +513,12 @@ export default class AppResellerService implements IAppResellerService {
         };
       }
 
-      // 4b. Add the same amount of coins to the reseller's userstats.
-      const receiverStats = await this.UserStatsRepository.updateCoins(
+      // 4b. Add the same amount of coins to the reseller's resellerCoin field.
+      const receiverStats = await this.UserStatsRepository.updateResellerCoins(
         resellerId,
         coins,
         session,
       );
-
-
 
       // 4d. Persist an audit record so we can trace who gave coins to whom.
       const historyObj: ICoinHistory = {
@@ -542,7 +535,7 @@ export default class AppResellerService implements IAppResellerService {
 
       updatedReceiver = {
         id: resellerId,
-        coins: receiverStats.coins ?? 0,
+        coins: receiverStats.resellerCoin ?? 0,
       };
     } catch (error) {
       // If anything went wrong, roll back every change made in this session.

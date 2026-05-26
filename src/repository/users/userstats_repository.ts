@@ -159,6 +159,35 @@ export default class UserStatsRepository implements IUserStatsRepository {
     );
   }
 
+  async updateResellerCoins(
+    userId: string,
+    coins: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument> {
+    const updated = await this.model
+      .findOneAndUpdate({ userId }, { $inc: { resellerCoin: coins } }, { new: true })
+      .session(session || null);
+    if (!updated) throw new AppError(500, "Failed to update reseller coins");
+    return updated;
+  }
+
+  async resellerCoinDeduction(
+    userId: string,
+    amount: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument | null> {
+    const updated = await this.model
+      .findOneAndUpdate(
+        { userId, resellerCoin: { $gte: amount } },
+        { $inc: { resellerCoin: -amount } },
+        { new: true },
+      )
+      .session(session || null);
+    if (!updated)
+      throw new AppError(StatusCodes.BAD_REQUEST, "not enough reseller coins");
+    return updated;
+  }
+
   async updateProperty(
     id: string,
     property: Record<string, any>,

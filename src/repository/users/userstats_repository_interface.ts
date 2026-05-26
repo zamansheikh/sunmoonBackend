@@ -62,4 +62,14 @@ export default interface IUserStatsRepository {
     coinsToAdd: number,
     session?: ClientSession,
   ): Promise<IUSerStatsDocument | null>;
+  updateResellerCoins(
+    userId: string,
+    coins: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument>;
+  resellerCoinDeduction(
+    userId: string,
+    amount: number,
+    session?: ClientSession,
+  ): Promise<IUSerStatsDocument | null>;
 }
