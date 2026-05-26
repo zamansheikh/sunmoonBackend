@@ -74,37 +74,37 @@ router.post("/auth", adminUserController.registerAdmin);
 router
   .route("/auth")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.single("avatar"),
     adminUserController.updateAdmin,
   )
-  .delete(authenticate([UserRoles.Admin]), adminUserController.deleteAdmin)
-  .get(authenticate([UserRoles.Admin]), adminUserController.getAdminProfile);
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.deleteAdmin)
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.getAdminProfile);
 
 router
   .route("/auth/assign-coin")
-  .put(authenticate([UserRoles.Admin]), adminUserController.assignCoinToAdmin);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.assignCoinToAdmin);
 
 router.route("/login").post(adminUserController.loginAdmin);
 
 router
   .route("/users/moderator-permissions")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.moderatorPermissionEdit,
   );
 
 router
   .route("/users/remove-permissions")
-  .put(authenticate([UserRoles.Admin]), adminUserController.removePermissions);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.removePermissions);
 
 router
   .route("/users/moderators")
-  .get(authenticate([UserRoles.Admin]), adminUserController.getAllModerators);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.getAllModerators);
 
 router.put(
   "/users/activity-zone",
-  authenticate([UserRoles.Admin]),
+  authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
   validateRequest(ActivityZoneUpdateDto),
   adminUserController.updateActivityZone,
 );
@@ -112,7 +112,7 @@ router.put(
 router
   .route("/users/stats/update/:userId")
   .post(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     validateRequest(UpdateStatDto),
     adminUserController.updateUserStat,
   );
@@ -120,7 +120,7 @@ router
 router
   .route("/gift")
   .post(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.fields([
       { name: "previewImage", maxCount: 1 },
       { name: "svgaImage", maxCount: 1 },
@@ -140,98 +140,98 @@ router
 router
   .route("/gift/:id")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.fields([
       { name: "previewImage", maxCount: 1 },
       { name: "svgaImage", maxCount: 1 },
     ]),
     adminUserController.updateGift,
   )
-  .delete(authenticate([UserRoles.Admin]), adminUserController.deleteGift);
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.deleteGift);
 
 router
   .route("/create-role")
   .post(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.createPortalUser,
   );
 
 router
   .route("/role/:roleId")
-  .get(authenticate([UserRoles.Admin]), adminUserController.getRoleDetails)
-  .delete(authenticate([UserRoles.Admin]), adminUserController.deleteRole);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.getRoleDetails)
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.deleteRole);
 
 router
   .route("/role/permissions/add/:roleId")
-  .put(authenticate([UserRoles.Admin]), adminUserController.addRolePermissions);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.addRolePermissions);
 router
   .route("/role/permissions/remove/:roleId")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.removeRolePermissions,
   );
 
 router
   .route("/role/activity-zone")
-  .put(authenticate([UserRoles.Admin]), adminUserController.blockPortalUser);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.blockPortalUser);
 
 router
   .route("/withdraw-requests")
   .get(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.getWithdrawRequests,
   );
 router
   .route("/withdraw-requests/:bonusId")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.updateWithdrawBonusStatus,
   );
 
 router
   .route("/agency-withdraw")
   .get(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.getAgencyWithdrawList,
   );
 router
   .route("/agency-withdraw/:withdrawId")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.updateAgencyWithdrawStatus,
   );
 
 router
   .route("/salaries")
-  .post(authenticate([UserRoles.Admin]), adminUserController.createSalary)
+  .post(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.createSalary)
   .get(authenticate(), adminUserController.getSalaries);
 
 router
   .route("/salaries/:salaryId")
   .get(adminUserController.getSalaryDetails)
-  .put(authenticate([UserRoles.Admin]), adminUserController.updateSalary)
-  .delete(authenticate([UserRoles.Admin]), adminUserController.deleteSalary);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.updateSalary)
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.deleteSalary);
 
 router
   .route("/agency-commission-distribute")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.agencyCommissionDistribute,
   );
 
 router
   .route("/user/asign-role/:role")
-  .put(authenticate([UserRoles.Admin]), adminUserController.assignRoleToUser)
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.assignRoleToUser)
   .get(authenticate(), adminUserController.getUsersBasedOnRole);
 
 router
   .route("/dashboard/stats")
-  .get(authenticate([UserRoles.Admin]), adminUserController.getDashboardStats);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.getDashboardStats);
 
 router
   .route("/banners")
   .post(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.single("image"),
     adminUserController.createBanner,
   )
@@ -240,11 +240,11 @@ router
 router
   .route("/banners/:id")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.single("image"),
     adminUserController.updateBanner,
   )
-  .delete(authenticate([UserRoles.Admin]), adminUserController.deleteBanner);
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.deleteBanner);
 
 router
   .route("/posters/docs")
@@ -253,7 +253,7 @@ router
 router
   .route("/posters")
   .post(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.single("image"),
     adminUserController.createPoster,
   )
@@ -265,16 +265,16 @@ router
 router
   .route("/posters/:id")
   .put(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.single("image"),
     adminUserController.updatePoster,
   )
-  .delete(authenticate([UserRoles.Admin]), adminUserController.deletePoster);
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.deletePoster);
 
 router
   .route("/transaction-admin")
   .get(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.getAdminCoinHistory,
   );
 
@@ -292,7 +292,7 @@ router
 router
   .route("/level-tags")
   .post(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     upload.fields([
       { name: "tag", maxCount: 1 },
       { name: "bg", maxCount: 1 },
@@ -302,7 +302,7 @@ router
   .get(adminUserController.getLevelTags);
 
 router.route("/level-tags/:id").put(
-  authenticate([UserRoles.Admin]),
+  authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
   upload.fields([
     { name: "tag", maxCount: 1 },
     { name: "bg", maxCount: 1 },
@@ -312,36 +312,36 @@ router.route("/level-tags/:id").put(
 
 router
   .route("/update-cost")
-  .post(authenticate([UserRoles.Admin]), adminUserController.createUpdateCost)
+  .post(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.createUpdateCost)
   .get(authenticate(), adminUserController.getUpdateCost);
 
 router
   .route("/update-cost/:id")
-  .put(authenticate([UserRoles.Admin]), adminUserController.updateUpdateCost)
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.updateUpdateCost)
   .delete(
-    authenticate([UserRoles.Admin]),
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
     adminUserController.deleteUpdateCost,
   );
 
 router
   .route("/users/xp/:userId")
-  .put(authenticate([UserRoles.Admin]), adminUserController.updateUserXp);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.updateUserXp);
 
 router
   .route("/users/banned-users")
-  .get(authenticate([UserRoles.Admin]), adminUserController.getBannedUsers);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.getBannedUsers);
 
 router
   .route("/portal-users")
-  .get(authenticate([UserRoles.Admin]), adminUserController.getAllPortalUsers);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.getAllPortalUsers);
 
 router
   .route("/portal-users/:roleId")
-  .put(authenticate([UserRoles.Admin]), adminUserController.updatePortalUser)
-  .delete(authenticate([UserRoles.Admin]), adminUserController.deleteRole);
+  .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.updatePortalUser)
+  .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.deleteRole);
 
 router
   .route("/user-roles")
-  .get(authenticate([UserRoles.Admin]), adminUserController.getAllUserRoles);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), adminUserController.getAllUserRoles);
 
 export default router;

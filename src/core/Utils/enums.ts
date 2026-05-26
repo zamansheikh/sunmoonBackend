@@ -304,6 +304,7 @@ export enum AdminPowers {
   DeviceBan = "device-ban",
   LiveRoomClose = "live-room-close",
   CreateUserAccount = "create-user-account",
+  CreatePortalUser = "create-portal-user",
 }
 
 export enum WhoCanTextMe {
