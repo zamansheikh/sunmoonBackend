@@ -13,6 +13,50 @@ export default class AppResellerController {
     this.Service = service;
   }
 
+  giveCoinsToUser = catchAsync(async (req: Request, res: Response) => {
+    const { userId, coins } = req.body;
+    const { id } = req.user!;
+
+    if (!userId) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "userId is required");
+    }
+
+    if (coins === undefined || coins === null) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "coins is required");
+    }
+
+    if (isNaN(Number(coins))) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Coins must be a number");
+    }
+
+    if (Number(coins) <= 0) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Coins must be greater than 0",
+      );
+    }
+
+    if (!Number.isInteger(Number(coins))) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Coins must be a whole number",
+      );
+    }
+
+    const result = await this.Service.giveCoinsToUser(
+      id,
+      userId,
+      Number(coins),
+    );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result,
+      message: `Successfully assigned ${coins} coins to user`,
+    });
+  });
+
   getAllResellers = catchAsync(async (req: Request, res: Response) => {
     const result = await this.Service.getAllResellers(
       req.query as Record<string, unknown>,
