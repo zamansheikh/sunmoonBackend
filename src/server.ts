@@ -41,6 +41,7 @@ import CoinPurchaseRouter from "./router/coin_purchase_route";
 import AgoraConfigRouter from "./router/agora_config_routes";
 import XpConfigRouter from "./router/xp_config_routes";
 import MedalRouter from "./router/medal_routes";
+import AppResellerRouter from "./router/app_reseller_routes";
 
 import path from "path";
 import StoreItemModel from "./models/store/store_item_model";
@@ -162,6 +163,9 @@ app.use("/api/admin/xp-config", XpConfigRouter);
 
 // Medal routes
 app.use("/api/medals", MedalRouter);
+
+// App Reseller routes
+app.use("/api/app-reseller", AppResellerRouter);
 
 app.post(
   "/api/upload-file-cloud",
