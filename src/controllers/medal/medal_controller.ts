@@ -108,4 +108,15 @@ export default class MedalController {
       message: "Medal deleted successfully",
     });
   });
+
+  retroactiveAward = catchAsync(async (req: Request, res: Response) => {
+    const result = await this.MedalService.retroactiveAward();
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result,
+      message: `Retroactive award complete: ${result.totalAwarded} medal(s) awarded`,
+    });
+  });
 }

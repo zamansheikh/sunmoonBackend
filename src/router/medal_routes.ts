@@ -32,4 +32,10 @@ router
   )
   .delete(authenticate([UserRoles.Admin]), medalController.deleteMedal);
 
+router.post(
+  "/retroactive",
+  authenticate([UserRoles.Admin]),
+  medalController.retroactiveAward,
+);
+
 export default router;

@@ -7,6 +7,7 @@ import {
 import { CloudinaryFolder } from "../../core/Utils/enums";
 import { IMedal, IMedalDocument } from "../../models/medal/medal_model";
 import { IMedalRepository } from "../../repository/medal/medal_repository";
+import User from "../../models/user/user_model";
 
 export interface IMedalService {
   createMedal(
@@ -24,6 +25,10 @@ export interface IMedalService {
     icon?: Express.Multer.File,
   ): Promise<IMedalDocument>;
   deleteMedal(id: string): Promise<IMedalDocument>;
+  retroactiveAward(): Promise<{
+    totalAwarded: number;
+    medalsAwarded: { medalName: string; level: number; count: number }[];
+  }>;
 }
 
 export default class MedalService implements IMedalService {
@@ -129,5 +134,51 @@ export default class MedalService implements IMedalService {
     }
     await deleteFileFromCloudinary(medal.icon);
     return await this.MedalRepository.delete(id);
+  }
+
+  async retroactiveAward(): Promise<{
+    totalAwarded: number;
+    medalsAwarded: { medalName: string; level: number; count: number }[];
+  }> {
+    const medals = await this.MedalRepository.findAll();
+    if (medals.length === 0) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "No medals exist to award. Create medals first.",
+      );
+    }
+
+    const results: {
+      medalName: string;
+      level: number;
+      count: number;
+    }[] = [];
+
+    for (const medal of medals) {
+      const result = await User.updateMany(
+        {
+          level: { $gte: medal.level },
+          "earnedMedals.medalId": { $ne: medal._id },
+        },
+        {
+          $push: {
+            earnedMedals: {
+              medalId: medal._id,
+              earnedAt: new Date(),
+            },
+          },
+        },
+      );
+
+      results.push({
+        medalName: medal.name,
+        level: medal.level,
+        count: result.modifiedCount,
+      });
+    }
+
+    const totalAwarded = results.reduce((sum, r) => sum + r.count, 0);
+
+    return { totalAwarded, medalsAwarded: results };
   }
 }
