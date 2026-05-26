@@ -311,7 +311,10 @@ export class AudioRoomService implements IAudioRoomService {
     }
 
     // check for room lock status and password matching
-    if (audioRoom.isLocked) {
+    // host can bypass the password check
+    const isHost = audioRoom.hostId.toString() === userId;
+
+    if (audioRoom.isLocked && !isHost) {
       if (!password) {
         throw new AppError(401, "Password required");
       }
@@ -340,7 +343,7 @@ export class AudioRoomService implements IAudioRoomService {
 
     await AudioRoomHelper.getInstance().handleRoomPresence(userId, roomId);
 
-    const isHost = audioRoom.hostId.toString() === userId;
+
     const userAlreadyInRoom = audioRoom.members.has(userId);
 
     // handle if the user already in the room or if it's the host
