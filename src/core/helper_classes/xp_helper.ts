@@ -32,38 +32,45 @@ export class XpHelper {
   }
 
   public async updateUserXp(userId: string, xpAmount: number) {
-    const user = await this.userRepository.findUserById(userId);
-    if (!user) return;
-
     const config = await XpConfigService.getConfig();
     if (!config) {
       console.warn(`[XpHelper] updateUserXp skipped for user ${userId}: XP config not loaded`);
       return;
     }
 
+    // Atomically increment XP to prevent race conditions
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { totalEarnedXp: xpAmount } },
+      { new: true },
+    );
+    if (!user) return;
+
     const level = this.determineUserLevelFromXp(
-      user.totalEarnedXp + xpAmount,
+      user.totalEarnedXp,
       config.xpLevels,
     );
     const oldLevel = user.level || 0;
+
     if (level > oldLevel) {
       const socketInstance = SingletonSocketServer.getInstance();
       socketInstance.emitToUser(userId, AudioRoomChannels.LevelUp, { level });
 
-      // Auto-award medals for each level the user progressed through
+      // Auto-award medals using atomic $ne + $push to prevent duplicates
       for (let lvl = oldLevel + 1; lvl <= level; lvl++) {
-        await this.awardMedalForLevel(user, lvl);
+        await this.awardMedalForLevel(userId, lvl);
       }
     }
-    user.totalEarnedXp += xpAmount;
-    user.level = level;
-    await user.save();
+
+    // Atomically set the level, but only if it's higher than the current DB value
+    // This prevents a concurrent slower request from downgrading a higher level
+    await User.updateOne(
+      { _id: userId, level: { $lt: level } },
+      { $set: { level } },
+    );
   }
 
   public async updateUserXpFromCoin(userId: string, coins: number) {
-    const user = await this.userRepository.findUserById(userId);
-    if (!user) return;
-
     const config = await XpConfigService.getConfig();
     if (!config) {
       console.warn(`[XpHelper] updateUserXpFromCoin skipped for user ${userId}: XP config not loaded`);
@@ -74,23 +81,35 @@ export class XpHelper {
       (coins / config.giftSendXp) *
       (await this.calculateSvipMultiplier(userId, config.svipMultipliers));
 
+    // Atomically increment XP to prevent race conditions
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { totalEarnedXp: xpAmount } },
+      { new: true },
+    );
+    if (!user) return;
+
     const level = this.determineUserLevelFromXp(
-      user.totalEarnedXp + xpAmount,
+      user.totalEarnedXp,
       config.xpLevels,
     );
     const oldLevel = user.level || 0;
+
     if (level > oldLevel) {
       const socketInstance = SingletonSocketServer.getInstance();
       socketInstance.emitToUser(userId, AudioRoomChannels.LevelUp, { level });
 
-      // Auto-award medals for each level the user progressed through
+      // Auto-award medals using atomic $ne + $push to prevent duplicates
       for (let lvl = oldLevel + 1; lvl <= level; lvl++) {
-        await this.awardMedalForLevel(user, lvl);
+        await this.awardMedalForLevel(userId, lvl);
       }
     }
-    user.totalEarnedXp += xpAmount;
-    user.level = level;
-    await user.save();
+
+    // Atomically set the level, but only if it's higher than the current DB value
+    await User.updateOne(
+      { _id: userId, level: { $lt: level } },
+      { $set: { level } },
+    );
   }
 
   private async calculateSvipMultiplier(
@@ -133,25 +152,29 @@ export class XpHelper {
     return xpLevels.length; // at maximum level
   }
 
-  private async awardMedalForLevel(user: any, level: number): Promise<void> {
+  private async awardMedalForLevel(userId: string, level: number): Promise<void> {
     try {
       const medal = await this.medalRepository.findByLevel(level);
       if (!medal) return;
 
-      const alreadyEarned = (user.earnedMedals || []).some(
-        (em: any) =>
-          em.medalId?.toString() === medal._id?.toString(),
+      // Atomic $ne + $push — prevents duplicates even under concurrent requests
+      const result = await User.updateOne(
+        { _id: userId, "earnedMedals.medalId": { $ne: medal._id } },
+        {
+          $push: {
+            earnedMedals: {
+              medalId: medal._id,
+              earnedAt: new Date(),
+            },
+          },
+        },
       );
-      if (alreadyEarned) return;
 
-      user.earnedMedals.push({
-        medalId: medal._id,
-        earnedAt: new Date(),
-      });
-
-      console.log(
-        `[XpHelper] Awarded medal "${medal.name}" to user ${user._id} for reaching level ${level}`,
-      );
+      if (result.modifiedCount > 0) {
+        console.log(
+          `[XpHelper] Awarded medal "${medal.name}" to user ${userId} for reaching level ${level}`,
+        );
+      }
     } catch (error: any) {
       console.error(
         `[XpHelper] Failed to award medal for level ${level}: ${error.message}`,
