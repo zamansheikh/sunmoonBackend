@@ -12,6 +12,14 @@ const userRepository = new UserRepository(User);
 const appResellerService = new AppResellerService(userRepository);
 const appResellerController = new AppResellerController(appResellerService);
 
+// Route to get all resellers (paginated)
+router
+  .route("/")
+  .get(
+    authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
+    appResellerController.getAllResellers,
+  );
+
 // Route to update a user's role (only between "user" and "re-seller")
 router
   .route("/change-role")

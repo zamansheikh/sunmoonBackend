@@ -2,9 +2,15 @@ import { StatusCodes } from "http-status-codes";
 import AppError from "../../core/errors/app_errors";
 import { UserRoles } from "../../core/Utils/enums";
 import { IUserRepository } from "../../repository/users/user_repository";
+import { IPagination } from "../../core/Utils/query_builder";
+import { IUserDocument } from "../../models/user/user_model_interface";
 
 export interface IAppResellerService {
   updateUserRole(userId: string, newRole: UserRoles): Promise<{ id: string; userRole: string }>;
+  getAllResellers(query: Record<string, unknown>): Promise<{
+    pagination: IPagination;
+    users: IUserDocument[];
+  }>;
 }
 
 export default class AppResellerService implements IAppResellerService {
@@ -12,6 +18,12 @@ export default class AppResellerService implements IAppResellerService {
 
   constructor(UserRepository: IUserRepository) {
     this.UserRepository = UserRepository;
+  }
+
+  async getAllResellers(
+    query: Record<string, unknown>,
+  ): Promise<{ pagination: IPagination; users: IUserDocument[] }> {
+    return this.UserRepository.getUserByRole(UserRoles.Reseller, query);
   }
 
   async updateUserRole(

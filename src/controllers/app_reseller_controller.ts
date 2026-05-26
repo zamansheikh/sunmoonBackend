@@ -13,6 +13,19 @@ export default class AppResellerController {
     this.Service = service;
   }
 
+  getAllResellers = catchAsync(async (req: Request, res: Response) => {
+    const result = await this.Service.getAllResellers(
+      req.query as Record<string, unknown>,
+    );
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: result.users,
+      meta: result.pagination,
+      message: "Resellers retrieved successfully",
+    });
+  });
+
   updateUserRole = catchAsync(async (req: Request, res: Response) => {
     const { userId, role } = req.body;
 
