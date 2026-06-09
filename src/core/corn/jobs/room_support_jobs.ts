@@ -25,12 +25,24 @@ export const roomSupportRewardSystem = async () => {
       const criteria = ROOM_LEVEL_CRITERIA[room.roomLevel! - 1];
       if (!criteria) continue;
 
-      promises.push(userStatsRepo.updateCoins(hostId, criteria.ownerCoin));
+      promises.push(
+        userStatsRepo.updateCoins(hostId, criteria.ownerCoin).catch((err) =>
+          console.error(
+            `[RoomSupport] Failed to credit host ${hostId} in room ${room.roomId}: ${err?.message ?? err}`,
+          ),
+        ),
+      );
 
       // check for partner existance and distribute
       for (const partner of room.roomPartners!) {
         promises.push(
-          userStatsRepo.updateCoins(partner.toString(), criteria.partnerCoin),
+          userStatsRepo
+            .updateCoins(partner.toString(), criteria.partnerCoin)
+            .catch((err) =>
+              console.error(
+                `[RoomSupport] Failed to credit partner ${partner.toString()} in room ${room.roomId}: ${err?.message ?? err}`,
+              ),
+            ),
         );
       }
 
