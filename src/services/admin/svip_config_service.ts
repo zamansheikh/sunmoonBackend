@@ -17,7 +17,6 @@ const DEFAULT_SVIP_CONFIG: ISvipConfig = {
     { tier: 7, milestoneCoins: 60_000_000 },
     { tier: 8, milestoneCoins: 85_000_000 },
     { tier: 9, milestoneCoins: 110_000_000 },
-    { tier: 10, milestoneCoins: 150_000_000 },
   ],
   retentionThreshold: 0.5,
 };
