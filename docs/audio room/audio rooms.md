@@ -100,3 +100,46 @@ Toggling the mute state of a seat automatically broadcasts two WebSocket events 
      ```
 2. **`RoomData`**:
    * **Payload**: Serialized room details containing the updated seats map.
+
+---
+
+## Socket Message Events — svipItem & vipItem Fields
+
+Room messages and member details now carry optional `svipItem` and `vipItem` data for the sender, displaying their purchased/earned SVIP and VIP store items.
+
+### `IRoomMessage` — Sent via `AudioRoomChannels.AudioRoomMessage`
+
+```json
+{
+  "senderId": "...",
+  "senderName": "...",
+  "senderAvatar": "...",
+  "text": "Hello!",
+  "equippedStoreItems": { ... },
+  "svipItem": {
+    "name": "SVIP-2",
+    "logo": "https://..."
+  },
+  "vipItem": {
+    "name": "VIP-1",
+    "logo": "https://..."
+  }
+}
+```
+
+### `IMemberDetails` — Sent during room join/seat updates
+
+Same new fields on the member object:
+
+```json
+{
+  "_id": "...",
+  "name": "...",
+  "avatar": "...",
+  "equippedStoreItems": { ... },
+  "svipItem": { "name": "...", "logo": "..." },
+  "vipItem": { "name": "...", "logo": "..." }
+}
+```
+
+**Note**: These fields will always be present as objects (never undefined), but their inner fields may be `null` if the user hasn't purchased/earned anything.

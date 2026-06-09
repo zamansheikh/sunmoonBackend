@@ -239,6 +239,58 @@ Creates the **single** platform admin account. Only one admin can exist in the s
 
 ---
 
+### 1.7 User Details — svipItem & vipItem Fields
+
+The user object returned by user detail endpoints now includes `svipItem` and `vipItem` fields with visual assets from their purchased/earned store items.
+
+#### Affected Endpoints
+
+| Endpoint | Method |
+| :--- | :--- |
+| `GET /api/auth/my-details` | GET |
+| `GET /api/auth/user/:id` | GET |
+
+#### Response Shape
+
+```json
+{
+  "_id": "...",
+  "name": "John",
+  "avatar": "...",
+  "svipItem": {
+    "name": "SVIP-2",
+    "logo": "https://...",
+    "svgaFile": "https://...",
+    "previewFile": "https://..."
+  },
+  "vipItem": {
+    "name": "VIP-1",
+    "logo": "https://...",
+    "svgaFile": "https://...",
+    "previewFile": "https://..."
+  }
+}
+```
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `svipItem` | `object` (always present) | The user's purchased/earned SVIP store item (first one found) |
+| `vipItem` | `object` (always present) | The user's purchased VIP store item (first one found) |
+| `*.name` | `string \| null` | e.g. `"SVIP-2"` |
+| `*.logo` | `string \| null` | Logo URL |
+| `*.svgaFile` | `string \| null` | SVGA animation URL |
+| `*.previewFile` | `string \| null` | Preview image URL |
+
+If the user has no purchased SVIP/VIP item, all inner fields will be `null`:
+```json
+{
+  "svipItem": { "name": null, "logo": null, "svgaFile": null, "previewFile": null },
+  "vipItem": { "name": null, "logo": null, "svgaFile": null, "previewFile": null }
+}
+```
+
+---
+
 ## 2. Portal User Authentication
 
 ### 2.1 Login Portal User
@@ -1446,7 +1498,60 @@ Returns coin distribution transactions for a specific portal user (Merchant/Rese
 
 ---
 
-## 20. Key Error Responses
+## 20. SVIP Config Auto-Sync on Store Item Operations
+
+When an admin creates, updates, or deletes a **batch (premium) store item** whose name starts with `"SVIP-"`, the SVIP tier configuration is automatically synchronized.
+
+This feature lives in the Store Service but directly affects the admin-managed SVIP configuration.
+
+### On Create — `POST /api/store/items/batch`
+
+When a batch item is created with a name like `"SVIP-3"`:
+
+1. The system extracts the tier number from the name (`"SVIP-3"` → tier 3)
+2. It reads the first price from the item's `prices` array as the milestone coin threshold
+3. It updates the SVIP config tier with the item's `_id` reference and milestone
+4. If the tier doesn't exist in the config, a warning is logged (admin must add the tier first)
+
+### On Update — `PUT /api/store/items/batch/:id`
+
+When an SVIP batch item is updated:
+
+- **Price changed**: The milestone coin threshold in the config is updated (only if the price actually changed)
+- **Name changed to non-SVIP** (e.g., "SVIP-3" → "Gold-Badge"): The config reference is cleared (set to `null`)
+- **Name changed to a different SVIP tier** (e.g., "SVIP-3" → "SVIP-5"): The config reference is updated to the new tier
+
+### On Delete — `DELETE /api/store/items/:id`
+
+When an SVIP batch item is deleted:
+- The config tier's `storeItemId` is set to `null`
+- The tier milestone remains in the config (the tier itself is not removed)
+
+### What This Means for the Admin Panel
+
+- **Creating SVIP store items**: Create a batch item with name `"SVIP-3"` and price `8000000`. The SVIP config tier 3 automatically links to this item
+- **Updating prices**: Change the price on an SVIP item → the milestone threshold updates automatically
+- **Deleting SVIP items**: The config reference is cleared gracefully
+- **Manual config overrides**: Admin can still use `GET/PUT /api/svip/config` to set tiers manually
+
+### Configuration Model
+
+The SVIP config stores for each tier:
+
+```json
+{
+  "tier": 3,
+  "milestoneCoins": 8000000,
+  "storeItemId": "64f1a2b3c4d5e6f7a8b9c0d1"
+}
+```
+
+- `storeItemId` is `null` until an admin creates the corresponding SVIP store item
+- The auto-grant system checks `storeItemId` when granting items on milestone reach — if `null`, the tier is upgraded but no item is granted
+
+---
+
+## 21. Key Error Responses
 
 ### 400 Bad Request (Validation)
 ```json
