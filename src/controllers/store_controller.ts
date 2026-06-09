@@ -324,7 +324,7 @@ export default class StoreController {
     if (typeof req.body.privilege === "string") {
       req.body.privilege = JSON.parse(req.body.privilege);
     }
-    const { name, categoryId, prices, privilege } = req.body;
+    const { name, categoryId, prices, privilege, canUserBuyThis } = req.body;
     validateUpdateStoreItem(req.body);
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -350,7 +350,7 @@ export default class StoreController {
 
     const item = await this.Service.updateStoreItemSingle(
       id,
-      { name, categoryId, prices, privilege },
+      { name, categoryId, prices, privilege, canUserBuyThis },
       svgaFile,
       previewFile,
       logoFile,

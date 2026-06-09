@@ -760,6 +760,15 @@ export default class StoreService implements IStoreService {
       throw new AppError(StatusCodes.NOT_FOUND, "User stats not found");
     if (!item) throw new AppError(StatusCodes.NOT_FOUND, "Item not found");
 
+    // ── canUserBuyThis guard (non-premium items only) ───────────────────
+    if (!item.isPremium && item.canUserBuyThis === false) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "This item is not available for purchase",
+      );
+    }
+    // ────────────────────────────────────────────────────────────────────
+
     if (!item.prices || item.prices.length === 0)
       throw new AppError(
         StatusCodes.BAD_REQUEST,

@@ -17,10 +17,10 @@ export function validateCreateStoreItem(body: any) {
 }
 export function validateUpdateStoreItem(body: any) {
   const { name, categoryId, prices, privilege } = body;
-  if (!name && !categoryId && !prices && !privilege)
+  if (!name && !categoryId && !prices && !privilege && body.canUserBuyThis === undefined)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, categoryId, prices or privilege at least one is required",
+      "name, categoryId, prices, privilege or canUserBuyThis at least one is required",
     );
   if (prices) {
     validatePrices(prices);
