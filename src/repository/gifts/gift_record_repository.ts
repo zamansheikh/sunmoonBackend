@@ -46,17 +46,19 @@ export interface IGiftRecordRepository {
     period: RankingPeriods,
   ): Promise<IRanking>;
   getMyReceivedAmountInRoom(myId: string, roomId: string): Promise<number>;
-  getFamilyRanking(lastWeek: boolean): Promise<{
-    familyId: string;
-    familyName: string;
-    familyCoverPhoto: string;
-    totalContribution: number;
-    leader: {
-      memberId: string;
-      memberName: string;
-      memberPhoto: string;
-    };
-  }>;
+  getFamilyRanking(lastWeek: boolean): Promise<
+    {
+      familyId: string;
+      familyName: string;
+      familyCoverPhoto: string;
+      totalContribution: number;
+      leader: {
+        memberId: string;
+        memberName: string;
+        memberPhoto: string;
+      };
+    }[]
+  >;
 }
 
 export class GiftRecordRepository implements IGiftRecordRepository {
@@ -628,7 +630,7 @@ export class GiftRecordRepository implements IGiftRecordRepository {
       {
         $match: {
           createdAt: { $gte: startDate, $lte: endDate },
-          familyId: { $exists: true, $ne: null },
+          familyId: { $exists: true, $nin: [null, ""] },
         },
       },
       {

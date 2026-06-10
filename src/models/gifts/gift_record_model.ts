@@ -69,6 +69,9 @@ giftRecordSchema.index({ roomId: 1, createdAt: -1 });
 giftRecordSchema.index({ senderId: 1, roomId: 1, createdAt: -1 });
 giftRecordSchema.index({ receiverId: 1, roomId: 1, createdAt: -1 });
 
+// Speeds up "Family Ranking" queries
+giftRecordSchema.index({ familyId: 1, createdAt: -1 });
+
 const GiftRecordModel = mongoose.model<IGiftRecordDocument, IGiftRecordModel>(
   DatabaseNames.GiftRecords,
   giftRecordSchema,

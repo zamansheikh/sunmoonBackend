@@ -626,7 +626,7 @@ export default class AuthService implements IAuthService {
           totalCoinCost: gift.coinPrice * qty,
           totalDiamonds: diamonds,
           roomId: isValid ? roomId : undefined, // only adding room id if the room is valid
-          familyId: familyId || "",
+          familyId: familyId || undefined,
         }),
       );
 

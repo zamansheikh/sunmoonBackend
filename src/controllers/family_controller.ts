@@ -69,7 +69,14 @@ export default class FamilyController {
     if (joinMode) {
       validateEnum(joinMode, FamilyJoinMode, "joinMode");
     }
-    const family = await this.Service.updateFamilyInformation(id, req.body);
+    const family = await this.Service.updateFamilyInformation(id, {
+      name,
+      introduction,
+      joinMode,
+      minLevel,
+      memberLimit,
+      coverPhoto,
+    });
     sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,

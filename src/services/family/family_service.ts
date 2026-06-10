@@ -35,6 +35,74 @@ import {
 } from "../../repository/gifts/gift_record_repository";
 import { DateHelper } from "../../core/helper_classes/date_helper";
 
+// Simple in-memory cache with TTL for family ranking
+interface CacheEntry<T> {
+  data: T;
+  expiry: number;
+}
+
+class FamilyRankingCache {
+  private static instance: FamilyRankingCache | null = null;
+  private cache = new Map<string, CacheEntry<any>>();
+  private readonly TTL = 30 * 1000; // 30 seconds
+
+  private constructor() {}
+
+  static getInstance(): FamilyRankingCache {
+    if (!FamilyRankingCache.instance) {
+      FamilyRankingCache.instance = new FamilyRankingCache();
+    }
+    return FamilyRankingCache.instance;
+  }
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (entry && entry.expiry > Date.now()) return entry.data as T;
+    this.cache.delete(key);
+    return null;
+  }
+
+  set<T>(key: string, data: T): void {
+    this.cache.set(key, { data, expiry: Date.now() + this.TTL });
+  }
+
+  invalidate(): void {
+    this.cache.clear();
+  }
+}
+
+export interface IFamilyJoinStatus {
+  status: "joined" | "pending" | "none";
+  familyId: string | null;
+  familyName?: string;
+}
+
+export interface IFamilyJoinResult {
+  family: IFamilyDocument;
+  status: "joined" | "pending";
+}
+
+export interface IFamilyRankingEntry {
+  familyId: string;
+  familyName: string;
+  familyCoverPhoto: string;
+  totalContribution: number;
+  leader: {
+    memberId: string;
+    memberName: string;
+    memberPhoto: string;
+  };
+}
+
+export interface IFamilyRankingResult {
+  top1FamilyDetails: IFamilyRankingEntry | null;
+  ranking: IFamilyRankingEntry[];
+}
+
+export interface IThisWeekFamilyRankingResult extends IFamilyRankingResult {
+  weekEnd: Date;
+}
+
 export interface IFamilyDetails {
   family: IFamilyDocument;
   topContributors: IFamilyMemberDocument[];
@@ -46,7 +114,7 @@ export interface IFamilyService {
     myId: string,
     data: Partial<IFamily>,
   ): Promise<IFamilyDocument>;
-  getFamilyJoinStatus(userId: string): Promise<any>;
+  getFamilyJoinStatus(userId: string): Promise<IFamilyJoinStatus>;
   getFamilyJoinRequests(userId: string): Promise<IFamilyJoinRequestDocument[]>;
   approveFamilyJoinRequest(
     userId: string,
@@ -56,14 +124,14 @@ export interface IFamilyService {
     userId: string,
     requestId: string,
   ): Promise<IFamilyJoinRequestDocument>;
-  joinFamily(userId: string, familyId: string): Promise<any>;
+  joinFamily(userId: string, familyId: string): Promise<IFamilyJoinResult>;
   changeMemberRole(
     callerId: string,
     memberId: string,
     newRole: FamilyMemberRole,
   ): Promise<IFamilyMemberDocument>;
-  getLastWeekRanking(): Promise<any>;
-  getThisWeekRanking(): Promise<any>;
+  getLastWeekRanking(): Promise<IFamilyRankingResult>;
+  getThisWeekRanking(): Promise<IThisWeekFamilyRankingResult>;
   getFamilyDetails(familyId: string): Promise<IFamilyDetails>;
 }
 
@@ -102,29 +170,43 @@ export class FamilyService implements IFamilyService {
     const highestSvip = await XpHelper.getInstance().getHighestSvipLevel(
       data.leaderId.toString(),
     );
-    //step5: if no svip or svip is less than 4 then deduct the balance from the user
-    if (highestSvip < 4) {
-      await this.userStatsRepository.balanceDeduction(
-        data.leaderId.toString(),
-        FAMILY_CREATE_PRICE,
-      );
-    }
-    //step6: create family
-    const newFamily = await this.familyRepository.create(data);
-    //step7: make the leader to be the first member
-    const familyMember: IFamilyMember = {
-      familyId: newFamily._id as string,
-      userId: data.leaderId,
-      role: FamilyMemberRole.Leader,
-    };
-    await Promise.all([
-      this.familyMemberRepository.create(familyMember), // creating a seprate member document
-      this.userRepository.findUserByIdAndUpdate(data.leaderId.toString(), {
+
+    //step5: execute financial & state mutations inside a transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      // step5a: if no svip or svip is less than 4 then deduct the balance from the user
+      if (highestSvip < 4) {
+        await this.userStatsRepository.balanceDeduction(
+          data.leaderId.toString(),
+          FAMILY_CREATE_PRICE,
+          session,
+        );
+      }
+      //step5b: create family
+      const newFamily = await this.familyRepository.create(data, session);
+      //step5c: make the leader to be the first member
+      const familyMember: IFamilyMember = {
         familyId: newFamily._id as string,
-      }), // caching the family id to the user document
-    ]);
-    //step8: return the created family
-    return newFamily;
+        userId: data.leaderId,
+        role: FamilyMemberRole.Leader,
+      };
+      await Promise.all([
+        this.familyMemberRepository.create(familyMember, session),
+        this.userRepository.findUserByIdAndUpdate(
+          data.leaderId.toString(),
+          { familyId: newFamily._id as string },
+          session,
+        ),
+      ]);
+      await session.commitTransaction();
+      return newFamily;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 
   async updateFamilyInformation(
@@ -154,42 +236,55 @@ export class FamilyService implements IFamilyService {
       throw new AppError(StatusCodes.BAD_REQUEST, "No valid field to update");
     }
 
-    //step 4: check last update time (once a week allowed for free)
-    const now = new Date();
-    const lastUpdate = family.lastUpdatedAt
-      ? new Date(family.lastUpdatedAt)
-      : new Date(0);
-    const msInWeek = 7 * 24 * 60 * 60 * 1000;
+    //step 4: execute payment + update inside a transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      // step 4a: check last update time (once a week allowed for free)
+      const now = new Date();
+      const lastUpdate = family.lastUpdatedAt
+        ? new Date(family.lastUpdatedAt)
+        : new Date(0);
+      const msInWeek = 7 * 24 * 60 * 60 * 1000;
 
-    if (now.getTime() - lastUpdate.getTime() < msInWeek) {
-      // Less than a week since last update, must pay
-      await this.userStatsRepository.balanceDeduction(
-        myId,
-        FAMILY_UPDATE_PRICE,
+      if (now.getTime() - lastUpdate.getTime() < msInWeek) {
+        // Less than a week since last update, must pay
+        await this.userStatsRepository.balanceDeduction(
+          myId,
+          FAMILY_UPDATE_PRICE,
+          session,
+        );
+      }
+
+      //step 4b: perform update
+      updatedData.lastUpdatedAt = now;
+      const updatedFamily = await this.familyRepository.update(
+        family._id as string,
+        updatedData,
+        session,
       );
+
+      if (!updatedFamily) {
+        throw new AppError(
+          StatusCodes.INTERNAL_SERVER_ERROR,
+          "Failed to update family",
+        );
+      }
+
+      await session.commitTransaction();
+      return updatedFamily;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
-
-    //step 5: perform update
-    updatedData.lastUpdatedAt = now;
-    const updatedFamily = await this.familyRepository.update(
-      family._id as string,
-      updatedData,
-    );
-
-    if (!updatedFamily) {
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to update family",
-      );
-    }
-
-    return updatedFamily;
   }
 
   async joinFamily(
     userId: string,
     familyId: string,
-  ): Promise<IFamilyDocument | any> {
+  ): Promise<IFamilyJoinResult> {
     //step1: validate userId and familyId
     if (!isValidMongooseToken(userId) || !isValidMongooseToken(familyId)) {
       throw new AppError(StatusCodes.BAD_REQUEST, "Invalid userId or familyId");
@@ -383,7 +478,7 @@ export class FamilyService implements IFamilyService {
     return request;
   }
 
-  async getFamilyJoinStatus(userId: string): Promise<any> {
+  async getFamilyJoinStatus(userId: string): Promise<IFamilyJoinStatus> {
     if (!isValidMongooseToken(userId)) {
       throw new AppError(StatusCodes.BAD_REQUEST, "Invalid userId");
     }
@@ -396,7 +491,7 @@ export class FamilyService implements IFamilyService {
       );
       return {
         status: "joined",
-        familyId: family?._id,
+        familyId: family?._id?.toString() || null,
         familyName: family?.name,
       };
     }
@@ -409,7 +504,7 @@ export class FamilyService implements IFamilyService {
       );
       return {
         status: "pending",
-        familyId: family?._id,
+        familyId: family?._id?.toString() || null,
         familyName: family?.name,
       };
     }
@@ -432,6 +527,12 @@ export class FamilyService implements IFamilyService {
         StatusCodes.BAD_REQUEST,
         "Invalid member or caller ID",
       );
+    }
+
+    //step0b: verify caller still exists as a registered user
+    const callerUser = await this.userRepository.findUserById(callerId);
+    if (!callerUser) {
+      throw new AppError(StatusCodes.NOT_FOUND, "Caller not found");
     }
 
     //step1: check if newRole is allowed (cannot assign 'leader' role)
@@ -517,21 +618,32 @@ export class FamilyService implements IFamilyService {
     return updatedMember;
   }
 
-  async getLastWeekRanking() {
+  async getLastWeekRanking(): Promise<IFamilyRankingResult> {
+    const cache = FamilyRankingCache.getInstance();
+    const cached = cache.get<IFamilyRankingResult>("lastWeek");
+    if (cached) return cached;
+
     const ranking = await this.GiftRecordRepository.getFamilyRanking(true);
-    return {
-      top1FamilyDetails: "UnImplemented",
-      ranking,
-    };
+    const top1FamilyDetails = ranking.length > 0 ? ranking[0] : null;
+    const result: IFamilyRankingResult = { top1FamilyDetails, ranking };
+    cache.set("lastWeek", result);
+    return result;
   }
 
-  async getThisWeekRanking() {
+  async getThisWeekRanking(): Promise<IThisWeekFamilyRankingResult> {
+    const cache = FamilyRankingCache.getInstance();
+    const cached = cache.get<IThisWeekFamilyRankingResult>("thisWeek");
+    if (cached) return cached;
+
     const ranking = await this.GiftRecordRepository.getFamilyRanking(false);
-    return {
-      top1FamilyDetails: "UnImplemented",
+    const top1FamilyDetails = ranking.length > 0 ? ranking[0] : null;
+    const result: IThisWeekFamilyRankingResult = {
+      top1FamilyDetails,
       weekEnd: DateHelper.getEndOfWeek(new Date()),
       ranking,
     };
+    cache.set("thisWeek", result);
+    return result;
   }
 
   async getFamilyDetails(familyId: string): Promise<IFamilyDetails> {

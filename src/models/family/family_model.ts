@@ -36,13 +36,16 @@ const familySchema = new Schema<IFamilyDocument>(
     name: {
       type: String,
       required: true,
+      maxlength: 50,
     },
     introduction: {
       type: String,
       required: true,
+      maxlength: 500,
     },
     coverPhoto: {
       type: String,
+      maxlength: 1500,
     },
     joinMode: {
       type: String,
