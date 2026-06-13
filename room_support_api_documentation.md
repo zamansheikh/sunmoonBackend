@@ -31,11 +31,13 @@ The Room Support system tracks engagement metrics for audio rooms (unique visito
 
 **Base Paths:**
 - User-facing: `/api/room-support`
-- Admin: `/api/admin/room-level-criteria`
+- Room Level Criteria (read): `/api/admin/room-level-criteria`
+- Admin (write): `/api/admin/room-level-criteria`
 
 **Authentication:**
 - User-facing endpoints require a valid user JWT token (`authenticate()` middleware).
-- Admin endpoints require Admin or SubAdmin role (`authenticate([UserRoles.Admin, UserRoles.SubAdmin])` middleware).
+- The GET endpoint for room level criteria now accepts **any authenticated user** (not just admins), so clients can fetch level requirements and rewards.
+- POST and DELETE endpoints require Admin or SubAdmin role (`authenticate([UserRoles.Admin, UserRoles.SubAdmin])` middleware).
 
 ---
 
@@ -211,7 +213,7 @@ Removes a user from a room's partner list.
 
 ---
 
-## Admin APIs
+## Room Level Criteria APIs
 
 ### 5. Get All Level Criteria
 
@@ -219,7 +221,7 @@ Retrieves all configured room support level criteria, sorted by level number.
 
 - **URL**: `/api/admin/room-level-criteria`
 - **Method**: `GET`
-- **Auth Required**: Yes (Admin or SubAdmin)
+- **Auth Required**: Yes (any authenticated user — no longer restricted to Admin/SubAdmin)
 
 #### Success Response
 
@@ -256,6 +258,8 @@ Retrieves all configured room support level criteria, sorted by level number.
   ]
 }
 ```
+
+### Admin APIs
 
 ---
 
@@ -460,14 +464,13 @@ These are the **default** values configured in `src/core/Utils/constants.ts`. Th
   DELETE /:roomId/partners/:partnerId   → removeRoomPartners
 
 /api/admin/room-level-criteria
-  GET    /                              → getAllLevels
-  POST   /                              → upsertLevel
-  DELETE /:level                        → deleteLevel
+  GET    /                              → getAllLevels      (any authenticated user)
+  POST   /                              → upsertLevel       (Admin / SubAdmin only)
+  DELETE /:level                        → deleteLevel       (Admin / SubAdmin only)
 ```
 
-The Room Support router is mounted in `src/server.ts`:
+The Room Level Criteria router is mounted in `src/server.ts`:
 ```typescript
-app.use("/api/room-support", RoomSupportRouter);
 app.use("/api/admin/room-level-criteria", RoomLevelCriteriaRouter);
 ```
 

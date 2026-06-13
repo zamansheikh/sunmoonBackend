@@ -1,9 +1,11 @@
-# Audio Room Level Criteria (Admin API)
+# Audio Room Level Criteria API
 
-This API provides management of the goals and rewards for the Audio Room Support system. It utilizes an in-memory synchronization engine to ensure that changes made by admins take effect across the platform in real-time without requiring a server restart.
+This API provides access to the goals and rewards for the Audio Room Support system. The GET endpoint is accessible by any authenticated user so clients can display level requirements and rewards. The POST and DELETE endpoints are restricted to admins.
 
 **Base Path**: `/admin/room-level-criteria` (Note: Ensure this is mounted in your main server router)
-**Authentication**: All endpoints require an Admin token (`UserRoles.Admin`).
+**Authentication**:
+- `GET /` — Any authenticated user (valid JWT token)
+- `POST /`, `DELETE /:level` — Admin or SubAdmin token (`UserRoles.Admin`, `UserRoles.SubAdmin`)
 
 ---
 
@@ -13,7 +15,7 @@ Retrieves the complete list of configured levels from the database, sorted numer
 
 - **URL**: `/`
 - **Method**: `GET`
-- **Auth Required**: YES (Admin)
+- **Auth Required**: YES (any authenticated user)
 
 ### Success Response
 
