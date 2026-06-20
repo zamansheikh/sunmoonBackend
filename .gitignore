@@ -54,3 +54,5 @@ Thumbs.db
 
 # Postman collection
 *.postman_collection.json
+/svip 1 to 9
+/scripts
