@@ -9,6 +9,7 @@ export interface IFamilyMemberRepository {
     userId: string,
     data: Partial<IFamilyMember>,
   ): Promise<IFamilyMemberDocument | null>;
+  delete(userId: string, session?: any): Promise<IFamilyMemberDocument | null>;
   countByRole(familyId: string | any, role: string): Promise<number>;
   incrementContribution(
     userId: string,
@@ -52,6 +53,13 @@ export class FamilyMemberRepository implements IFamilyMemberRepository {
     data: Partial<IFamilyMember>,
   ): Promise<IFamilyMemberDocument | null> {
     return await this.model.findOneAndUpdate({ userId }, data, { new: true });
+  }
+
+  async delete(
+    userId: string,
+    session?: any,
+  ): Promise<IFamilyMemberDocument | null> {
+    return await this.model.findOneAndDelete({ userId }).session(session);
   }
 
   async countByRole(familyId: string | any, role: string): Promise<number> {

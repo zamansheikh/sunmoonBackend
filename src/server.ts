@@ -46,6 +46,7 @@ import XpConfigRouter from "./router/xp_config_routes";
 import MedalRouter from "./router/medal_routes";
 import AppResellerRouter from "./router/app_reseller_routes";
 import SvipRouter from "./router/svip_routes";
+import FamilySupportRewardRouter from "./router/family_support_reward_router";
 
 import fs from "fs";
 import path from "path";
@@ -179,6 +180,9 @@ app.use("/api/svip", SvipRouter);
 
 // App Reseller routes
 app.use("/api/app-reseller", AppResellerRouter);
+
+// Family Support Reward routes
+app.use("/api/admin/family-support-rewards", FamilySupportRewardRouter);
 
 app.post(
   "/api/upload-file-cloud",

@@ -131,6 +131,8 @@ export interface IFamilyService {
     memberId: string,
     newRole: FamilyMemberRole,
   ): Promise<IFamilyMemberDocument>;
+  leaveFamily(userId: string): Promise<void>;
+  kickMember(callerId: string, memberId: string): Promise<void>;
   getLastWeekRanking(): Promise<IFamilyRankingResult>;
   getThisWeekRanking(): Promise<IThisWeekFamilyRankingResult>;
   getFamilyDetails(familyId: string): Promise<IFamilyDetails>;
@@ -617,6 +619,136 @@ export class FamilyService implements IFamilyService {
     }
 
     return updatedMember;
+  }
+
+  async leaveFamily(userId: string): Promise<void> {
+    if (!isValidMongooseToken(userId)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid userId");
+    }
+
+    const member = await this.familyMemberRepository.getByUserId(userId);
+    if (!member) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "You are not a member of any family",
+      );
+    }
+
+    if (member.role === FamilyMemberRole.Leader) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Leader cannot leave the family. Transfer leadership first.",
+      );
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      await Promise.all([
+        this.familyMemberRepository.delete(userId, session),
+        this.userRepository.findUserByIdAndUpdate(
+          userId,
+          { familyId: null },
+          session,
+        ),
+        this.familyRepository.incrementMemberCount(
+          member.familyId.toString(),
+          -1,
+          session,
+        ),
+      ]);
+
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+  async kickMember(callerId: string, memberId: string): Promise<void> {
+    if (!isValidMongooseToken(callerId) || !isValidMongooseToken(memberId)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid caller or member ID");
+    }
+
+    if (callerId === memberId) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "You cannot kick yourself. Use leave instead.",
+      );
+    }
+
+    const caller = await this.familyMemberRepository.getByUserId(callerId);
+    if (!caller) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "You are not a member of any family",
+      );
+    }
+
+    if (
+      caller.role !== FamilyMemberRole.Leader &&
+      caller.role !== FamilyMemberRole.CoLeader
+    ) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Only leader or co-leader can kick members",
+      );
+    }
+
+    const target = await this.familyMemberRepository.getByUserId(memberId);
+    if (
+      !target ||
+      target.familyId.toString() !== caller.familyId.toString()
+    ) {
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        "Member not found in your family",
+      );
+    }
+
+    if (target.role === FamilyMemberRole.Leader) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Cannot kick the family leader",
+      );
+    }
+
+    if (
+      caller.role === FamilyMemberRole.CoLeader &&
+      target.role === FamilyMemberRole.CoLeader
+    ) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Co-leader cannot kick another co-leader",
+      );
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      await Promise.all([
+        this.familyMemberRepository.delete(memberId, session),
+        this.userRepository.findUserByIdAndUpdate(
+          memberId,
+          { familyId: null },
+          session,
+        ),
+        this.familyRepository.incrementMemberCount(
+          caller.familyId.toString(),
+          -1,
+          session,
+        ),
+      ]);
+
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 
   async getLastWeekRanking(): Promise<IFamilyRankingResult> {

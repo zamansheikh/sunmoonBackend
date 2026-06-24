@@ -46,6 +46,8 @@ import SvipConfigModel from "../../models/admin/svip_config_model";
 import { SvipConfigRepository } from "../../repository/admin/svip_config_repository";
 import UserSvipModel from "../../models/svip/user_svip_model";
 import { UserSvipRepository } from "../../repository/svip/user_svip_repository";
+import FamilySupportRewardModel from "../../models/family/family_support_reward_model";
+import { FamilySupportRewardRepository } from "../../repository/family/family_support_reward_repository";
 
 export class RepositoryProviders {
   static readonly giftRecordRepositoryProvider = new GiftRecordRepository(
@@ -124,4 +126,7 @@ export class RepositoryProviders {
   static readonly userSvipRepositoryProvider = new UserSvipRepository(
     UserSvipModel,
   );
+
+  static readonly familySupportRewardRepositoryProvider =
+    new FamilySupportRewardRepository(FamilySupportRewardModel);
 }

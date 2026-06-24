@@ -25,6 +25,11 @@ router
   .route("/member/role/:userId")
   .put(authenticate(), controller.changeMemberRole);
 
+router.route("/leave").delete(authenticate(), controller.leaveFamily);
+router
+  .route("/kick/:memberId")
+  .delete(authenticate(), controller.kickMember);
+
 router
   .route("/ranking/last-week")
   .get(authenticate(), controller.getLastWeekRanking);

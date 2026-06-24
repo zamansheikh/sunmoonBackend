@@ -76,6 +76,7 @@ export enum DatabaseNames {
   Medals = "medals",
   SvipConfig = "svip_configs",
   UserSvip = "user_svip",
+  FamilySupportReward = "family_support_rewards",
 }
 
 export enum ReelStatus {

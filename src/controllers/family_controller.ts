@@ -164,6 +164,29 @@ export default class FamilyController {
     });
   });
 
+  leaveFamily = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.user!;
+    await this.Service.leaveFamily(id);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: null,
+      message: "Left family successfully",
+    });
+  });
+
+  kickMember = catchAsync(async (req: Request, res: Response) => {
+    const { id: callerId } = req.user!;
+    const { memberId } = req.params;
+    await this.Service.kickMember(callerId, memberId);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: null,
+      message: "Member kicked successfully",
+    });
+  });
+
   getLastWeekRanking = catchAsync(async (req: Request, res: Response) => {
     const ranking = await this.Service.getLastWeekRanking();
     sendResponse(res, {
