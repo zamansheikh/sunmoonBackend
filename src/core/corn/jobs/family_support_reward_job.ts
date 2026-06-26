@@ -89,9 +89,8 @@ export const distributeFamilySupportRewards = async () => {
         role: string,
       ): Promise<IDistributedMember | null> => {
         if (!memberDoc) return null;
-        const contribution =
-          memberDoc.weeklyContribution ?? memberDoc.giftsReceived;
-        if (contribution < levelConfig.minContributionRequired) {
+        const contribution = memberDoc.weeklyContribution;
+        if (contribution == null || contribution < levelConfig.minContributionRequired) {
           return null;
         }
 
