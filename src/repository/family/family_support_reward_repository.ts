@@ -14,6 +14,7 @@ export interface IFamilySupportRewardRepository {
   getNextLevelInfo(
     currentContribution: number,
   ): Promise<{ nextLevel: number | null; nextLevelTarget: number | null }>;
+  seedIfEmpty(rewards: IFamilySupportReward[]): Promise<void>;
 }
 
 export class FamilySupportRewardRepository
@@ -56,5 +57,12 @@ export class FamilySupportRewardRepository
 
     const max = levels[levels.length - 1];
     return { nextLevel: max.level, nextLevelTarget: max.targetPoints };
+  }
+
+  async seedIfEmpty(rewards: IFamilySupportReward[]): Promise<void> {
+    const existing = await this.getAll();
+    if (existing.length === 0) {
+      await this.model.insertMany(rewards);
+    }
   }
 }

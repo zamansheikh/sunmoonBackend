@@ -74,6 +74,7 @@ import { RoomLevelCriteriaService } from "./services/audio_room/room_level_crite
 import { RocketConfigService } from "./services/audio_room/rocket_config_service";
 import { XpConfigService } from "./services/admin/xp_config_service";
 import { SvipConfigService } from "./services/admin/svip_config_service";
+import { FamilySupportRewardService } from "./services/family/family_support_reward_service";
 
 // Initialize Magic Ball Trackers
 initializeMagicBallTrackers();
@@ -284,6 +285,13 @@ mongoose.connect(MONGOURL).then(async () => {
     await SvipConfigService.bootstrap();
   } catch (err) {
     console.error("Failed to bootstrap SVIP Configuration:", err);
+  }
+
+  // Bootstrap Family Support Rewards (seed defaults if empty)
+  try {
+    await FamilySupportRewardService.bootstrap();
+  } catch (err) {
+    console.error("Failed to bootstrap Family Support Rewards:", err);
   }
 
   // Connect to Redis
