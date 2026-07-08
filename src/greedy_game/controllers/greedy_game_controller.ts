@@ -1,4 +1,6 @@
+import { StatusCodes } from "http-status-codes";
 import catchAsync from "../../core/Utils/catch_async";
+import AppError from "../../core/errors/app_errors";
 import { IGreedyGameService } from "../services/greedy_game_service";
 
 export default class GreedyGameController {
@@ -14,5 +16,26 @@ export default class GreedyGameController {
     const balance = await this.GreedyGameService.getUserBalance(userId);
 
     res.status(200).json(balance);
+  });
+
+  debit = catchAsync(async (req, res) => {
+    const { userId, currency, amount, type, idempotencyKey, description, refType, refId } = req.body;
+
+    if (!userId || !currency || !amount || !type || !idempotencyKey || !description || !refType || !refId) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "All fields are required");
+    }
+
+    const result = await this.GreedyGameService.debit({
+      userId,
+      currency,
+      amount,
+      type,
+      idempotencyKey,
+      description,
+      refType,
+      refId,
+    });
+
+    res.status(200).json(result);
   });
 }
