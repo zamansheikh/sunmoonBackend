@@ -69,4 +69,12 @@ export default class GreedyGameController {
 
     res.status(result.status).json(result.body);
   });
+
+  getTransaction = catchAsync(async (req, res) => {
+    const { idempotencyKey } = req.params;
+
+    const result = await this.GreedyGameService.getTransactionByidempotencyKey(idempotencyKey);
+
+    res.status(result.status).json(result.body);
+  });
 }

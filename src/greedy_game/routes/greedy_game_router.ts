@@ -16,5 +16,6 @@ const controller = new GreedyGameController(greedyGameService);
 router.get("/internal/wallet/:userId/balance", controller.getWalletBalance);
 router.post("/internal/wallet/debit", controller.debit);
 router.post("/internal/wallet/credit", controller.credit);
+router.get("/internal/wallet/transaction/:idempotencyKey", controller.getTransaction);
 
 export default router;

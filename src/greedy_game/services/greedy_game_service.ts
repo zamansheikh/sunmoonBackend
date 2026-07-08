@@ -23,6 +23,7 @@ export interface IGreedyGameService {
   getUserBalance(userId: string): Promise<{ coins: number; diamonds: number; frozen: boolean }>;
   debit(data: IDebitRequest): Promise<{ status: number; body: any }>;
   credit(data: IDebitRequest): Promise<{ status: number; body: any }>;
+  getTransactionByidempotencyKey(idempotencyKey: string): Promise<{ status: number; body: any }>;
 }
 
 export default class GreedyGameService implements IGreedyGameService {
@@ -132,5 +133,31 @@ export default class GreedyGameService implements IGreedyGameService {
     } finally {
       session.endSession();
     }
+  }
+
+  async getTransactionByidempotencyKey(idempotencyKey: string): Promise<{ status: number; body: any }> {
+    const transaction = await this.WalletTransactionRepo.findByIdempotencyKey(idempotencyKey);
+
+    if (!transaction) {
+      return {
+        status: 404,
+        body: { applied: false, txn: null },
+      };
+    }
+
+    return {
+      status: 200,
+      body: {
+        applied: true,
+        txn: {
+          id: (transaction._id as any).toString(),
+          userId: (transaction.userId as any).toString(),
+          amount: transaction.amount,
+          currency: transaction.currency,
+          type: transaction.type,
+          createdAt: transaction.createdAt,
+        },
+      },
+    };
   }
 }
