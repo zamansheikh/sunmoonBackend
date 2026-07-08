@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { StatusCodes } from "http-status-codes";
 import AppError from "../../core/errors/app_errors";
 import IUserStatsRepository from "../../repository/users/userstats_repository_interface";
@@ -50,7 +51,17 @@ export default class GreedyGameService implements IGreedyGameService {
   }
 
   async debit(data: IDebitRequest): Promise<{ txn: { id: string } }> {
+    const existing = await this.WalletTransactionRepo.findByIdempotencyKey(data.idempotencyKey);
+    if (existing) {
+      return { txn: { id: (existing._id as any).toString() } };
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
+      await this.UserStatsRepo.balanceDeduction(data.userId, data.amount, session);
+
       const transaction = await this.WalletTransactionRepo.create({
         userId: data.userId,
         currency: data.currency,
@@ -60,18 +71,19 @@ export default class GreedyGameService implements IGreedyGameService {
         description: data.description,
         refType: data.refType,
         refId: data.refId,
-      });
+      }, session);
 
+      await session.commitTransaction();
       return {
         txn: {
           id: (transaction._id as any).toString(),
         },
       };
-    } catch (error: any) {
-      if (error.code === 11000) {
-        throw new AppError(StatusCodes.CONFLICT, "Transaction already exists");
-      }
-      throw new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "Failed to create transaction");
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
   }
 }
