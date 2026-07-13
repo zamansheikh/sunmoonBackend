@@ -153,7 +153,7 @@ app.use("/api/stories", StoryRouter);
 // app.use("/api/friends", FriendShipRouter);
 app.use("/api/chats", ChatRouter);
 app.use("/api/games", GameRouter);
-app.use("/api/game", GreedyGameRouter);
+app.use("/api/v1", GreedyGameRouter);
 app.use("/api/followers", FollowerRouter);
 app.use("/api/power-shared", PowerSharedRoutes);
 app.use("/api/store", StoreRoutes);
