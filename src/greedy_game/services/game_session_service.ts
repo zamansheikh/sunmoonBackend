@@ -50,13 +50,16 @@ export default class GameSessionService implements IGameSessionService {
   }
 
   async mintPlayerToken(userId: string): Promise<IGameSessionToken> {
-    const secret = process.env.GAME_JWT_ACCESS_SECRET;
+    // Named to match the games backend's own JWT_ACCESS_SECRET, so the two .env
+    // files read identically. GAME_JWT_ACCESS_SECRET stays accepted as an alias.
+    const secret =
+      process.env.JWT_ACCESS_SECRET || process.env.GAME_JWT_ACCESS_SECRET;
 
     if (!secret) {
       throw new GamesApiError(
         StatusCodes.SERVICE_UNAVAILABLE,
         "GAMES_NOT_CONFIGURED",
-        "GAME_JWT_ACCESS_SECRET is not set — games are disabled",
+        "JWT_ACCESS_SECRET is not set — games are disabled",
       );
     }
 

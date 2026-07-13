@@ -20,9 +20,7 @@ import StoryRouter from "./router/story_routes";
 // import FriendShipRouter from "./router/friendship_router";
 import ChatRouter from "./router/chat_router";
 import GameRouter from "./router/game_router";
-import GreedyGameRouter, {
-  internalRouter as GamesInternalRouter,
-} from "./greedy_game/routes/greedy_game_router";
+import GreedyGameRouter from "./greedy_game/routes/greedy_game_router";
 import GamesAdminRouter from "./greedy_game/routes/games_admin_router";
 import FollowerRouter from "./router/follower_routes";
 import PowerSharedRoutes from "./router/portal_user_routes";
@@ -156,12 +154,12 @@ app.use("/api/stories", StoryRouter);
 // app.use("/api/friends", FriendShipRouter);
 app.use("/api/chats", ChatRouter);
 app.use("/api/games", GameRouter);
-// Games integration. `/api/game` carries the player-facing session mint plus the
-// signed server-to-server API; `/api/v1/internal` re-exposes only the latter, so
-// the games backend's PROVIDER_BASE_URL may point at either prefix. The HMAC
-// covers the full path it actually sends, so both mounts verify correctly.
+// Games integration. Mounted under BOTH prefixes so the games backend's
+// PROVIDER_BASE_URL may end in either `/api/game` or the versioned `/api/v1`.
+// The HMAC covers the full path it actually sends, so both mounts verify.
+// Each exposes `/internal/*` (signed, server-to-server) and `/session/token`.
 app.use("/api/game", GreedyGameRouter);
-app.use("/api/v1/internal", GamesInternalRouter);
+app.use("/api/v1", GreedyGameRouter);
 app.use("/api/admin/game", GamesAdminRouter);
 app.use("/api/followers", FollowerRouter);
 app.use("/api/power-shared", PowerSharedRoutes);
