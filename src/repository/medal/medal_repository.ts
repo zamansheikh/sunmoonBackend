@@ -15,6 +15,8 @@ export interface IMedalWithStatus extends IMedalDocument {
 
 export interface IMedalStatusResponse {
   medals: IMedalWithStatus[];
+  userName: string;
+  avatar: string | null;
   currentXp: number;
   lowerXpLimit: number;
   upperXpLimit: number | null;
@@ -75,7 +77,7 @@ export default class MedalRepository implements IMedalRepository {
   async findMedalsWithUserStatus(userId: string): Promise<IMedalStatusResponse> {
     const [medals, user, xpConfig] = await Promise.all([
       this.Model.find().sort({ level: 1 }),
-      User.findById(userId).select("earnedMedals totalEarnedXp level"),
+      User.findById(userId).select("earnedMedals totalEarnedXp level name avatar"),
       XpConfigService.getConfig(),
     ]);
 
@@ -105,6 +107,8 @@ export default class MedalRepository implements IMedalRepository {
 
     return {
       medals: medalStatuses,
+      userName: user?.name ?? "",
+      avatar: user?.avatar ?? null,
       currentXp,
       lowerXpLimit,
       upperXpLimit,

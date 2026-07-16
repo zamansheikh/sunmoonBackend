@@ -31,7 +31,7 @@ The **Medal System** rewards users with achievement badges when they reach speci
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/medals` | Admin | Create a new medal (with icon upload) |
 | `GET` | `/api/medals` | Any authenticated | List all medals (sorted by level ascending) |
-| `GET` | `/api/medals/status` | Any authenticated | List all medals with acquired status for the authenticated user |
+| `GET` | `/api/medals/status` | Any authenticated | List all medals with acquired status + XP progress for the authenticated user |
 | `GET` | `/api/medals/:id` | Any authenticated | Get a single medal by ID |
 | `PUT` | `/api/medals/:id` | Admin | Update a medal (partial update, icon optional) |
 | `DELETE` | `/api/medals/:id` | Admin | Delete a medal (cleans up icons + user references) |
@@ -131,7 +131,7 @@ Returns all medals sorted by `level` in ascending order.
 
 ### 1.3 Get Medals with User Status
 
-Returns all medals with an `acquired` field indicating whether the authenticated user has earned each medal. Earned medals also include an `earnedAt` timestamp.
+Returns all medals with an `acquired` field indicating whether the authenticated user has earned each medal. Earned medals also include an `earnedAt` timestamp. Additionally returns the user's name, avatar, and XP progress — their current XP, and the lower/upper XP limits for their current level.
 
 - **Path**: `GET /api/medals/status`
 
@@ -140,32 +140,49 @@ Returns all medals with an `acquired` field indicating whether the authenticated
 ```json
 {
   "success": true,
-  "result": [
-    {
-      "_id": "665a1b2c3d4e5f6a7b8c9d0e",
-      "name": "Bronze Star",
-      "level": 5,
-      "icon": "https://res.cloudinary.com/.../medal_assets/abc123.png",
-      "description": "Awarded for reaching level 5",
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "acquired": true,
-      "earnedAt": "2026-05-27T12:30:00.000Z"
-    },
-    {
-      "_id": "665a1b2c3d4e5f6a7b8c9d0f",
-      "name": "Silver Star",
-      "level": 10,
-      "icon": "https://res.cloudinary.com/.../medal_assets/def456.png",
-      "description": "Awarded for reaching level 10",
-      "createdAt": "2026-05-26T10:00:00.000Z",
-      "updatedAt": "2026-05-26T10:00:00.000Z",
-      "acquired": false
-    }
-  ],
+  "result": {
+    "medals": [
+      {
+        "_id": "665a1b2c3d4e5f6a7b8c9d0e",
+        "name": "Bronze Star",
+        "level": 5,
+        "icon": "https://res.cloudinary.com/.../medal_assets/abc123.png",
+        "description": "Awarded for reaching level 5",
+        "createdAt": "2026-05-26T10:00:00.000Z",
+        "updatedAt": "2026-05-26T10:00:00.000Z",
+        "acquired": true,
+        "earnedAt": "2026-05-27T12:30:00.000Z"
+      },
+      {
+        "_id": "665a1b2c3d4e5f6a7b8c9d0f",
+        "name": "Silver Star",
+        "level": 10,
+        "icon": "https://res.cloudinary.com/.../medal_assets/def456.png",
+        "description": "Awarded for reaching level 10",
+        "createdAt": "2026-05-26T10:00:00.000Z",
+        "updatedAt": "2026-05-26T10:00:00.000Z",
+        "acquired": false
+      }
+    ],
+    "userName": "John",
+    "avatar": "https://res.cloudinary.com/.../avatar.png",
+    "currentXp": 250,
+    "lowerXpLimit": 160,
+    "upperXpLimit": 325
+  },
   "message": "Medals with status retrieved successfully"
 }
 ```
+
+#### User Info & XP Progress Fields
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `userName` | `string` | The user's display name |
+| `avatar` | `string \| null` | The user's avatar URL (`null` if not set) |
+| `currentXp` | `number` | The user's total earned XP |
+| `lowerXpLimit` | `number` | The minimum XP required for the user's current level (`0` for level 0) |
+| `upperXpLimit` | `number \| null` | The XP threshold to reach the next level (`null` if at max level) |
 
 ---
 
@@ -462,7 +479,7 @@ The `earnedMedals` field on the user document:
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/medals` | Admin | Create a medal with icon upload |
 | `GET` | `/api/medals` | Any authenticated | List all medals sorted by level |
-| `GET` | `/api/medals/status` | Any authenticated | List all medals with acquired status for the authenticated user |
+| `GET` | `/api/medals/status` | Any authenticated | List all medals with acquired status + XP progress for the authenticated user |
 | `GET` | `/api/medals/:id` | Any authenticated | Get a single medal by ID |
 | `PUT` | `/api/medals/:id` | Admin | Update a medal (partial, safe icon swap) |
 | `DELETE` | `/api/medals/:id` | Admin | Delete medal + cleanup user references |
