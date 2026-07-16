@@ -6,10 +6,18 @@ import {
   IMedalModel,
 } from "../../models/medal/medal_model";
 import User from "../../models/user/user_model";
+import { XpConfigService } from "../../services/admin/xp_config_service";
 
 export interface IMedalWithStatus extends IMedalDocument {
   acquired: boolean;
   earnedAt?: Date;
+}
+
+export interface IMedalStatusResponse {
+  medals: IMedalWithStatus[];
+  currentXp: number;
+  lowerXpLimit: number;
+  upperXpLimit: number | null;
 }
 
 export interface IMedalRepository {
@@ -19,7 +27,7 @@ export interface IMedalRepository {
   findByLevel(level: number): Promise<IMedalDocument | null>;
   update(id: string, data: Partial<IMedal>): Promise<IMedalDocument>;
   delete(id: string): Promise<IMedalDocument>;
-  findMedalsWithUserStatus(userId: string): Promise<IMedalWithStatus[]>;
+  findMedalsWithUserStatus(userId: string): Promise<IMedalStatusResponse>;
 }
 
 export default class MedalRepository implements IMedalRepository {
@@ -64,10 +72,11 @@ export default class MedalRepository implements IMedalRepository {
     return deleted;
   }
 
-  async findMedalsWithUserStatus(userId: string): Promise<IMedalWithStatus[]> {
-    const [medals, user] = await Promise.all([
+  async findMedalsWithUserStatus(userId: string): Promise<IMedalStatusResponse> {
+    const [medals, user, xpConfig] = await Promise.all([
       this.Model.find().sort({ level: 1 }),
-      User.findById(userId).select("earnedMedals"),
+      User.findById(userId).select("earnedMedals totalEarnedXp level"),
+      XpConfigService.getConfig(),
     ]);
 
     const earnedMedalMap = new Map<string, Date>();
@@ -77,7 +86,7 @@ export default class MedalRepository implements IMedalRepository {
       }
     }
 
-    return medals.map((medal) => {
+    const medalStatuses: IMedalWithStatus[] = medals.map((medal) => {
       const medalId = (medal._id as unknown as { toString(): string }).toString();
       const earnedAt = earnedMedalMap.get(medalId);
       return {
@@ -86,5 +95,19 @@ export default class MedalRepository implements IMedalRepository {
         ...(earnedAt && { earnedAt }),
       } as IMedalWithStatus;
     });
+
+    const level = user?.level ?? 0;
+    const currentXp = user?.totalEarnedXp ?? 0;
+    const xpLevels = xpConfig?.xpLevels ?? [];
+
+    const lowerXpLimit = level === 0 ? 0 : (xpLevels[level - 1] ?? 0);
+    const upperXpLimit = level < xpLevels.length ? xpLevels[level] : null;
+
+    return {
+      medals: medalStatuses,
+      currentXp,
+      lowerXpLimit,
+      upperXpLimit,
+    };
   }
 }

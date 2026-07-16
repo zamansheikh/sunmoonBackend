@@ -8,7 +8,7 @@ import { CloudinaryFolder } from "../../core/Utils/enums";
 import { IMedal, IMedalDocument } from "../../models/medal/medal_model";
 import {
   IMedalRepository,
-  IMedalWithStatus,
+  IMedalStatusResponse,
 } from "../../repository/medal/medal_repository";
 import User from "../../models/user/user_model";
 
@@ -32,7 +32,7 @@ export interface IMedalService {
     totalAwarded: number;
     medalsAwarded: { medalName: string; level: number; count: number }[];
   }>;
-  getMedalsWithUserStatus(userId: string): Promise<IMedalWithStatus[]>;
+  getMedalsWithUserStatus(userId: string): Promise<IMedalStatusResponse>;
 }
 
 export default class MedalService implements IMedalService {
@@ -196,7 +196,7 @@ export default class MedalService implements IMedalService {
     return { totalAwarded, medalsAwarded: results };
   }
 
-  async getMedalsWithUserStatus(userId: string): Promise<IMedalWithStatus[]> {
+  async getMedalsWithUserStatus(userId: string): Promise<IMedalStatusResponse> {
     return await this.MedalRepository.findMedalsWithUserStatus(userId);
   }
 }
