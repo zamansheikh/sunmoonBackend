@@ -34,6 +34,7 @@ import { IAgencyJoinRequestRepository } from "../../repository/request/AgencyJoi
 import { ILevelTagBg } from "../../models/user/level_tag_bg_model";
 import { ILevelTagBgRepository } from "../../repository/users/level_tag_bg_repository";
 import { creditRegularUserCoins } from "../coin/coin_utils";
+import { XpHelper } from "../../core/helper_classes/xp_helper";
 
 export interface ISharedPowerService {
   loginPortalUser(
@@ -399,7 +400,6 @@ export default class SharedPowerService implements ISharedPowerService {
           targetUser: targetProfile as IUserDocument,
           userRepository: this.UserRepository,
           userStatsRepository: this.UserStatsRepository,
-          levelTagBgRepository: this.LevelTagBgRepository,
           coinHistoryRepository: this.CoinHistoryRepository,
           senderRole: role,
           senderId: myId,
@@ -419,6 +419,15 @@ export default class SharedPowerService implements ISharedPowerService {
       throw error;
     } finally {
       session.endSession();
+    }
+
+    // ── XP update for regular app users (fire-and-forget, outside transaction) ─
+    if (!portalUserTargets.includes(userRole)) {
+      try {
+        await XpHelper.getInstance().updateUserXpFromCoin(userId, coins);
+      } catch (error) {
+        console.error("XP update after coin transfer failed:", error);
+      }
     }
 
     // ── 9. Referral recharge hook (unchanged) ───────────────────────────────

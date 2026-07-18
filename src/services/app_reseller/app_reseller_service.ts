@@ -30,6 +30,7 @@ import { IReferralService } from "../referral/referral_service";
 import { IAdminRepository } from "../../repository/admin/admin_repository";
 import { IPortalUserRepository } from "../../repository/portal_user/portal_user_repository";
 import { creditRegularUserCoins } from "../coin/coin_utils";
+import { XpHelper } from "../../core/helper_classes/xp_helper";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Interface
@@ -309,14 +310,13 @@ export default class AppResellerService implements IAppResellerService {
         );
       }
 
-      // 4b. Credit the receiver using the shared utility (updates coins, level, and history).
+      // 4b. Credit the receiver using the shared utility (updates coins, totalBoughtCoins, and history).
       const receiverStats = await creditRegularUserCoins({
         userId,
         coins,
         targetUser,
         userRepository: this.UserRepository,
         userStatsRepository: this.UserStatsRepository,
-        levelTagBgRepository: this.LevelTagBgRepository,
         coinHistoryRepository: this.CoinHistoryRepository,
         senderRole: UserRoles.Reseller,
         senderId: resellerId,
@@ -345,7 +345,16 @@ export default class AppResellerService implements IAppResellerService {
       session.endSession();
     }
 
-    // ── 5. Referral recharge hook (fire-and-forget) ──────────────────────────
+    // ── 5. XP update (fire-and-forget, outside transaction) ────────────────
+    //    Increments totalEarnedXp, recalculates level from XP thresholds,
+    //    awards medals, and emits socket level-up notifications.
+    try {
+      await XpHelper.getInstance().updateUserXpFromCoin(userId, coins);
+    } catch (error) {
+      console.error("XP update after coin transfer failed:", error);
+    }
+
+    // ── 6. Referral recharge hook (fire-and-forget) ──────────────────────────
     //      If the target user was referred by someone, the referrer may receive
     //      a milestone reward based on the cumulative recharge amount.
     //      This runs outside the transaction so a referral failure never rolls

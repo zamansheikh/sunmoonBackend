@@ -9,14 +9,9 @@
 
 import { ClientSession } from "mongoose";
 import { UserRoles } from "../../core/Utils/enums";
-import {
-  determineUserLevel,
-  determineUserTagAndBg,
-} from "../../core/Utils/helper_functions";
 import { ICoinHistory } from "../../models/coins/coinHistoryModel";
 import { IUserDocument } from "../../models/user/user_model_interface";
 import { ICoinHistoryRepository } from "../../repository/coins/coinHistoryRepository";
-import { ILevelTagBgRepository } from "../../repository/users/level_tag_bg_repository";
 import { IUserRepository } from "../../repository/users/user_repository";
 import IUserStatsRepository from "../../repository/users/userstats_repository_interface";
 import { IUSerStatsDocument } from "../../entities/userstats/userstats_interface";
@@ -33,8 +28,6 @@ export interface CreditRegularUserCoinsParams {
   userRepository: IUserRepository;
   /** Repository for the `userstats` collection. */
   userStatsRepository: IUserStatsRepository;
-  /** Repository for level-tag/background lookups. */
-  levelTagBgRepository: ILevelTagBgRepository;
   /** Repository for coin audit-history. */
   coinHistoryRepository: ICoinHistoryRepository;
   /** Role of the sender (used in the history record). */
@@ -52,9 +45,12 @@ export interface CreditRegularUserCoinsParams {
  *
  * This covers three operations atomically:
  *  1. Increments the user's coin balance in `userstats`.
- *  2. If XP mode is OFF, recalculates the user's level, tag & background based
- *     on cumulative `totalBoughtCoins` and updates the `users` document.
+ *  2. Updates cumulative `totalBoughtCoins` on the `users` document.
  *  3. Persists an audit record in `coin_histories`.
+ *
+ * Note: XP & level recalculation is handled by the caller **after** the
+ * transaction commits (via `XpHelper.updateUserXpFromCoin`), since XpHelper
+ * uses its own DB calls outside the session.
  *
  * @returns The updated `userstats` document.
  */
@@ -67,7 +63,6 @@ export async function creditRegularUserCoins(
     targetUser,
     userRepository,
     userStatsRepository,
-    levelTagBgRepository,
     coinHistoryRepository,
     senderRole,
     senderId,
@@ -78,27 +73,12 @@ export async function creditRegularUserCoins(
   // ── 1. Increment coin balance in UserStats ──────────────────────────────
   const stats = await userStatsRepository.updateCoins(userId, coins, session);
 
-  // ── 2. Recalculate level if XP mode is OFF ──────────────────────────────
-  const xpEnv = process.env.XP_MODE ?? "0";
-  const isXpMode = xpEnv.toString() === "1";
-  if (!isXpMode) {
-    const newLevel = determineUserLevel(
-      (targetUser.totalBoughtCoins ?? 0) + coins,
-    );
-    const newTagAndBg = determineUserTagAndBg(newLevel);
-    const tagAndBgDocument =
-      await levelTagBgRepository.findByLevel(newTagAndBg);
-    await userRepository.findUserByIdAndUpdate(
-      userId,
-      {
-        totalBoughtCoins: (targetUser.totalBoughtCoins ?? 0) + coins,
-        level: newLevel,
-        currentLevelTag: tagAndBgDocument?.levelTag,
-        currentLevelBackground: tagAndBgDocument?.levelBg,
-      },
-      session,
-    );
-  }
+  // ── 2. Update cumulative totalBoughtCoins on the user document ──────────
+  await userRepository.findUserByIdAndUpdate(
+    userId,
+    { totalBoughtCoins: (targetUser.totalBoughtCoins ?? 0) + coins },
+    session,
+  );
 
   // ── 3. Coin audit history ───────────────────────────────────────────────
   const historyObj: ICoinHistory = {
