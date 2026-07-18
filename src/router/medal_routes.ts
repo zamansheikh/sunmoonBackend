@@ -17,7 +17,10 @@ router
   .route("/")
   .post(
     authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
-    upload.single("icon"),
+    upload.fields([
+      { name: "icon", maxCount: 1 },
+      { name: "levelTag", maxCount: 1 },
+    ]),
     medalController.createMedal,
   )
   .get(authenticate(), medalController.getAllMedals);
@@ -33,7 +36,10 @@ router
   .get(authenticate(), medalController.getMedalById)
   .put(
     authenticate([UserRoles.Admin, UserRoles.SubAdmin]),
-    upload.single("icon"),
+    upload.fields([
+      { name: "icon", maxCount: 1 },
+      { name: "levelTag", maxCount: 1 },
+    ]),
     medalController.updateMedal,
   )
   .delete(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), medalController.deleteMedal);

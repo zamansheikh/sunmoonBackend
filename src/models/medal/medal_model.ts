@@ -5,6 +5,7 @@ export interface IMedal {
   name: string;
   level: number;
   icon: string;
+  levelTag?: string;
   description?: string;
 }
 
@@ -20,6 +21,7 @@ const medalSchema = new mongoose.Schema<IMedalDocument, IMedalModel>(
     name: { type: String, required: true },
     level: { type: Number, required: true, unique: true },
     icon: { type: String, required: true },
+    levelTag: { type: String },
     description: { type: String },
   },
   {

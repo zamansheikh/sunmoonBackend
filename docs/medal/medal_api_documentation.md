@@ -52,6 +52,7 @@ Creates a new medal tied to a specific level. The `level` must be unique — onl
 | `name` | `string` | Yes | Display name of the medal (e.g., "Bronze Star") |
 | `level` | `number` | Yes | The user level required to earn this medal (must be unique) |
 | `icon` | `file` | Yes | Medal icon image (uploaded to Cloudinary) |
+| `levelTag` | `file` | No | Level tag image for the medal (uploaded to Cloudinary) |
 | `description` | `string` | No | Optional description of the medal |
 
 #### Response (201 Created)
@@ -64,6 +65,7 @@ Creates a new medal tied to a specific level. The `level` must be unique — onl
     "name": "Bronze Star",
     "level": 5,
     "icon": "https://res.cloudinary.com/.../medal_assets/abc123.png",
+    "levelTag": "https://res.cloudinary.com/.../medal_assets/tag123.png",
     "description": "Awarded for reaching level 5",
     "createdAt": "2026-05-26T10:00:00.000Z",
     "updatedAt": "2026-05-26T10:00:00.000Z"
@@ -109,6 +111,7 @@ Returns all medals sorted by `level` in ascending order.
       "name": "Bronze Star",
       "level": 5,
       "icon": "https://res.cloudinary.com/.../medal_assets/abc123.png",
+      "levelTag": "https://res.cloudinary.com/.../medal_assets/tag123.png",
       "description": "Awarded for reaching level 5",
       "createdAt": "2026-05-26T10:00:00.000Z",
       "updatedAt": "2026-05-26T10:00:00.000Z"
@@ -118,6 +121,7 @@ Returns all medals sorted by `level` in ascending order.
       "name": "Silver Star",
       "level": 10,
       "icon": "https://res.cloudinary.com/.../medal_assets/def456.png",
+      "levelTag": "https://res.cloudinary.com/.../medal_assets/tag456.png",
       "description": "Awarded for reaching level 10",
       "createdAt": "2026-05-26T10:00:00.000Z",
       "updatedAt": "2026-05-26T10:00:00.000Z"
@@ -147,6 +151,7 @@ Returns all medals with an `acquired` field indicating whether the authenticated
         "name": "Bronze Star",
         "level": 5,
         "icon": "https://res.cloudinary.com/.../medal_assets/abc123.png",
+        "levelTag": "https://res.cloudinary.com/.../medal_assets/tag123.png",
         "description": "Awarded for reaching level 5",
         "createdAt": "2026-05-26T10:00:00.000Z",
         "updatedAt": "2026-05-26T10:00:00.000Z",
@@ -158,6 +163,7 @@ Returns all medals with an `acquired` field indicating whether the authenticated
         "name": "Silver Star",
         "level": 10,
         "icon": "https://res.cloudinary.com/.../medal_assets/def456.png",
+        "levelTag": "https://res.cloudinary.com/.../medal_assets/tag456.png",
         "description": "Awarded for reaching level 10",
         "createdAt": "2026-05-26T10:00:00.000Z",
         "updatedAt": "2026-05-26T10:00:00.000Z",
@@ -166,6 +172,8 @@ Returns all medals with an `acquired` field indicating whether the authenticated
     ],
     "userName": "John",
     "avatar": "https://res.cloudinary.com/.../avatar.png",
+    "currentLevel": 1,
+    "nextLevel": 2,
     "currentXp": 250,
     "lowerXpLimit": 160,
     "upperXpLimit": 325
@@ -180,6 +188,8 @@ Returns all medals with an `acquired` field indicating whether the authenticated
 | :--- | :--- | :--- |
 | `userName` | `string` | The user's display name |
 | `avatar` | `string \| null` | The user's avatar URL (`null` if not set) |
+| `currentLevel` | `number` | The user's current level |
+| `nextLevel` | `number \| null` | The next level to reach (`null` if at max level) |
 | `currentXp` | `number` | The user's total earned XP |
 | `lowerXpLimit` | `number` | The minimum XP required for the user's current level (`0` for level 0) |
 | `upperXpLimit` | `number \| null` | The XP threshold to reach the next level (`null` if at max level) |
@@ -200,6 +210,7 @@ Returns all medals with an `acquired` field indicating whether the authenticated
     "name": "Bronze Star",
     "level": 5,
     "icon": "https://res.cloudinary.com/.../medal_assets/abc123.png",
+    "levelTag": "https://res.cloudinary.com/.../medal_assets/tag123.png",
     "description": "Awarded for reaching level 5",
     "createdAt": "2026-05-26T10:00:00.000Z",
     "updatedAt": "2026-05-26T10:00:00.000Z"
@@ -234,6 +245,7 @@ Updates a medal's fields. The icon replacement is safe — the new icon is uploa
 | `name` | `string` | At least one field required | Updated display name |
 | `level` | `number` | At least one field required | Updated level (must remain unique across medals) |
 | `icon` | `file` | At least one field required | New medal icon (replaces existing Cloudinary icon) |
+| `levelTag` | `file` | At least one field required | New level tag image (replaces existing Cloudinary level tag) |
 | `description` | `string` | At least one field required | Updated description |
 
 #### Response (200 OK)
@@ -246,6 +258,7 @@ Updates a medal's fields. The icon replacement is safe — the new icon is uploa
     "name": "Gold Star",
     "level": 15,
     "icon": "https://res.cloudinary.com/.../medal_assets/new789.png",
+    "levelTag": "https://res.cloudinary.com/.../medal_assets/tag789.png",
     "description": "Awarded for reaching level 15",
     "createdAt": "2026-05-26T10:00:00.000Z",
     "updatedAt": "2026-05-27T10:00:00.000Z"
@@ -268,7 +281,7 @@ Updates a medal's fields. The icon replacement is safe — the new icon is uploa
 ```json
 {
   "success": false,
-  "message": "At least one field (name, level, description, icon) is required for update"
+  "message": "At least one field (name, level, description, icon, levelTag) is required for update"
 }
 ```
 
@@ -301,6 +314,7 @@ Deletes a medal and performs two cleanup operations:
     "name": "Bronze Star",
     "level": 5,
     "icon": "https://res.cloudinary.com/.../medal_assets/abc123.png",
+    "levelTag": "https://res.cloudinary.com/.../medal_assets/tag123.png",
     "description": "Awarded for reaching level 5",
     "createdAt": "2026-05-26T10:00:00.000Z",
     "updatedAt": "2026-05-26T10:00:00.000Z"
@@ -462,6 +476,7 @@ The `earnedMedals` field on the user document:
 | `name` | `string` | Display name of the medal |
 | `level` | `number` | Required user level to earn this medal (unique index) |
 | `icon` | `string` | Cloudinary URL of the medal icon image |
+| `levelTag` | `string` | Cloudinary URL of the medal level tag image (optional) |
 | `description` | `string` | Optional description of the medal |
 | `createdAt` | `Date` | Timestamp from Mongoose `timestamps: true` |
 | `updatedAt` | `Date` | Timestamp from Mongoose `timestamps: true` |
@@ -520,6 +535,6 @@ src/
 
 - **Level-up only**: Medals are awarded **only when the user's level increases**, not on every XP update.
 - **Non-atomic retroactive**: The retroactive endpoint runs one `updateMany` per medal sequentially (not in a transaction). It is safe to re-run — the `$ne` filter prevents duplicates.
-- **Icon swap safety**: `updateMedal` uploads the new icon to Cloudinary **before** deleting the old one. If the upload fails, the old icon is preserved.
-- **Cleanup on delete**: `deleteMedal` removes the medal from all users' `earnedMedals` arrays via `$pull` before deleting the medal document itself.
+- **Icon swap safety**: `updateMedal` uploads the new icon and level tag to Cloudinary **before** deleting the old ones. If the upload fails, the old files are preserved.
+- **Cleanup on delete**: `deleteMedal` removes both `icon` and `levelTag` from Cloudinary, then removes the medal from all users' `earnedMedals` arrays via `$pull` before deleting the medal document itself.
 - **Profile population**: User details endpoints (`retrieveMyDetails`, `retrieveUserDetails`) use `.populate("earnedMedals.medalId")` to return full medal objects in API responses.

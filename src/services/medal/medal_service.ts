@@ -18,6 +18,7 @@ export interface IMedalService {
     level: number,
     icon: Express.Multer.File,
     description?: string,
+    levelTag?: Express.Multer.File,
   ): Promise<IMedalDocument>;
   getAllMedals(): Promise<IMedalDocument[]>;
   getMedalById(id: string): Promise<IMedalDocument>;
@@ -26,6 +27,7 @@ export interface IMedalService {
     id: string,
     data: Partial<IMedal>,
     icon?: Express.Multer.File,
+    levelTag?: Express.Multer.File,
   ): Promise<IMedalDocument>;
   deleteMedal(id: string): Promise<IMedalDocument>;
   retroactiveAward(): Promise<{
@@ -47,6 +49,7 @@ export default class MedalService implements IMedalService {
     level: number,
     icon: Express.Multer.File,
     description?: string,
+    levelTag?: Express.Multer.File,
   ): Promise<IMedalDocument> {
     const existing = await this.MedalRepository.findByLevel(level);
     if (existing) {
@@ -67,10 +70,26 @@ export default class MedalService implements IMedalService {
       );
     }
 
+    let levelTagUrl: string | undefined;
+    if (levelTag) {
+      const uploaded = await uploadFileToCloudinary({
+        folder: CloudinaryFolder.MedalAssets,
+        file: levelTag,
+      });
+      if (!uploaded) {
+        throw new AppError(
+          StatusCodes.INTERNAL_SERVER_ERROR,
+          "Failed to upload medal level tag",
+        );
+      }
+      levelTagUrl = uploaded;
+    }
+
     const medalData: IMedal = {
       name,
       level,
       icon: iconUrl,
+      levelTag: levelTagUrl,
       description,
     };
 
@@ -97,6 +116,7 @@ export default class MedalService implements IMedalService {
     id: string,
     data: Partial<IMedal>,
     icon?: Express.Multer.File,
+    levelTag?: Express.Multer.File,
   ): Promise<IMedalDocument> {
     const existing = await this.MedalRepository.findById(id);
     if (!existing) {
@@ -114,7 +134,6 @@ export default class MedalService implements IMedalService {
     }
 
     if (icon) {
-      // Upload new icon first, then delete old one — if upload fails, old icon is preserved
       const iconUrl = await uploadFileToCloudinary({
         folder: CloudinaryFolder.MedalAssets,
         file: icon,
@@ -129,6 +148,23 @@ export default class MedalService implements IMedalService {
       data.icon = iconUrl;
     }
 
+    if (levelTag) {
+      const levelTagUrl = await uploadFileToCloudinary({
+        folder: CloudinaryFolder.MedalAssets,
+        file: levelTag,
+      });
+      if (!levelTagUrl) {
+        throw new AppError(
+          StatusCodes.INTERNAL_SERVER_ERROR,
+          "Failed to upload medal level tag",
+        );
+      }
+      if (existing.levelTag) {
+        await deleteFileFromCloudinary(existing.levelTag);
+      }
+      data.levelTag = levelTagUrl;
+    }
+
     return await this.MedalRepository.update(id, data);
   }
 
@@ -138,10 +174,11 @@ export default class MedalService implements IMedalService {
       throw new AppError(StatusCodes.NOT_FOUND, "Medal not found");
     }
 
-    // Clean up Cloudinary icon
     await deleteFileFromCloudinary(medal.icon);
+    if (medal.levelTag) {
+      await deleteFileFromCloudinary(medal.levelTag);
+    }
 
-    // Remove the medal from all users' earnedMedals arrays to prevent orphaned references
     await User.updateMany(
       {},
       { $pull: { earnedMedals: { medalId: medal._id } } },

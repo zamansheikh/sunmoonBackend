@@ -14,7 +14,9 @@ export default class MedalController {
 
   createMedal = catchAsync(async (req: Request, res: Response) => {
     const { name, level, description } = req.body;
-    const icon = req.file as Express.Multer.File;
+    const files = req.files as { icon?: Express.Multer.File[]; levelTag?: Express.Multer.File[] };
+    const icon = files?.icon?.[0];
+    const levelTag = files?.levelTag?.[0];
 
     if (!name || !level || !icon) {
       throw new AppError(
@@ -32,6 +34,7 @@ export default class MedalController {
       Number(level),
       icon,
       description,
+      levelTag,
     );
 
     sendResponse(res, {
@@ -68,12 +71,14 @@ export default class MedalController {
   updateMedal = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, level, description } = req.body;
-    const icon = req.file as Express.Multer.File;
+    const files = req.files as { icon?: Express.Multer.File[]; levelTag?: Express.Multer.File[] };
+    const icon = files?.icon?.[0];
+    const levelTag = files?.levelTag?.[0];
 
-    if (!name && !level && !description && !icon) {
+    if (!name && !level && !description && !icon && !levelTag) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "At least one field (name, level, description, icon) is required for update",
+        "At least one field (name, level, description, icon, levelTag) is required for update",
       );
     }
 
@@ -87,7 +92,7 @@ export default class MedalController {
     }
     if (description !== undefined) updateData.description = description;
 
-    const medal = await this.MedalService.updateMedal(id, updateData, icon);
+    const medal = await this.MedalService.updateMedal(id, updateData, icon, levelTag);
 
     sendResponse(res, {
       statusCode: StatusCodes.OK,

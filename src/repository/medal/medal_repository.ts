@@ -17,6 +17,8 @@ export interface IMedalStatusResponse {
   medals: IMedalWithStatus[];
   userName: string;
   avatar: string | null;
+  currentLevel: number;
+  nextLevel: number | null;
   currentXp: number;
   lowerXpLimit: number;
   upperXpLimit: number | null;
@@ -101,14 +103,19 @@ export default class MedalRepository implements IMedalRepository {
     const level = user?.level ?? 0;
     const currentXp = user?.totalEarnedXp ?? 0;
     const xpLevels = xpConfig?.xpLevels ?? [];
+    const maxLevel = xpLevels.length;
 
     const lowerXpLimit = level === 0 ? 0 : (xpLevels[level - 1] ?? 0);
-    const upperXpLimit = level < xpLevels.length ? xpLevels[level] : null;
+    const upperXpLimit = level < maxLevel ? xpLevels[level] : null;
+    const currentLevel = level;
+    const nextLevel = currentLevel < maxLevel ? currentLevel + 1 : null;
 
     return {
       medals: medalStatuses,
       userName: user?.name ?? "",
       avatar: user?.avatar ?? null,
+      currentLevel,
+      nextLevel,
       currentXp,
       lowerXpLimit,
       upperXpLimit,
