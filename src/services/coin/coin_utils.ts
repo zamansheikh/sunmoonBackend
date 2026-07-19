@@ -40,6 +40,7 @@ export interface CreditRegularUserCoinsParams {
   session: ClientSession;
 }
 
+
 /**
  * Credits coins to a regular app user inside an **already-started** transaction.
  *
