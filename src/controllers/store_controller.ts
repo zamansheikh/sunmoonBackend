@@ -287,6 +287,17 @@ export default class StoreController {
     });
   });
 
+  getStoreItemsFiltered = catchAsync(async (req: Request, res: Response) => {
+    const raw = req.query.canUserBuyThis;
+    const canUserBuyThis = raw === undefined ? true : raw === "true";
+    const items = await this.Service.getStoreItemsFiltered(canUserBuyThis);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result: items,
+    });
+  });
+
   getAllStoreItems = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.user!;
     const items = await this.Service.getAllStoreItems(id);

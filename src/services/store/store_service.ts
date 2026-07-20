@@ -61,6 +61,9 @@ export interface IStoreService {
   getSVIPStoreItems(id: string): Promise<IStoreItemDocument[]>;
   getAllStoreItems(id: string): Promise<Record<string, IStoreItemDocument[]>>;
   getExlusiveStoreItems(): Promise<Record<string, IStoreItemDocument[]>>;
+  getStoreItemsFiltered(
+    canUserBuyThis: boolean,
+  ): Promise<Record<string, IStoreItemDocument[]>>;
   getStoreItemsByCategory(
     category: string,
     query: Record<string, any>,
@@ -426,6 +429,12 @@ export default class StoreService implements IStoreService {
 
   async getExlusiveStoreItems(): Promise<Record<string, IStoreItemDocument[]>> {
     return await this.ItemRepository.getExclusiveStoreItemsGrouped();
+  }
+
+  async getStoreItemsFiltered(
+    canUserBuyThis: boolean,
+  ): Promise<Record<string, IStoreItemDocument[]>> {
+    return await this.ItemRepository.getFilteredStoreItemsGrouped(canUserBuyThis);
   }
 
   async getVIPStoreItems(id: string): Promise<IStoreItemDocument[]> {

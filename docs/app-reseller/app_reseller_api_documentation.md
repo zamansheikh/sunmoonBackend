@@ -34,7 +34,7 @@ The system uses a dedicated **`resellerCoin`** field on the `UserStats` collecti
 Returns a paginated list of all users with the `userRole` set to `"re-seller"`.
 
 - **Path**: `GET /api/app-reseller/`
-- **Access**: `Admin` or `SubAdmin` only
+- **Access**: any authenticated user
 
 ### Query Parameters
 

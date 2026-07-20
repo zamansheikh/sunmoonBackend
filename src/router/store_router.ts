@@ -68,6 +68,9 @@ router.route("/items/svip").get(authenticate(), controller.getSVIPStoreItems);
 router
   .route("/items/exclusive")
   .get(authenticate(), controller.getExlusiveStoreItems);
+router
+  .route("/items/browse")
+  .get(authenticate(), controller.getStoreItemsFiltered);
 router.route("/items").get(authenticate(), controller.getAllStoreItems);
 router
   .route("/items/:id")

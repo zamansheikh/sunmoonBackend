@@ -46,6 +46,9 @@ export interface IStoreItemRepository {
   ): Promise<IStoreItemDocument[]>;
   getExclusiveStoreItems(): Promise<IStoreItemDocument[]>;
   getExclusiveStoreItemsGrouped(): Promise<Record<string, IStoreItemDocument[]>>;
+  getFilteredStoreItemsGrouped(
+    canUserBuyThis: boolean,
+  ): Promise<Record<string, IStoreItemDocument[]>>;
 }
 
 export default class StoreItemRepository implements IStoreItemRepository {
@@ -401,6 +404,53 @@ export default class StoreItemRepository implements IStoreItemRepository {
                 $match: {
                   deleteStatus: false,
                   canUserBuyThis: false,
+                },
+              },
+            ],
+            as: "items",
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            categories: {
+              $push: {
+                k: "$title",
+                v: "$items",
+              },
+            },
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: {
+              $arrayToObject: "$categories",
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    return results[0] || {};
+  }
+
+  async getFilteredStoreItemsGrouped(
+    canUserBuyThis: boolean,
+  ): Promise<Record<string, IStoreItemDocument[]>> {
+    const results = await this.Model.db
+      .collection(DatabaseNames.StoreCategory)
+      .aggregate([
+        ...(canUserBuyThis ? [{ $match: { isPremium: false } }] : []),
+        {
+          $lookup: {
+            from: DatabaseNames.StoreItem,
+            localField: "_id",
+            foreignField: "categoryId",
+            pipeline: [
+              {
+                $match: {
+                  deleteStatus: false,
+                  canUserBuyThis,
                 },
               },
             ],

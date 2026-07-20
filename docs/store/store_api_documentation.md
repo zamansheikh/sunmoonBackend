@@ -6,7 +6,7 @@ This system consists of:
 
 1. **Category Management** — Admin CRUD for store categories
 2. **Item Management** — Admin CRUD for single and batch items
-3. **Item Browsing** — Public endpoints for browsing items by category, VIP, SVIP, or exclusive
+3. **Item Browsing** — Public endpoints for browsing items by category, VIP, SVIP, exclusive, or filtered by `canUserBuyThis`
 4. **Bucket Management** — User purchase, equipping, and inventory listing
 5. **Admin Grant** — Direct granting of exclusive items to users
 
@@ -350,7 +350,53 @@ Returns items with `canUserBuyThis: false` across all categories.
 
 ---
 
-### 3.5 Get Store Items by Category
+### 3.5 Browse Store Items (Filterable by `canUserBuyThis`)
+
+Returns items grouped by category, filtered by the `canUserBuyThis` flag.
+
+- **Path**: `GET /api/store/items/browse`
+- **Access Control**: Any authenticated user
+
+#### Query Parameters
+
+| Param | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `canUserBuyThis` | `string` (`"true"` \| `"false"`) | No | `"true"` | Filter by purchase availability |
+
+#### Examples
+
+- `GET /api/store/items/browse` — buyable items (default)
+- `GET /api/store/items/browse?canUserBuyThis=true` — same as above
+- `GET /api/store/items/browse?canUserBuyThis=false` — exclusive/grant-only items
+
+#### Response (200 OK)
+
+```json
+{
+  "success": true,
+  "result": {
+    "Accessories": [
+      {
+        "_id": "665a...",
+        "name": "Cool Hat",
+        "logo": "https://...",
+        "categoryId": "664b...",
+        "isPremium": false,
+        "prices": [{ "validity": 30, "price": 100 }],
+        "canUserBuyThis": true,
+        "totalSold": 42
+      }
+    ],
+    "Effects": []
+  }
+}
+```
+
+When `canUserBuyThis=true`, only non-premium items are returned (`isPremium: false`). When `canUserBuyThis=false`, all categories including premium are included. An empty result returns `{}`.
+
+---
+
+### 3.6 Get Store Items by Category
 
 - **Path**: `GET /api/store/items/category/:category`
 - **Access Control**: Any authenticated user
@@ -575,6 +621,7 @@ Same shape as a bucket item:
 | `GET` | `/api/store/items/vip` | Any authenticated | VIP items |
 | `GET` | `/api/store/items/svip` | Any authenticated | SVIP items |
 | `GET` | `/api/store/items/exclusive` | Any authenticated | Exclusive (grant-only) items |
+| `GET` | `/api/store/items/browse` | Any authenticated | Browse items filtered by `canUserBuyThis` |
 | `GET` | `/api/store/items/category/:category` | Any authenticated | Items by category name |
 | `POST` | `/api/store/items/grant` | Admin / SubAdmin | Grant item to user |
 | `POST` | `/api/store/bucket` | Any authenticated | Buy store item |
