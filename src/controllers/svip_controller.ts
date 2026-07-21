@@ -93,4 +93,21 @@ export class SvipController {
       data: status,
     });
   });
+
+  // ── Admin: list users by SVIP tier ────────────────────────────────────
+  getUsersByTier = catchAsync(async (req: Request, res: Response) => {
+    const tier = Number(req.query.tier);
+    if (!tier || tier < 1) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "tier is required and must be a positive number");
+    }
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+
+    const result = await SvipService.getUsersByTier(tier, page, limit);
+    res.status(StatusCodes.OK).json({
+      status: "success",
+      data: result,
+    });
+  });
 }

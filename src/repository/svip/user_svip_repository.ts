@@ -60,6 +60,20 @@ export interface IUserSvipRepository {
     }[],
     session?: ClientSession,
   ): Promise<void>;
+
+  /**
+   * Returns paginated users at a specific SVIP tier, with populated user details.
+   */
+  getUsersByTier(
+    tier: number,
+    skip: number,
+    limit: number,
+  ): Promise<IUserSvipDocument[]>;
+
+  /**
+   * Counts users at a specific SVIP tier.
+   */
+  countByTier(tier: number): Promise<number>;
 }
 
 export class UserSvipRepository implements IUserSvipRepository {
@@ -161,5 +175,22 @@ export class UserSvipRepository implements IUserSvipRepository {
     if (operations.length > 0) {
       await this.model.bulkWrite(operations, { session: session || undefined });
     }
+  }
+
+  async getUsersByTier(
+    tier: number,
+    skip: number,
+    limit: number,
+  ): Promise<IUserSvipDocument[]> {
+    return await this.model
+      .find({ currentTier: tier })
+      .populate("userId", "name _id avatar")
+      .skip(skip)
+      .limit(limit)
+      .sort({ monthlyRechargeCoins: -1 });
+  }
+
+  async countByTier(tier: number): Promise<number> {
+    return await this.model.countDocuments({ currentTier: tier });
   }
 }

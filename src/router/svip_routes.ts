@@ -12,6 +12,11 @@ router
   .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getConfig)
   .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.updateConfig);
 
+// ── Admin: list users by SVIP tier ───────────────────────────────────────
+router
+  .route("/users")
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getUsersByTier);
+
 // ── User: own SVIP status ────────────────────────────────────────────────
 router
   .route("/status")

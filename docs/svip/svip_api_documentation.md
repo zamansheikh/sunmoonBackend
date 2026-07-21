@@ -7,8 +7,9 @@ This system consists of:
 1. **SVIP Config (Admin)** — Manage tier milestones and retention thresholds
 2. **SVIP Status (User)** — View personal SVIP dashboard with tier, progress, and current item
 3. **SVIP Status (Admin)** — View any user's SVIP dashboard
-4. **Auto-Grant System** — Internal logic that grants store items on milestone upgrades
-5. **Purchase Block** — SVIP items cannot be bought directly from the store
+4. **SVIP Users (Admin)** — List users by SVIP tier with pagination
+5. **Auto-Grant System** — Internal logic that grants store items on milestone upgrades
+6. **Purchase Block** — SVIP items cannot be bought directly from the store
 
 ---
 
@@ -217,6 +218,72 @@ Same response shape as section 2.1.
 
 ---
 
+### 2.3 List Users by SVIP Tier (Admin)
+
+Returns a paginated list of users who have reached a specific SVIP tier through recharge.
+
+- **Path**: `GET /api/svip/users`
+- **Access Control**: `Admin` or `SubAdmin`
+
+#### Query Parameters
+
+| Param | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `tier` | `number` | Yes | — | SVIP tier to filter by (1–9) |
+| `page` | `number` | No | `1` | Page number |
+| `limit` | `number` | No | `10` | Results per page |
+
+#### Example
+
+```
+GET /api/svip/users?tier=3&page=1&limit=10
+```
+
+#### Response (200 OK)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "pagination": {
+      "total": 150,
+      "limit": 10,
+      "page": 1,
+      "totalPage": 15
+    },
+    "users": [
+      {
+        "_id": "64f1a2b3c4d5e6f7a8b9c0d1",
+        "userId": {
+          "_id": "550e8400-e29b-41d4-a716-446655440000",
+          "name": "John",
+          "avatar": "https://res.cloudinary.com/.../avatar.png"
+        },
+        "currentTier": 3,
+        "monthlyRechargeCoins": 8500000,
+        "tierStartOfMonth": 2,
+        "month": 7,
+        "year": 2026
+      }
+    ]
+  }
+}
+```
+
+#### Field Reference (per user)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `_id` | `string` | SVIP document ObjectId |
+| `userId` | `object` | Populated user info (`_id`, `name`, `avatar`) |
+| `currentTier` | `number` | Current SVIP tier |
+| `monthlyRechargeCoins` | `number` | Total coins recharged this month |
+| `tierStartOfMonth` | `number` | Tier at the start of the month |
+| `month` | `number` | Tracking month (1–12) |
+| `year` | `number` | Tracking year |
+
+---
+
 ## Part 3: SVIP Store Item Auto-Grant
 
 When a user reaches an SVIP milestone via recharge, the corresponding SVIP store item is **automatically added to their inventory (bucket)** with `useStatus: true` (equipped).
@@ -302,6 +369,7 @@ Attempting to buy an SVIP item returns:
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/svip/config` | Admin / SubAdmin | Get SVIP tier configuration |
 | `PUT` | `/api/svip/config` | Admin / SubAdmin | Update SVIP tier configuration |
+| `GET` | `/api/svip/users` | Admin / SubAdmin | List users by SVIP tier |
 | `GET` | `/api/svip/status` | Any authenticated | View own SVIP dashboard |
 | `GET` | `/api/svip/status/:userId` | Admin / SubAdmin | View any user's SVIP dashboard |
 

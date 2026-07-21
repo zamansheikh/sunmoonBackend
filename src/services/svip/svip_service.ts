@@ -418,4 +418,30 @@ export class SvipService {
       currentItem,
     };
   }
+
+  // ────────────────────────────────────────────────────────────────────────
+  //  Admin: list users by SVIP tier
+  // ────────────────────────────────────────────────────────────────────────
+
+  static async getUsersByTier(
+    tier: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ pagination: any; users: IUserSvipDocument[] }> {
+    const skip = (page - 1) * limit;
+    const [users, total] = await Promise.all([
+      SvipService.userSvipRepo.getUsersByTier(tier, skip, limit),
+      SvipService.userSvipRepo.countByTier(tier),
+    ]);
+
+    return {
+      pagination: {
+        total,
+        limit,
+        page,
+        totalPage: Math.ceil(total / limit),
+      },
+      users,
+    };
+  }
 }

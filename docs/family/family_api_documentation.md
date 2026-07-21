@@ -368,16 +368,45 @@ All endpoints require authentication unless noted otherwise.
         "memberId": "...",
         "memberName": "John",
         "memberPhoto": "https://..."
-      }
+      },
+      "topContributors": [
+        {
+          "memberId": "...",
+          "memberName": "Alice",
+          "memberPhoto": "https://...",
+          "weeklyContribution": 15000
+        }
+      ]
     },
     "ranking": [ ... ]
   }
 }
 ```
 
+**Each ranking object fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `familyId` | string | Family ObjectId |
+| `familyName` | string | Family display name |
+| `familyCoverPhoto` | string | Cover photo URL |
+| `totalContribution` | number | Sum of `totalCoinCost` from gift records for the week |
+| `leader` | object | Family leader info (`memberId`, `memberName`, `memberPhoto`) |
+| `topContributors` | array | Top 5 members who received the most gift coins this week |
+
+**`topContributors` item fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `memberId` | string | User ObjectId |
+| `memberName` | string | User display name |
+| `memberPhoto` | string | User avatar URL |
+| `weeklyContribution` | number | Sum of `totalCoinCost` of gifts received this week |
+
 **Notes:**
 - Ranked by `totalContribution` (sum of `totalCoinCost` from gift records)
 - Limited to top 100 families
+- `topContributors` limited to top 5 receivers per family for the week
 - Cached for 30 seconds
 
 ---
@@ -394,7 +423,25 @@ All endpoints require authentication unless noted otherwise.
   "success": true,
   "message": "This week family ranking fetched successfully",
   "result": {
-    "top1FamilyDetails": { ... },
+    "top1FamilyDetails": {
+      "familyId": "...",
+      "familyName": "Alpha Squad",
+      "familyCoverPhoto": "https://...",
+      "totalContribution": 50000,
+      "leader": {
+        "memberId": "...",
+        "memberName": "John",
+        "memberPhoto": "https://..."
+      },
+      "topContributors": [
+        {
+          "memberId": "...",
+          "memberName": "Alice",
+          "memberPhoto": "https://...",
+          "weeklyContribution": 15000
+        }
+      ]
+    },
     "weekEnd": "2026-06-28T23:59:59.999Z",
     "ranking": [ ... ]
   }
@@ -404,6 +451,7 @@ All endpoints require authentication unless noted otherwise.
 **Notes:**
 - Same as last week ranking but for the current week
 - Includes `weekEnd` field so the frontend can show countdown
+- Each ranking object includes `topContributors` (top 5 receivers per family for the week)
 
 ---
 
