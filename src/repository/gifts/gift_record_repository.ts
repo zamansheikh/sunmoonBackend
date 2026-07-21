@@ -669,6 +669,54 @@ export class GiftRecordRepository implements IGiftRecordRepository {
       },
       { $unwind: "$leaderDetails" },
       {
+        $lookup: {
+          from: this.Model.collection.name,
+          let: { familyId: "$_id", startDate, endDate },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$familyId", "$$familyId"] },
+                    { $gte: ["$createdAt", "$$startDate"] },
+                    { $lte: ["$createdAt", "$$endDate"] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: "$receiverId",
+                weeklyContribution: { $sum: "$totalCoinCost" },
+              },
+            },
+            { $sort: { weeklyContribution: -1 } },
+            { $limit: 5 },
+            {
+              $lookup: {
+                from: DatabaseNames.User,
+                let: { userId: { $toObjectId: "$_id" } },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+                ],
+                as: "userDetails",
+              },
+            },
+            { $unwind: "$userDetails" },
+            {
+              $project: {
+                _id: 0,
+                memberId: "$_id",
+                memberName: "$userDetails.name",
+                memberPhoto: "$userDetails.avatar",
+                weeklyContribution: 1,
+              },
+            },
+          ],
+          as: "topContributors",
+        },
+      },
+      {
         $project: {
           _id: 0,
           familyId: "$_id",
@@ -680,6 +728,7 @@ export class GiftRecordRepository implements IGiftRecordRepository {
             memberName: "$leaderDetails.name",
             memberPhoto: "$leaderDetails.avatar",
           },
+          topContributors: 1,
         },
       },
       { $sort: { totalContribution: -1 } },
