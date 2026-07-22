@@ -817,29 +817,25 @@ export default class StoreService implements IStoreService {
       return;
     }
 
-    const updatedTiers = [...config.tiers];
-    const current = updatedTiers[tierIndex];
-
-    if (action === 'clear') {
-      updatedTiers[tierIndex] = {
-        ...current,
-        storeItemId: null,
-      };
-    } else {
-      // Only update milestoneCoins if a price was provided and it differs
-      const newMilestoneCoins =
-        prices && prices.length > 0 ? prices[0].price : current.milestoneCoins;
-      const milestoneChanged = newMilestoneCoins !== current.milestoneCoins;
-
-      updatedTiers[tierIndex] = {
-        ...current,
-        storeItemId:
-          typeof itemId === 'string'
-            ? new Types.ObjectId(itemId)
-            : (itemId as Types.ObjectId),
-        ...(milestoneChanged ? { milestoneCoins: newMilestoneCoins } : {}),
-      };
-    }
+    const updatedTiers = config.tiers.map((t, i) => {
+      if (i === tierIndex) {
+        if (action === 'clear') {
+          return { tier: t.tier, milestoneCoins: t.milestoneCoins, storeItemId: null };
+        }
+        const newMilestoneCoins =
+          prices && prices.length > 0 ? prices[0].price : t.milestoneCoins;
+        const milestoneChanged = newMilestoneCoins !== t.milestoneCoins;
+        return {
+          tier: t.tier,
+          milestoneCoins: milestoneChanged ? newMilestoneCoins : t.milestoneCoins,
+          storeItemId:
+            typeof itemId === 'string'
+              ? new Types.ObjectId(itemId)
+              : (itemId as Types.ObjectId),
+        };
+      }
+      return { tier: t.tier, milestoneCoins: t.milestoneCoins, storeItemId: t.storeItemId ?? null };
+    });
 
     await SvipConfigService.updateConfig({ tiers: updatedTiers });
 
