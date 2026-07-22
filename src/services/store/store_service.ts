@@ -12,9 +12,9 @@ import StoreItemRepository, {
   IStoreItemRepository,
 } from "../../repository/store/store_item_repository";
 import {
-  deleteFileFromCloudinary,
-  uploadFileToCloudinary,
-} from "../../core/Utils/upload_file_cloudinary";
+  uploadFileToNimbus,
+  deleteFileFromNimbus,
+} from "../../core/Utils/nimbus_client";
 import { profile } from "console";
 import { IUserRepository } from "../../repository/users/user_repository";
 import { IMyBucketRepository } from "../../repository/store/my_bucket_repository";
@@ -256,36 +256,39 @@ export default class StoreService implements IStoreService {
     if (category.isPremium)
       throw new AppError(StatusCodes.BAD_REQUEST, "This is a premium category");
     let svgaUrl: string | undefined;
+    let svgaFileId: string | undefined;
     if (svgaFile) {
-      svgaUrl = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: svgaFile,
-      });
+      const asset = await uploadFileToNimbus({ file: svgaFile });
+      svgaUrl = asset.url ?? undefined;
+      svgaFileId = asset._id;
     }
 
     let previewUrl: string | undefined;
+    let previewFileId: string | undefined;
     if (previewFile) {
-      previewUrl = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: previewFile,
-      });
+      const asset = await uploadFileToNimbus({ file: previewFile });
+      previewUrl = asset.url ?? undefined;
+      previewFileId = asset._id;
     }
     let logoUrl: string | undefined;
+    let logoFileId: string | undefined;
     if (logoFile) {
-      logoUrl = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: logoFile,
-      });
+      const asset = await uploadFileToNimbus({ file: logoFile });
+      logoUrl = asset.url ?? undefined;
+      logoFileId = asset._id;
     }
 
     let itemToCreate: IStoreItem = {
       name: item.name,
       logo: logoUrl || item.logo,
+      logoId: logoFileId,
       categoryId: item.categoryId,
       isPremium: false,
       prices: item.prices,
       svgaFile: svgaUrl,
+      svgaFileId: svgaFileId,
       previewFile: previewUrl,
+      previewFileId: previewFileId,
       privilege: item.privilege,
       canUserBuyThis: item.canUserBuyThis ?? true,
     };
@@ -353,44 +356,38 @@ export default class StoreService implements IStoreService {
       const extensionSource = svgaSource ?? previewSource!;
       const extension = extensionSource.originalname.split(".").pop() ?? "";
 
-      const [svgaUrl, previewUrl] = await Promise.all([
+      const [svgaResult, previewResult] = await Promise.all([
         svgaSource
-          ? uploadFileToCloudinary({
-              folder: "store_items",
-              file: svgaSource,
-            })
-          : Promise.resolve(""),
+          ? uploadFileToNimbus({ file: svgaSource })
+          : Promise.resolve(null),
         previewSource
-          ? uploadFileToCloudinary({
-              folder: "store_items",
-              file: previewSource,
-            })
-          : Promise.resolve(""),
+          ? uploadFileToNimbus({ file: previewSource })
+          : Promise.resolve(null),
       ]);
 
       return {
         categoryName: entry.categoryName,
-        svgaFile: svgaUrl,
-        previewFile: previewUrl,
+        svgaFile: svgaResult?.url ?? "",
+        svgaFileId: svgaResult?._id ?? "",
+        previewFile: previewResult?.url ?? "",
+        previewFileId: previewResult?._id ?? "",
         fileType: extension,
       };
     });
 
     const logoPromise = logoFile
-      ? uploadFileToCloudinary({
-          folder: "store_items",
-          file: logoFile,
-        })
-      : Promise.resolve(undefined);
+      ? uploadFileToNimbus({ file: logoFile })
+      : Promise.resolve(null);
 
-    const [premimumURLs, logoUrl] = await Promise.all([
+    const [premimumURLs, logoResult] = await Promise.all([
       Promise.all(uploadPromises),
       logoPromise,
     ]);
 
     let itemToCreate: IStoreItem = {
       name: item.name,
-      logo: logoUrl || item.logo,
+      logo: logoResult?.url ?? item.logo,
+      logoId: logoResult?._id,
       categoryId: item.categoryId,
       isPremium: true,
       prices: item.prices,
@@ -530,43 +527,30 @@ export default class StoreService implements IStoreService {
       );
 
     if (svgaFile) {
-      // deleting the previous file
-      const deleteStatus = await deleteFileFromCloudinary(
-        existingItem.svgaFile!,
-      );
-      if (!deleteStatus) {
-        console.warn(
-          `[StoreService] Failed to delete previous SVGA file from Cloudinary: ${existingItem.svgaFile}`,
-        );
+      if (existingItem.svgaFileId) {
+        await deleteFileFromNimbus(existingItem.svgaFileId);
       }
-      const url = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: svgaFile,
-      });
-      item.svgaFile = url;
+      const asset = await uploadFileToNimbus({ file: svgaFile });
+      item.svgaFile = asset.url ?? undefined;
+      item.svgaFileId = asset._id;
     }
 
     if (previewFile) {
-      // deleting the previous file
-      if (existingItem.previewFile) {
-        await deleteFileFromCloudinary(existingItem.previewFile);
+      if (existingItem.previewFileId) {
+        await deleteFileFromNimbus(existingItem.previewFileId);
       }
-      const url = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: previewFile,
-      });
-      item.previewFile = url;
+      const asset = await uploadFileToNimbus({ file: previewFile });
+      item.previewFile = asset.url ?? undefined;
+      item.previewFileId = asset._id;
     }
 
     if (logoFile) {
-      if (existingItem.logo) {
-        await deleteFileFromCloudinary(existingItem.logo);
+      if (existingItem.logoId) {
+        await deleteFileFromNimbus(existingItem.logoId);
       }
-      const url = await uploadFileToCloudinary({
-        folder: "store_items",
-        file: logoFile,
-      });
-      item.logo = url;
+      const asset = await uploadFileToNimbus({ file: logoFile });
+      item.logo = asset.url ?? undefined;
+      item.logoId = asset._id;
     }
 
     return await this.ItemRepository.updateStoreItem(id, item);
@@ -590,7 +574,7 @@ export default class StoreService implements IStoreService {
         "This api is not for single items",
       );
 
-    let urlsBeDeleted = [];
+    let assetIdsToDelete: string[] = [];
 
     for (let i = 0; i < existingItem.bundleFiles!.length; i++) {
       for (let j = 0; j < files!.length; j++) {
@@ -598,8 +582,10 @@ export default class StoreService implements IStoreService {
           existingItem.bundleFiles![i].categoryName.toString() ==
           files![j].categoryName
         ) {
-          urlsBeDeleted.push(existingItem.bundleFiles![i].svgaFile);
-          urlsBeDeleted.push(existingItem.bundleFiles![i].previewFile);
+          if (existingItem.bundleFiles![i].svgaFileId)
+            assetIdsToDelete.push(existingItem.bundleFiles![i].svgaFileId!);
+          if (existingItem.bundleFiles![i].previewFileId)
+            assetIdsToDelete.push(existingItem.bundleFiles![i].previewFileId!);
           existingItem.bundleFiles = existingItem.bundleFiles?.filter(
             (f) => f.categoryName !== files![j].categoryName,
           );
@@ -607,71 +593,59 @@ export default class StoreService implements IStoreService {
       }
     }
 
-    // Delete obsolete cloudinary assets in parallel. Failures are logged but
-    // not propagated — the new files have already been chosen and we'd
-    // rather complete the update than block on stale cleanup.
-    if (urlsBeDeleted.length > 0) {
+    if (assetIdsToDelete.length > 0) {
       await Promise.all(
-        urlsBeDeleted.map((url) =>
-          deleteFileFromCloudinary(url).catch((err) =>
-            console.error(`Failed to delete file: ${url}`, err),
+        assetIdsToDelete.map((id) =>
+          deleteFileFromNimbus(id).catch((err) =>
+            console.error(`Failed to delete Nimbus asset: ${id}`, err),
           ),
         ),
       );
     }
 
-    // Build one upload-promise per new bundle. Each entry's svgaFile and
-    // previewFile are independently optional; the controller already
-    // enforced that at least one is present. Promises stay deferred so the
-    // outer Promise.all below can run them alongside the logo upload.
     const uploadPromises = (files || []).map(async (entry) => {
       const svgaSource = entry.svgaFile;
       const previewSource = entry.previewFile;
       const extensionSource = svgaSource ?? previewSource!;
       const extenstion = extensionSource.originalname.split(".").pop() ?? "";
 
-      const [svgaUrl, previewUrl] = await Promise.all([
+      const [svgaResult, previewResult] = await Promise.all([
         svgaSource
-          ? uploadFileToCloudinary({
-              folder: "store_items",
-              file: svgaSource,
-            })
-          : Promise.resolve(""),
+          ? uploadFileToNimbus({ file: svgaSource })
+          : Promise.resolve(null),
         previewSource
-          ? uploadFileToCloudinary({
-              folder: "store_items",
-              file: previewSource,
-            })
-          : Promise.resolve(""),
+          ? uploadFileToNimbus({ file: previewSource })
+          : Promise.resolve(null),
       ]);
 
       return {
         categoryName: entry.categoryName,
-        svgaFile: svgaUrl,
-        previewFile: previewUrl,
+        svgaFile: svgaResult?.url ?? "",
+        svgaFileId: svgaResult?._id ?? "",
+        previewFile: previewResult?.url ?? "",
+        previewFileId: previewResult?._id ?? "",
         fileType: extenstion,
       };
     });
 
     const logoPromise = logoFile
-      ? uploadFileToCloudinary({
-          folder: "store_items",
-          file: logoFile,
-        })
-      : Promise.resolve(undefined);
+      ? uploadFileToNimbus({ file: logoFile })
+      : Promise.resolve(null);
 
-    const [newFilesToBeAdded, updatedLogoUrl] = await Promise.all([
+    const [newFilesToBeAdded, logoResult] = await Promise.all([
       Promise.all(uploadPromises),
       logoPromise,
     ]);
 
-    if (updatedLogoUrl) {
-      item.logo = updatedLogoUrl;
+    if (logoResult) {
+      item.logo = logoResult.url ?? undefined;
+      item.logoId = logoResult._id;
     }
 
     let profileToBeUpdated: IStoreItem = {
       name: item.name || existingItem.name,
       logo: item.logo || existingItem.logo,
+      logoId: item.logoId || existingItem.logoId,
       categoryId: item.categoryId || existingItem.categoryId,
       isPremium: true,
       prices: item.prices || existingItem.prices,
@@ -734,20 +708,22 @@ export default class StoreService implements IStoreService {
         `Store item with id ${id} not found`,
       );
 
-    // Parallel cleaning of all associated files
+    // Parallel cleaning of all associated Nimbus assets
     const deletePromises: Promise<any>[] = [];
 
-    if (existingItem.svgaFile)
-      deletePromises.push(deleteFileFromCloudinary(existingItem.svgaFile));
-    if (existingItem.previewFile)
-      deletePromises.push(deleteFileFromCloudinary(existingItem.previewFile));
-    if (existingItem.logo)
-      deletePromises.push(deleteFileFromCloudinary(existingItem.logo));
+    if (existingItem.svgaFileId)
+      deletePromises.push(deleteFileFromNimbus(existingItem.svgaFileId));
+    if (existingItem.previewFileId)
+      deletePromises.push(deleteFileFromNimbus(existingItem.previewFileId));
+    if (existingItem.logoId)
+      deletePromises.push(deleteFileFromNimbus(existingItem.logoId));
 
     if (existingItem.bundleFiles) {
       for (const bundle of existingItem.bundleFiles) {
-        deletePromises.push(deleteFileFromCloudinary(bundle.svgaFile));
-        deletePromises.push(deleteFileFromCloudinary(bundle.previewFile));
+        if (bundle.svgaFileId)
+          deletePromises.push(deleteFileFromNimbus(bundle.svgaFileId));
+        if (bundle.previewFileId)
+          deletePromises.push(deleteFileFromNimbus(bundle.previewFileId));
       }
     }
 

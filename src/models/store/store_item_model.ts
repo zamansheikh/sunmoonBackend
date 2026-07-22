@@ -4,7 +4,9 @@ import { DatabaseNames } from "../../core/Utils/enums";
 export interface IBundle {
   categoryName: string;
   svgaFile: string;
+  svgaFileId?: string;
   previewFile: string;
+  previewFileId?: string;
   fileType: string;
 }
 
@@ -16,12 +18,15 @@ export interface IPrices {
 export interface IStoreItem {
   name: string;
   logo?: string;
+  logoId?: string;
   background?: string;
   categoryId: mongoose.Schema.Types.ObjectId | string;
   isPremium?: boolean;
   prices: IPrices[];
   svgaFile?: string;
+  svgaFileId?: string;
   previewFile?: string;
+  previewFileId?: string;
   bundleFiles?: IBundle[];
   privilege?: string[];
   deleteStatus?: boolean;
@@ -51,7 +56,15 @@ export const bundleSchema = new mongoose.Schema<IBundle>({
     type: String,
     default: "",
   },
+  svgaFileId: {
+    type: String,
+    default: "",
+  },
   previewFile: {
+    type: String,
+    default: "",
+  },
+  previewFileId: {
     type: String,
     default: "",
   },
@@ -86,6 +99,9 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
     logo: {
       type: String,
     },
+    logoId: {
+      type: String,
+    },
     background: {
       type: String,
     },
@@ -102,7 +118,13 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
     svgaFile: {
       type: String,
     },
+    svgaFileId: {
+      type: String,
+    },
     previewFile: {
+      type: String,
+    },
+    previewFileId: {
       type: String,
     },
     bundleFiles: [bundleSchema],

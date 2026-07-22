@@ -304,11 +304,11 @@ mongoose.connect(MONGOURL).then(async () => {
   }
 
   // Connect to Redis
-  try {
-    await RedisConfig.connect();
-  } catch (err) {
-    console.error("Failed to connect to Redis:", err);
-  }
+  // try {
+  //   await RedisConfig.connect();
+  // } catch (err) {
+  //   console.error("Failed to connect to Redis:", err);
+  // }
 
   // socket connection to the http server
   // SocketServer.initialize(server);
