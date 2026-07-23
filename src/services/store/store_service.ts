@@ -22,6 +22,8 @@ import IUserStatsRepository from "../../repository/users/userstats_repository_in
 import mongoose, { mongo, Types } from "mongoose";
 import { IMyBucketDocument } from "../../models/store/my_bucket_model";
 import { SvipConfigService } from "../admin/svip_config_service";
+import { DateHelper } from "../../core/helper_classes/date_helper";
+import { RepositoryProviders } from "../../core/providers/repository_providers";
 
 export interface IPremiumFiles {
   categoryName: string;
@@ -29,6 +31,30 @@ export interface IPremiumFiles {
   svgaFile?: Express.Multer.File;
   /** Optional — admin can upload only an animated svga without a thumbnail. */
   previewFile?: Express.Multer.File;
+}
+
+export interface ISvipStoreItemResponse {
+  _id: any;
+  name: string;
+  logo?: string;
+  logoId?: string;
+  background?: string;
+  categoryId: any;
+  isPremium?: boolean;
+  prices: { validity: number; price: number }[];
+  svgaFile?: string;
+  svgaFileId?: string;
+  previewFile?: string;
+  previewFileId?: string;
+  bundleFiles?: IBundle[];
+  privilege?: string[];
+  deleteStatus?: boolean;
+  totalSold?: number;
+  canUserBuyThis?: boolean;
+  isBought?: boolean;
+  monthEnd: Date;
+  rechargeRequired: number;
+  currentRechargeAmount: number;
 }
 
 export interface IStoreService {
@@ -58,7 +84,7 @@ export interface IStoreService {
   ): Promise<IStoreItemDocument>;
   getStoreItemById(id: string): Promise<IStoreItemDocument>;
   getVIPStoreItems(id: string): Promise<IStoreItemDocument[]>;
-  getSVIPStoreItems(id: string): Promise<IStoreItemDocument[]>;
+  getSVIPStoreItems(id: string): Promise<ISvipStoreItemResponse[]>;
   getAllStoreItems(id: string): Promise<Record<string, IStoreItemDocument[]>>;
   getExlusiveStoreItems(): Promise<Record<string, IStoreItemDocument[]>>;
   getStoreItemsFiltered(
@@ -444,14 +470,31 @@ export default class StoreService implements IStoreService {
     return this.applyPremiumTierIsBought(items);
   }
 
-  async getSVIPStoreItems(id: string): Promise<IStoreItemDocument[]> {
+  async getSVIPStoreItems(id: string): Promise<ISvipStoreItemResponse[]> {
     const category = await this.CategoryRepository.getCategoryByTitle("SVIP");
     if (!category) return [];
     const items = await this.ItemRepository.getAllStoreItemByCategory(
       (category as any)._id.toString(),
       id,
     );
-    return this.applyPremiumTierIsBought(items);
+    const boughtApplied = this.applyPremiumTierIsBought(items);
+
+    const config = await SvipConfigService.getConfig();
+    const userSvipRecord = await RepositoryProviders.userSvipRepositoryProvider.findByUserId(id);
+    const currentRechargeAmount = userSvipRecord?.monthlyRechargeCoins ?? 0;
+    const monthEnd = DateHelper.getEndOfMonth(new Date());
+
+    return boughtApplied.map((item) => {
+      const tierNumber = this.extractPremiumTier(item.name);
+      const tierConfig = config?.tiers.find((t) => t.tier === tierNumber);
+
+      return {
+        ...item,
+        monthEnd,
+        rechargeRequired: tierConfig?.milestoneCoins ?? 0,
+        currentRechargeAmount,
+      };
+    });
   }
 
   async getStoreItemsByCategory(
