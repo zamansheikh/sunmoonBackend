@@ -197,6 +197,8 @@ Returns the authenticated user's SVIP dashboard with current tier, milestone pro
 | `currentItem.svgaFile` | `string \| null` | SVGA animation URL |
 | `currentItem.previewFile` | `string \| null` | Preview image URL |
 
+> **Note**: The `currentItem` above contains only visual assets for the current tier. For a full list of **all** SVIP items with progress tracking fields (`monthEnd`, `rechargeRequired`, `currentRechargeAmount`) and `isBought` status, use `GET /api/store/items/svip` (see Store API docs section 3.3).
+
 ---
 
 ### 2.2 Get Any User's SVIP Status (Admin)
@@ -343,6 +345,7 @@ Attempting to buy an SVIP item returns:
 - Items the user hasn't reached yet show `isBought: false`
 - The **Buy button** should **not** be shown for SVIP items. Instead, show the user's current milestone progress and which tier they need to reach to unlock the item
 - SVIP items are set to `canUserBuyThis: false` automatically
+- Each SVIP item is enriched with three additional fields (`monthEnd`, `rechargeRequired`, `currentRechargeAmount`) — use these to render a **progress bar** and **countdown timer** per tier in the store UI (see Store API docs section 3.3 for full details)
 
 ---
 

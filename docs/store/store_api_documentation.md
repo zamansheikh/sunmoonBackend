@@ -337,7 +337,40 @@ Returns items in the "VIP" category.
 - **Path**: `GET /api/store/items/svip`
 - **Access Control**: Any authenticated user
 
-Returns items in the "SVIP" category. Each item has `canUserBuyThis: false` and `isBought` reflects whether the user has earned that tier via monthly recharge.
+Returns items in the "SVIP" category. Each item has `canUserBuyThis: false` and `isBought` reflects whether the user has earned that tier via monthly recharge. Items are enriched with **current progress** fields so the frontend can display a progress bar and expiry info directly.
+
+#### Response (200 OK)
+
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "_id": "665a...",
+      "name": "SVIP-3",
+      "logo": "https://...",
+      "svgaFile": "https://...",
+      "isPremium": true,
+      "prices": [{ "validity": 30, "price": 8000000 }],
+      "canUserBuyThis": false,
+      "isBought": false,
+      "monthEnd": "2026-07-31T23:59:59.999Z",
+      "rechargeRequired": 8000000,
+      "currentRechargeAmount": 5000000
+    }
+  ]
+}
+```
+
+#### New Enrichment Fields
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `monthEnd` | `Date` | End of the current calendar month — useful for showing expiry/countdown |
+| `rechargeRequired` | `number` | Coins the user must recharge in the current month to unlock this item (from `svip_configs` tier's `milestoneCoins`) |
+| `currentRechargeAmount` | `number` | How many coins the authenticated user has already recharged this month (from their `user_svip` document) |
+
+> **Frontend tip**: Use `currentRechargeAmount / rechargeRequired` to render a progress bar per item. Combine with `monthEnd` to show a countdown timer. For tiers already earned (`isBought: true`), the progress bar can be shown as 100% complete.
 
 ---
 
