@@ -23,16 +23,14 @@ jobs:
           SERVER_HOST="88.222.213.235"
 
           ssh -o StrictHostKeyChecking=no root@$SERVER_HOST "
-            export PATH=/root/.nvm/versions/node/v20.19.5/bin:\$PATH
-            cd /var/www/$APP_NAME
-            git reset --hard origin/main
-            yarn install
-            yarn build
-            if tmux has-session -t $APP_NAME 2>/dev/null; then
-              tmux kill-session -t $APP_NAME
-            fi
-            pkill -f 'node dist/server.js' || true
-            sleep 1
-            tmux new-session -d -s $APP_NAME 'yarn start'
-            echo \"Deploy complete — server restarted\"
+            export PATH=/root/.nvm/versions/node/v20.19.5/bin:\$PATH &&
+            cd /var/www/$APP_NAME &&
+            git reset --hard origin/main &&
+            yarn install &&
+            yarn build &&
+            (tmux kill-session -t $APP_NAME 2>/dev/null || true) &&
+            (pkill -f 'node dist/server.js' || true) &&
+            sleep 1 &&
+            tmux new-session -d -s $APP_NAME 'yarn start' &&
+            echo \"Deploy complete - server restarted\"
           "
