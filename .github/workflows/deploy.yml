@@ -26,7 +26,7 @@ jobs:
             export PATH=/root/.nvm/versions/node/v20.19.5/bin:\$PATH
             cd /var/www/$APP_NAME
             git reset --hard origin/main
-            yarn install --frozen-lockfile
+            yarn install
             yarn build
             if tmux has-session -t $APP_NAME 2>/dev/null; then
               tmux kill-session -t $APP_NAME
