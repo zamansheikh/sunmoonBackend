@@ -21,20 +21,18 @@ jobs:
         run: |
           APP_NAME="sunmoonBackend"
           SERVER_HOST="88.222.213.235"
-          GIT_PULL_CMD='GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_deploy" git pull origin main'
 
           ssh -o StrictHostKeyChecking=no root@$SERVER_HOST "
-            export PATH=/root/.nvm/versions/node/v20.19.5/bin:\$PATH &&  # Use Node path for Yarn
-            cd /var/www/$APP_NAME &&
-            git stash &&
-            $GIT_PULL_CMD &&
-            yarn install &&
-            yarn build &&
+            export PATH=/root/.nvm/versions/node/v20.19.5/bin:\$PATH
+            cd /var/www/$APP_NAME
+            git reset --hard origin/main
+            yarn install --frozen-lockfile
+            yarn build
             if tmux has-session -t $APP_NAME 2>/dev/null; then
-              echo \"Already session running: $APP_NAME. Killing it...\"
               tmux kill-session -t $APP_NAME
-            fi &&
-            echo \"Starting new session: $APP_NAME\" &&
-            tmux new-session -d -s $APP_NAME 'yarn start' &&
-            echo \"Successfully started 'yarn start' in tmux session $APP_NAME\"
+            fi
+            pkill -f 'node dist/server.js' || true
+            sleep 1
+            tmux new-session -d -s $APP_NAME 'yarn start'
+            echo \"Deploy complete — server restarted\"
           "

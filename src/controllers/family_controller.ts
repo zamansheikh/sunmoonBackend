@@ -209,7 +209,8 @@ export default class FamilyController {
 
   getFamilyDetails = catchAsync(async (req: Request, res: Response) => {
     const { familyId } = req.params;
-    const details = await this.Service.getFamilyDetails(familyId);
+    const { id } = req.user!;
+    const details = await this.Service.getFamilyDetails(familyId, id);
     sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,

@@ -127,6 +127,7 @@ export interface IFamilyDetails {
     nextLevelTarget: number | null;
   };
   activeRooms: IFamilyActiveRoom[];
+  callerRole: FamilyMemberRole | null;
 }
 
 export interface IFamilyService {
@@ -155,7 +156,7 @@ export interface IFamilyService {
   kickMember(callerId: string, memberId: string): Promise<void>;
   getLastWeekRanking(): Promise<IFamilyRankingResult>;
   getThisWeekRanking(): Promise<IThisWeekFamilyRankingResult>;
-  getFamilyDetails(familyId: string): Promise<IFamilyDetails>;
+  getFamilyDetails(familyId: string, callerId?: string): Promise<IFamilyDetails>;
 }
 
 export class FamilyService implements IFamilyService {
@@ -187,6 +188,16 @@ export class FamilyService implements IFamilyService {
     );
     if (family || leader.familyId)
       throw new AppError(StatusCodes.BAD_REQUEST, "Family already exists");
+    //step2.5: check if user has a pending join request to another family
+    const existingRequest =
+      await this.familyJoinRequestRepository.getByUserId(
+        data.leaderId.toString(),
+      );
+    if (existingRequest)
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "You already have a pending join request. Cancel it first.",
+      );
     //step3: check if the leader (creator) has required level -> 5
     if (leader.level < 5)
       throw new AppError(
@@ -803,7 +814,10 @@ export class FamilyService implements IFamilyService {
     return result;
   }
 
-  async getFamilyDetails(familyId: string): Promise<IFamilyDetails> {
+  async getFamilyDetails(
+    familyId: string,
+    callerId?: string,
+  ): Promise<IFamilyDetails> {
     const [family, topContributors] = await Promise.all([
       this.familyRepository.getById(familyId),
       this.familyMemberRepository.getTopContributors(familyId, 5),
@@ -825,6 +839,18 @@ export class FamilyService implements IFamilyService {
 
     const activeRooms = await this.getActiveRoomsForFamily(familyId);
 
+    let callerRole: FamilyMemberRole | null = null;
+    if (callerId) {
+      const callerMembership =
+        await this.familyMemberRepository.getByUserId(callerId);
+      if (
+        callerMembership &&
+        callerMembership.familyId.toString() === familyId
+      ) {
+        callerRole = callerMembership.role;
+      }
+    }
+
     return {
       family,
       topContributors,
@@ -835,6 +861,7 @@ export class FamilyService implements IFamilyService {
         nextLevelTarget,
       },
       activeRooms,
+      callerRole,
     };
   }
 
