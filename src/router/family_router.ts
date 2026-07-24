@@ -21,6 +21,7 @@ router
 
 router.route("/join-status").get(authenticate(), controller.getJoinStatus);
 
+
 router
   .route("/member/role/:userId")
   .put(authenticate(), controller.changeMemberRole);
