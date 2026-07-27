@@ -39,6 +39,13 @@ router
   .get(authenticate(), controller.getThisWeekRanking);
 
 router
+  .route("/members")
+  .get(authenticate(), controller.getMembers);
+router
+  .route("/:familyId/members")
+  .get(authenticate(), controller.getFamilyMembersByFamilyId);
+
+router
   .route("/details/:familyId")
   .get(authenticate(), controller.getFamilyDetails);
 

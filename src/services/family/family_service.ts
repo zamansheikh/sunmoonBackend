@@ -157,6 +157,14 @@ export interface IFamilyService {
   getLastWeekRanking(): Promise<IFamilyRankingResult>;
   getThisWeekRanking(): Promise<IThisWeekFamilyRankingResult>;
   getFamilyDetails(familyId: string, callerId?: string): Promise<IFamilyDetails>;
+  getMyFamilyMembers(
+    userId: string,
+    query: Record<string, any>,
+  ): Promise<{ pagination: any; members: IFamilyMemberDocument[] }>;
+  getFamilyMembers(
+    familyId: string,
+    query: Record<string, any>,
+  ): Promise<{ pagination: any; members: IFamilyMemberDocument[] }>;
 }
 
 export class FamilyService implements IFamilyService {
@@ -863,6 +871,36 @@ export class FamilyService implements IFamilyService {
       activeRooms,
       callerRole,
     };
+  }
+
+  async getMyFamilyMembers(
+    userId: string,
+    query: Record<string, any>,
+  ): Promise<{ pagination: any; members: IFamilyMemberDocument[] }> {
+    if (!isValidMongooseToken(userId)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid user ID");
+    }
+
+    const membership = await this.familyMemberRepository.getByUserId(userId);
+    if (!membership) {
+      throw new AppError(StatusCodes.FORBIDDEN, "You are not a member of any family");
+    }
+
+    return await this.familyMemberRepository.getAllMembersPaginated(
+      membership.familyId.toString(),
+      query,
+    );
+  }
+
+  async getFamilyMembers(
+    familyId: string,
+    query: Record<string, any>,
+  ): Promise<{ pagination: any; members: IFamilyMemberDocument[] }> {
+    if (!isValidMongooseToken(familyId)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Invalid family ID");
+    }
+
+    return await this.familyMemberRepository.getAllMembersPaginated(familyId, query);
   }
 
   private async getFeaturedMembers(

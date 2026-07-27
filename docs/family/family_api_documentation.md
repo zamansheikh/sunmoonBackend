@@ -21,10 +21,12 @@ All endpoints require authentication unless noted otherwise.
 11. [Last Week Ranking](#11-last-week-ranking)
 12. [This Week Ranking](#12-this-week-ranking)
 13. [Family Details](#13-family-details)
-14. [Family Reward Chart (Public)](#14-family-reward-chart-public)
-15. [Admin — Reward Config CRUD](#15-admin--reward-config-crud)
-16. [Admin — Support Reward Config](#16-admin--support-reward-config)
-17. [Family Support Reward Distribution (Cron)](#17-family-support-reward-distribution-cron)
+14. [Get My Family Members](#14-get-my-family-members)
+15. [Get Family Members by Family ID](#15-get-family-members-by-family-id)
+16. [Family Reward Chart (Public)](#16-family-reward-chart-public)
+17. [Admin — Reward Config CRUD](#17-admin--reward-config-crud)
+18. [Admin — Support Reward Config](#18-admin--support-reward-config)
+19. [Family Support Reward Distribution (Cron)](#19-family-support-reward-distribution-cron)
 
 ---
 
@@ -547,7 +549,102 @@ All endpoints require authentication unless noted otherwise.
 
 ---
 
-## 14. Family Reward Chart (Public)
+## 14. Get My Family Members
+
+**Endpoint:** `GET /api/family/members`
+
+**Auth:** Any authenticated user (must be a member of a family)
+
+**Query Params:**
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `page` | number | `1` | Page number |
+| `limit` | number | `20` | Items per page |
+| `sortBy` | string | `role` | Sort field: `role`, `giftsReceived`, `joinedAt` |
+| `sortOrder` | string | `asc` | Sort direction: `asc` or `desc` |
+| `role` | string | — | Filter by role. Multiple via comma: `leader,co-leader` |
+| `minGifts` | number | — | Minimum `giftsReceived` value |
+| `maxGifts` | number | — | Maximum `giftsReceived` value |
+| `joinedFrom` | string (ISO) | — | Members who joined on or after this date |
+| `joinedTo` | string (ISO) | — | Members who joined on or before this date |
+
+**Example:**
+```
+GET /api/family/members?role=leader,co-leader&minGifts=100000&joinedFrom=2026-01-01&limit=10&page=1
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Family members fetched successfully",
+  "result": {
+    "members": [
+      {
+        "_id": "...",
+        "userId": {
+          "_id": "...",
+          "name": "Alice",
+          "avatar": "https://...",
+          "level": 5,
+          "currentLevelTag": "Gold"
+        },
+        "role": "leader",
+        "giftsReceived": 500000,
+        "joinedAt": "2026-01-15T..."
+      }
+    ],
+    "pagination": {
+      "total": 35,
+      "limit": 10,
+      "page": 1,
+      "totalPage": 4
+    }
+  }
+}
+```
+
+**Sort Behavior:**
+- When sorting by `role`, members are ordered by role hierarchy: Leader → CoLeader → Elder → Member, then by `giftsReceived` descending within the same role.
+
+---
+
+## 15. Get Family Members by Family ID
+
+**Endpoint:** `GET /api/family/:familyId/members`
+
+**Auth:** Any authenticated user (admin panel use — no membership check required)
+
+**URL Params:**
+| Param | Type | Description |
+|---|---|---|
+| `familyId` | string | The family ID |
+
+**Query Params:**
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `page` | number | `1` | Page number |
+| `limit` | number | `20` | Items per page |
+| `sortBy` | string | `role` | Sort field: `role`, `giftsReceived`, `joinedAt` |
+| `sortOrder` | string | `asc` | Sort direction: `asc` or `desc` |
+| `role` | string | — | Filter by role. Multiple via comma: `leader,co-leader` |
+| `minGifts` | number | — | Minimum `giftsReceived` value |
+| `maxGifts` | number | — | Maximum `giftsReceived` value |
+| `joinedFrom` | string (ISO) | — | Members who joined on or after this date |
+| `joinedTo` | string (ISO) | — | Members who joined on or before this date |
+
+**Example:**
+```
+GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limit=20
+```
+
+**Response:** Same shape as [Get My Family Members](#14-get-my-family-members).
+
+---
+
+## 16. Family Reward Chart (Public)
 
 **Endpoint:** `GET /api/family-rewards/list`
 
@@ -592,7 +689,7 @@ All endpoints require authentication unless noted otherwise.
 
 ---
 
-## 15. Admin — Reward Config CRUD
+## 17. Admin — Reward Config CRUD
 
 ### 15a. Get All Reward Configs
 
@@ -651,7 +748,7 @@ All endpoints require authentication unless noted otherwise.
 
 ---
 
-## 16. Admin — Support Reward Config
+## 18. Admin — Support Reward Config
 
 These endpoints manage the **family support reward levels** — the coin payout configuration that determines how much each family member receives based on the family's weekly ranking performance.
 
@@ -744,7 +841,7 @@ These endpoints manage the **family support reward levels** — the coin payout 
 
 ---
 
-## 17. Family Support Reward Distribution (Cron)
+## 19. Family Support Reward Distribution (Cron)
 
 **Schedule:** Every Sunday at midnight (configured via `FAMILY_SUPPORT_REWARD` cron)
 

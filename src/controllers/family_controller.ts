@@ -218,4 +218,26 @@ export default class FamilyController {
       message: "Family details fetched successfully",
     });
   });
+
+  getMembers = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.user!;
+    const result = await this.Service.getMyFamilyMembers(id, req.query);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result,
+      message: "Family members fetched successfully",
+    });
+  });
+
+  getFamilyMembersByFamilyId = catchAsync(async (req: Request, res: Response) => {
+    const { familyId } = req.params;
+    const result = await this.Service.getFamilyMembers(familyId, req.query);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result,
+      message: "Family members fetched successfully",
+    });
+  });
 }
