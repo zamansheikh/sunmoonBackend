@@ -151,53 +151,106 @@ export default class CoinHistoryRepository implements ICoinHistoryRepository {
     query: Record<string, any>
   ): Promise<{ pagination: IPagination; data: ICoinHistoryDocument[] }> {
     const sender = new Types.ObjectId(senderId);
-    const qb = new QueryBuilder(this.Model, query);
-    const res = qb.aggregate([
-      {
-        $match: {
-          senderId: sender,
-          senderRole: UserRoles.Reseller,
-        },
+    const { name, userId, minCoins, maxCoins, from, to } = query;
+
+    const baseMatch: Record<string, any> = {
+      senderId: sender,
+      senderRole: UserRoles.Reseller,
+    };
+
+    if (userId) {
+      baseMatch.receiverId = new Types.ObjectId(userId as string);
+    }
+
+    if (minCoins || maxCoins) {
+      baseMatch.amount = {};
+      if (minCoins) baseMatch.amount.$gte = Number(minCoins);
+      if (maxCoins) baseMatch.amount.$lte = Number(maxCoins);
+    }
+
+    if (from || to) {
+      baseMatch.createdAt = {};
+      if (from) baseMatch.createdAt.$gte = new Date(from as string);
+      if (to) baseMatch.createdAt.$lte = new Date(to as string);
+    }
+
+    const lookupStage: any = {
+      $lookup: {
+        from: DatabaseNames.User,
+        foreignField: "_id",
+        localField: "receiverId",
+        as: "receiverInfo",
       },
-      {
-        $lookup: {
-          from: DatabaseNames.User,
-          foreignField: "_id",
-          localField: "receiverId",
-          as: "receiverInfo",
-        },
+    };
+
+    const unwindStage: any = {
+      $unwind: {
+        path: "$receiverInfo",
+        preserveNullAndEmptyArrays: true,
       },
-      {
-        $unwind: {
-          path: "$receiverInfo",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      { $sort: { createdAt: -1 } },
-      {
-        $project: {
+    };
+
+    const nameMatch: any[] = name
+      ? [{ $match: { "receiverInfo.name": { $regex: name, $options: "i" } } }]
+      : [];
+
+    const limit = Number(query?.limit || 10);
+    const page = Number(query?.page || 1);
+    const skip = (page - 1) * limit;
+
+    const projectStage: any = {
+      $project: {
+        _id: 1,
+        senderId: 1,
+        senderRole: 1,
+        receiverRole: 1,
+        amount: 1,
+        createdAt: 1,
+        receiverInfo: {
           _id: 1,
-          senderId: 1,
-          senderRole: 1,
-          receiverRole: 1,
-          amount: 1,
-          createdAt: 1,
-          receiverInfo: {
-            _id: 1,
-            name: 1,
-            email: 1,
-            uid: 1,
-            avatar: 1,
-            level: 1,
-          },
+          name: 1,
+          email: 1,
+          uid: 1,
+          userId: 1,
+          avatar: 1,
+          level: 1,
         },
       },
+    };
+
+    const dataPipeline: any[] = [
+      { $match: baseMatch },
+      lookupStage,
+      unwindStage,
+      ...nameMatch,
+      { $sort: { createdAt: -1 } },
+      projectStage,
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
+    const countPipeline: any[] = [
+      { $match: baseMatch },
+      lookupStage,
+      unwindStage,
+      ...nameMatch,
+      { $count: "total" },
+    ];
+
+    const [data, countResult] = await Promise.all([
+      this.Model.aggregate(dataPipeline).exec(),
+      this.Model.aggregate(countPipeline).exec(),
     ]);
 
-    const data = await res.exec();
-    const pagination = await res.countTotal();
+    const total = countResult.length > 0 ? countResult[0].total : 0;
+
     return {
-      pagination,
+      pagination: {
+        total,
+        limit,
+        page,
+        totalPage: Math.ceil(total / limit),
+      },
       data,
     };
   }

@@ -457,6 +457,12 @@ Returns all coin transfers **sent** by the authenticated reseller, with receiver
 | :--- | :--- | :--- | :--- | :--- |
 | `page` | `number` | No | `1` | Page number for pagination |
 | `limit` | `number` | No | `10` | Number of results per page |
+| `name` | `string` | No | — | Partial, case-insensitive search on receiver's name |
+| `userId` | `string` | No | — | Exact match on receiver's MongoDB `_id` |
+| `minCoins` | `number` | No | — | Minimum coin amount (`amount >= value`) |
+| `maxCoins` | `number` | No | — | Maximum coin amount (`amount <= value`) |
+| `from` | `string` (ISO) | No | — | Start date filter (`createdAt >= date`) |
+| `to` | `string` (ISO) | No | — | End date filter (`createdAt <= date`) |
 
 ### Response (200 OK)
 
@@ -483,6 +489,7 @@ Returns all coin transfers **sent** by the authenticated reseller, with receiver
           "name": "John Doe",
           "email": "john@example.com",
           "uid": "user_abc123",
+          "userId": 100024,
           "avatar": "https://res.cloudinary.com/.../avatar.png",
           "level": 5
         }
@@ -499,6 +506,7 @@ Returns all coin transfers **sent** by the authenticated reseller, with receiver
           "name": "Jane Smith",
           "email": "jane@example.com",
           "uid": "user_def456",
+          "userId": 100089,
           "avatar": "https://res.cloudinary.com/.../avatar2.png",
           "level": 12
         }
@@ -518,6 +526,7 @@ Returns all coin transfers **sent** by the authenticated reseller, with receiver
 | `data[].receiverInfo.name` | `string` | Receiver's display name |
 | `data[].receiverInfo.email` | `string` | Receiver's email address |
 | `data[].receiverInfo.uid` | `string` | Receiver's unique user ID |
+| `data[].receiverInfo.userId` | `number` | Receiver's auto-incrementing numeric user ID |
 | `data[].receiverInfo.avatar` | `string` | Receiver's avatar URL |
 | `data[].receiverInfo.level` | `number` | Receiver's current level |
 
@@ -563,7 +572,7 @@ Returns all coin transfers **sent** by the authenticated reseller, with receiver
 1. **Sent Only**: Returns only records where the authenticated user is the **sender** (`senderId`), not the receiver.
 2. **Reseller Verification**: The service layer verifies `userRole === "re-seller"` before returning results.
 3. **Receiver Info**: Each record includes `receiverInfo` with the receiver's name, email, uid, avatar, and level (looked up from the `users` collection).
-4. **Pagination**: Standard QueryBuilder pagination via `page` and `limit` query parameters.
+4. **Pagination & Filtering**: Standard pagination via `page` and `limit`. Supports optional filters: `name` (partial match on receiver name), `userId` (exact match on receiver), `minCoins`/`maxCoins` (coin range), `from`/`to` (date range). All filters are combinable.
 5. **TTL Expiry**: Coin history records auto-delete after 30 days due to a TTL index on `expireAt`.
 
 ---
