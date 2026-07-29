@@ -1,3 +1,4 @@
+import { DateHelper } from "../../core/helper_classes/date_helper";
 import {
   IFamilySupportRewardHistory,
   IFamilySupportRewardHistoryDocument,
@@ -11,6 +12,9 @@ export interface IFamilySupportRewardHistoryRepository {
   getByFamilyAndWeek(
     familyId: string,
     weekStart: Date,
+  ): Promise<IFamilySupportRewardHistoryDocument | null>;
+  getLastWeekByFamily(
+    familyId: string,
   ): Promise<IFamilySupportRewardHistoryDocument | null>;
 }
 
@@ -35,5 +39,12 @@ export class FamilySupportRewardHistoryRepository
     weekStart: Date,
   ): Promise<IFamilySupportRewardHistoryDocument | null> {
     return await this.model.findOne({ familyId, weekStart });
+  }
+
+  async getLastWeekByFamily(
+    familyId: string,
+  ): Promise<IFamilySupportRewardHistoryDocument | null> {
+    const weekStart = DateHelper.getStartOfLastWeek(new Date());
+    return await this.model.findOne({ familyId, weekStart }).lean();
   }
 }

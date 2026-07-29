@@ -23,10 +23,11 @@ All endpoints require authentication unless noted otherwise.
 13. [Family Details](#13-family-details)
 14. [Get My Family Members](#14-get-my-family-members)
 15. [Get Family Members by Family ID](#15-get-family-members-by-family-id)
-16. [Family Reward Chart (Public)](#16-family-reward-chart-public)
-17. [Admin — Reward Config CRUD](#17-admin--reward-config-crud)
-18. [Admin — Support Reward Config](#18-admin--support-reward-config)
-19. [Family Support Reward Distribution (Cron)](#19-family-support-reward-distribution-cron)
+16. [Family Support Info (App)](#16-family-support-info-app)
+17. [Family Reward Chart (Public)](#17-family-reward-chart-public)
+18. [Admin — Reward Config CRUD](#18-admin--reward-config-crud)
+19. [Admin — Support Reward Config](#19-admin--support-reward-config)
+20. [Family Support Reward Distribution (Cron)](#20-family-support-reward-distribution-cron)
 
 ---
 
@@ -644,7 +645,80 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
 
 ---
 
-## 16. Family Reward Chart (Public)
+## 16. Family Support Info (App)
+
+**Endpoint:** `GET /api/family/support`
+
+**Auth:** Any authenticated user (must be a family member)
+
+**Description:** Returns all family support reward level configs, the current week's contribution, and last week's reward result for the user's family.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Family support info fetched successfully",
+  "result": {
+    "rewardLevels": [
+      {
+        "level": 1,
+        "targetPoints": 96000000,
+        "totalBonus": 6720000,
+        "leaderCut": 480000,
+        "top1Cut": 1920000,
+        "top2Cut": 1440000,
+        "top3Cut": 960000,
+        "top4To10Cut": 137000,
+        "top11To15Cut": 115200,
+        "top16To20Cut": 76800,
+        "minContributionRequired": 1200000
+      },
+      {
+        "level": 2,
+        "targetPoints": 180000000,
+        "totalBonus": 12600000,
+        "leaderCut": 900000,
+        "top1Cut": 3600000,
+        "top2Cut": 2700000,
+        "top3Cut": 1800000,
+        "top4To10Cut": 257000,
+        "top11To15Cut": 216000,
+        "top16To20Cut": 144000,
+        "minContributionRequired": 1200000
+      }
+    ],
+    "currentWeekContribution": 5400000,
+    "lastWeekResult": {
+      "familyId": "64f1a2b3c4d5e6f7a8b9c0d1",
+      "level": 1,
+      "totalBonus": 6720000,
+      "weekStart": "2026-07-20T00:00:00.000Z",
+      "weekEnd": "2026-07-26T23:59:59.999Z",
+      "distributedMembers": [
+        { "userId": "64f1a2b3c4d5e6f7a8b9c0d2", "role": "leader", "amount": 480000 },
+        { "userId": "64f1a2b3c4d5e6f7a8b9c0d3", "role": "top1", "amount": 1920000 },
+        { "userId": "64f1a2b3c4d5e6f7a8b9c0d4", "role": "top2", "amount": 1440000 }
+      ]
+    }
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Message |
+|--------|---------|
+| 400 | `"You are not a member of any family"` |
+
+**Notes:**
+- `rewardLevels` always returns all10 configured levels
+- `currentWeekContribution` is the sum of `totalCoinCost` from gift records for the user's family this week (Sunday–Saturday)
+- `lastWeekResult` is `null` if the family was not rewarded last week (e.g. no gifts or didn't meet level threshold)
+- `distributedMembers` contains userId (string), role, and amount for each member who received a payout
+
+---
+
+## 17. Family Reward Chart (Public)
 
 **Endpoint:** `GET /api/family-rewards/list`
 
@@ -689,7 +763,7 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
 
 ---
 
-## 17. Admin — Reward Config CRUD
+## 18. Admin — Reward Config CRUD
 
 ### 15a. Get All Reward Configs
 
@@ -748,7 +822,7 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
 
 ---
 
-## 18. Admin — Support Reward Config
+## 19. Admin — Support Reward Config
 
 These endpoints manage the **family support reward levels** — the coin payout configuration that determines how much each family member receives based on the family's weekly ranking performance.
 
@@ -841,7 +915,7 @@ These endpoints manage the **family support reward levels** — the coin payout 
 
 ---
 
-## 19. Family Support Reward Distribution (Cron)
+## 20. Family Support Reward Distribution (Cron)
 
 **Schedule:** Every Sunday at midnight (configured via `FAMILY_SUPPORT_REWARD` cron)
 

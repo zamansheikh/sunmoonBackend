@@ -42,6 +42,9 @@ router
   .route("/members")
   .get(authenticate(), controller.getMembers);
 router
+  .route("/support")
+  .get(authenticate(), controller.getFamilySupport);
+router
   .route("/:familyId/members")
   .get(authenticate(), controller.getFamilyMembersByFamilyId);
 

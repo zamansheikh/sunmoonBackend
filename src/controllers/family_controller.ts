@@ -240,4 +240,15 @@ export default class FamilyController {
       message: "Family members fetched successfully",
     });
   });
+
+  getFamilySupport = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.user!;
+    const result = await this.Service.getFamilySupportInfo(id);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result,
+      message: "Family support info fetched successfully",
+    });
+  });
 }

@@ -165,6 +165,34 @@ export interface IFamilyService {
     familyId: string,
     query: Record<string, any>,
   ): Promise<{ pagination: any; members: IFamilyMemberDocument[] }>;
+  getFamilySupportInfo(
+    userId: string,
+  ): Promise<IFamilySupportInfo>;
+}
+
+export interface IFamilySupportInfo {
+  rewardLevels: {
+    level: number;
+    targetPoints: number;
+    totalBonus: number;
+    leaderCut: number;
+    top1Cut: number;
+    top2Cut: number;
+    top3Cut: number;
+    top4To10Cut: number;
+    top11To15Cut: number;
+    top16To20Cut: number;
+    minContributionRequired: number;
+  }[];
+  currentWeekContribution: number;
+  lastWeekResult: {
+    familyId: string;
+    level: number;
+    totalBonus: number;
+    weekStart: Date;
+    weekEnd: Date;
+    distributedMembers: { userId: string; role: string; amount: number }[];
+  } | null;
 }
 
 export class FamilyService implements IFamilyService {
@@ -183,6 +211,8 @@ export class FamilyService implements IFamilyService {
     RepositoryProviders.familySupportRewardRepositoryProvider;
   audioRoomRepository: IAudioRoomRepository =
     RepositoryProviders.audioRoomRepositoryProvider;
+  familySupportRewardHistoryRepository =
+    RepositoryProviders.familySupportRewardHistoryRepositoryProvider;
 
   async createFamily(data: IFamily): Promise<IFamilyDocument> {
     //step1: validate leaderId
@@ -901,6 +931,53 @@ export class FamilyService implements IFamilyService {
     }
 
     return await this.familyMemberRepository.getAllMembersPaginated(familyId, query);
+  }
+
+  async getFamilySupportInfo(userId: string): Promise<IFamilySupportInfo> {
+    const member = await this.familyMemberRepository.getByUserId(userId);
+    if (!member) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "You are not a member of any family");
+    }
+
+    const familyId = member.familyId.toString();
+
+    const [rewardLevels, lastWeekResult, currentWeekContribution] =
+      await Promise.all([
+        this.familySupportRewardRepository.getAll(),
+        this.familySupportRewardHistoryRepository.getLastWeekByFamily(familyId),
+        this.GiftRecordRepository.getWeeklyContribution(familyId),
+      ]);
+
+    return {
+      rewardLevels: rewardLevels.map((r) => ({
+        level: r.level,
+        targetPoints: r.targetPoints,
+        totalBonus: r.totalBonus,
+        leaderCut: r.leaderCut,
+        top1Cut: r.top1Cut,
+        top2Cut: r.top2Cut,
+        top3Cut: r.top3Cut,
+        top4To10Cut: r.top4To10Cut,
+        top11To15Cut: r.top11To15Cut,
+        top16To20Cut: r.top16To20Cut,
+        minContributionRequired: r.minContributionRequired,
+      })),
+      currentWeekContribution,
+      lastWeekResult: lastWeekResult
+        ? {
+            familyId: lastWeekResult.familyId.toString(),
+            level: lastWeekResult.level,
+            totalBonus: lastWeekResult.totalBonus,
+            weekStart: lastWeekResult.weekStart,
+            weekEnd: lastWeekResult.weekEnd,
+            distributedMembers: lastWeekResult.distributedMembers.map((m) => ({
+              userId: m.userId.toString(),
+              role: m.role,
+              amount: m.amount,
+            })),
+          }
+        : null,
+    };
   }
 
   private async getFeaturedMembers(
