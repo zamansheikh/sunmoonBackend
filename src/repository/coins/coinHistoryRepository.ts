@@ -152,15 +152,15 @@ export default class CoinHistoryRepository implements ICoinHistoryRepository {
     query: Record<string, any>
   ): Promise<{ pagination: IPagination; data: ICoinHistoryDocument[] }> {
     const sender = new Types.ObjectId(senderId);
-    const { name, userID, minCoins, maxCoins, from, to } = query;
+    const { name, userId, minCoins, maxCoins, from, to } = query;
 
     const baseMatch: Record<string, any> = {
       senderId: sender,
       senderRole: UserRoles.Reseller,
     };
 
-    if (userID) {
-      const user = await User.findOne({ userId: Number(userID) }).select("_id").lean();
+    if (userId) {
+      const user = await User.findOne({ userId: Number(userId) }).select("_id").lean();
       if (!user) {
         return {
           pagination: { total: 0, limit: Number(query?.limit || 10), page: Number(query?.page || 1), totalPage: 0 },
