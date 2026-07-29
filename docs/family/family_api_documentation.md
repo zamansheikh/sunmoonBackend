@@ -756,7 +756,7 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
         "rank": 1,
         "totalContribution": 5400000,
         "memberKey": {
-          "userId": "64f1a2b3c4d5e6f7a8b9c0d2",
+          "userId": 100024,
           "name": "John",
           "avatar": "https://..."
         }
@@ -765,7 +765,7 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
         "rank": 2,
         "totalContribution": 3200000,
         "memberKey": {
-          "userId": "64f1a2b3c4d5e6f7a8b9c0d3",
+          "userId": 100035,
           "name": "Jane",
           "avatar": "https://..."
         }
@@ -774,7 +774,7 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
         "rank": 3,
         "totalContribution": 0,
         "memberKey": {
-          "userId": "64f1a2b3c4d5e6f7a8b9c0d4",
+          "userId": 100042,
           "name": "Bob",
           "avatar": "https://..."
         }
@@ -794,6 +794,7 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
 - `period` defaults to `this-week` if not provided or invalid
 - `weekStart` / `weekEnd` show the time window for the returned ranking
 - `totalContribution` is the sum of `totalCoinCost` from gift records where the member is the receiver
+- `memberKey.userId` is the numeric auto-incrementing user ID (e.g. 100024), not the MongoDB `_id`
 - Members with equal contribution get the same rank (e.g. two members at rank 1, next is rank 3)
 - All family members are included, even those with 0 contribution (appear at the bottom)
 

@@ -182,7 +182,7 @@ export interface IFamilyMemberRankingResult {
     rank: number;
     totalContribution: number;
     memberKey: {
-      userId: string;
+      userId: number;
       name: string;
       avatar: string;
     };
@@ -1087,7 +1087,7 @@ export class FamilyService implements IFamilyService {
           rank: r.rank,
           totalContribution: r.totalContribution,
           memberKey: {
-            userId: r.userId,
+            userId: user?.userId ?? 0,
             name: user?.name || "Unknown",
             avatar: user?.avatar || "",
           },
