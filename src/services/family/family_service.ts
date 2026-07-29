@@ -168,6 +168,25 @@ export interface IFamilyService {
   getFamilySupportInfo(
     userId: string,
   ): Promise<IFamilySupportInfo>;
+  getMemberRanking(
+    userId: string,
+    period: string,
+  ): Promise<IFamilyMemberRankingResult>;
+}
+
+export interface IFamilyMemberRankingResult {
+  period: string;
+  weekStart: Date;
+  weekEnd: Date;
+  ranking: {
+    rank: number;
+    totalContribution: number;
+    memberKey: {
+      userId: string;
+      name: string;
+      avatar: string;
+    };
+  }[];
 }
 
 export interface IFamilySupportInfo {
@@ -993,6 +1012,87 @@ export class FamilyService implements IFamilyService {
             })),
           }
         : null,
+    };
+  }
+
+  async getMemberRanking(
+    userId: string,
+    period: string,
+  ): Promise<IFamilyMemberRankingResult> {
+    const member = await this.familyMemberRepository.getByUserId(userId);
+    if (!member) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "You are not a member of any family");
+    }
+
+    const familyId = member.familyId.toString();
+    const isLastWeek = period === "last-week";
+
+    const weekStart = isLastWeek
+      ? DateHelper.getStartOfLastWeek(new Date())
+      : DateHelper.getStartOfWeek(new Date());
+    const weekEnd = isLastWeek
+      ? DateHelper.getEndOfLastWeek(new Date())
+      : DateHelper.getEndOfWeek(new Date());
+
+    const [memberUserIds, contributions] = await Promise.all([
+      this.familyMemberRepository.getAllMemberUserIds(familyId),
+      this.GiftRecordRepository.getWeeklyFamilyContributors(
+        familyId,
+        weekStart,
+        weekEnd,
+        999,
+      ),
+    ]);
+
+    const contributionMap = new Map<string, number>();
+    for (const c of contributions) {
+      contributionMap.set(c.receiverId.toString(), c.weeklyContribution);
+    }
+
+    const membersWithContribution = memberUserIds.map((id) => ({
+      userId: id,
+      totalContribution: contributionMap.get(id) || 0,
+    }));
+
+    membersWithContribution.sort((a, b) => b.totalContribution - a.totalContribution);
+
+    const ranked = membersWithContribution.map((m, idx) => ({
+      rank: idx + 1,
+      totalContribution: m.totalContribution,
+      userId: m.userId,
+    }));
+
+    const uniqueContributions = [...new Set(ranked.map((r) => r.totalContribution))];
+    const contributionToRank = new Map<number, number>();
+    for (const contrib of uniqueContributions) {
+      const firstIdx = ranked.findIndex((r) => r.totalContribution === contrib);
+      contributionToRank.set(contrib, firstIdx + 1);
+    }
+    for (const r of ranked) {
+      r.rank = contributionToRank.get(r.totalContribution)!;
+    }
+
+    const userBriefs = await UserCache.getInstance().getUsersBriefs(
+      ranked.map((r) => r.userId),
+    );
+    const userBriefMap = new Map(userBriefs.map((u) => [u._id, u]));
+
+    return {
+      period,
+      weekStart,
+      weekEnd,
+      ranking: ranked.map((r) => {
+        const user = userBriefMap.get(r.userId);
+        return {
+          rank: r.rank,
+          totalContribution: r.totalContribution,
+          memberKey: {
+            userId: r.userId,
+            name: user?.name || "Unknown",
+            avatar: user?.avatar || "",
+          },
+        };
+      }),
     };
   }
 

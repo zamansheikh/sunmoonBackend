@@ -45,6 +45,9 @@ router
   .route("/support")
   .get(authenticate(), controller.getFamilySupport);
 router
+  .route("/member-ranking")
+  .get(authenticate(), controller.getMemberRanking);
+router
   .route("/:familyId/members")
   .get(authenticate(), controller.getFamilyMembersByFamilyId);
 

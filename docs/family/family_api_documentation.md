@@ -24,10 +24,11 @@ All endpoints require authentication unless noted otherwise.
 14. [Get My Family Members](#14-get-my-family-members)
 15. [Get Family Members by Family ID](#15-get-family-members-by-family-id)
 16. [Family Support Info (App)](#16-family-support-info-app)
-17. [Family Reward Chart (Public)](#17-family-reward-chart-public)
-18. [Admin — Reward Config CRUD](#18-admin--reward-config-crud)
-19. [Admin — Support Reward Config](#19-admin--support-reward-config)
-20. [Family Support Reward Distribution (Cron)](#20-family-support-reward-distribution-cron)
+17. [Family Member Ranking (App)](#17-family-member-ranking-app)
+18. [Family Reward Chart (Public)](#18-family-reward-chart-public)
+19. [Admin — Reward Config CRUD](#19-admin--reward-config-crud)
+20. [Admin — Support Reward Config](#20-admin--support-reward-config)
+21. [Family Support Reward Distribution (Cron)](#21-family-support-reward-distribution-cron)
 
 ---
 
@@ -727,7 +728,78 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
 
 ---
 
-## 17. Family Reward Chart (Public)
+## 17. Family Member Ranking (App)
+
+**Endpoint:** `GET /api/family/member-ranking`
+
+**Auth:** Any authenticated user (must be a family member)
+
+**Query Parameters:**
+
+| Param | Values | Default | Description |
+|-------|--------|---------|-------------|
+| `period` | `this-week`, `last-week` | `this-week` | Which week's ranking to return |
+
+**Description:** Returns all family members sorted by their gift contribution for the specified week. Members with zero contribution appear at the bottom.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Family member ranking fetched successfully",
+  "result": {
+    "period": "this-week",
+    "weekStart": "2026-07-27T00:00:00.000Z",
+    "weekEnd": "2026-08-02T23:59:59.999Z",
+    "ranking": [
+      {
+        "rank": 1,
+        "totalContribution": 5400000,
+        "memberKey": {
+          "userId": "64f1a2b3c4d5e6f7a8b9c0d2",
+          "name": "John",
+          "avatar": "https://..."
+        }
+      },
+      {
+        "rank": 2,
+        "totalContribution": 3200000,
+        "memberKey": {
+          "userId": "64f1a2b3c4d5e6f7a8b9c0d3",
+          "name": "Jane",
+          "avatar": "https://..."
+        }
+      },
+      {
+        "rank": 3,
+        "totalContribution": 0,
+        "memberKey": {
+          "userId": "64f1a2b3c4d5e6f7a8b9c0d4",
+          "name": "Bob",
+          "avatar": "https://..."
+        }
+      }
+    ]
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Message |
+|--------|---------|
+| 400 | `"You are not a member of any family"` |
+
+**Notes:**
+- `period` defaults to `this-week` if not provided or invalid
+- `weekStart` / `weekEnd` show the time window for the returned ranking
+- `totalContribution` is the sum of `totalCoinCost` from gift records where the member is the receiver
+- Members with equal contribution get the same rank (e.g. two members at rank 1, next is rank 3)
+- All family members are included, even those with 0 contribution (appear at the bottom)
+
+---
+
+## 18. Family Reward Chart (Public)
 
 **Endpoint:** `GET /api/family-rewards/list`
 
@@ -772,7 +844,7 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
 
 ---
 
-## 18. Admin — Reward Config CRUD
+## 19. Admin — Reward Config CRUD
 
 ### 15a. Get All Reward Configs
 
@@ -831,7 +903,7 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
 
 ---
 
-## 19. Admin — Support Reward Config
+## 20. Admin — Support Reward Config
 
 These endpoints manage the **family support reward levels** — the coin payout configuration that determines how much each family member receives based on the family's weekly ranking performance.
 
@@ -924,7 +996,7 @@ These endpoints manage the **family support reward levels** — the coin payout 
 
 ---
 
-## 20. Family Support Reward Distribution (Cron)
+## 21. Family Support Reward Distribution (Cron)
 
 **Schedule:** Every Sunday at midnight (configured via `FAMILY_SUPPORT_REWARD` cron)
 

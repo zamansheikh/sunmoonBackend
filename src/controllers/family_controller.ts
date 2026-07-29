@@ -251,4 +251,16 @@ export default class FamilyController {
       message: "Family support info fetched successfully",
     });
   });
+
+  getMemberRanking = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.user!;
+    const period = (req.query.period as string) || "this-week";
+    const result = await this.Service.getMemberRanking(id, period);
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      result,
+      message: "Family member ranking fetched successfully",
+    });
+  });
 }
