@@ -508,6 +508,8 @@ All endpoints require authentication unless noted otherwise.
       "nextLevel": 3,
       "nextLevelTarget": 50000
     },
+    "currentRanking": "5",
+    "currentFamilySupportLevel": 1,
     "activeRooms": [
       {
         "roomId": "abc123",
@@ -530,6 +532,10 @@ All endpoints require authentication unless noted otherwise.
 | `currentWeeklyContribution` | number | Family's total contribution (sum of `totalCoinCost`) for the current week |
 | `nextLevel` | number or null | The next reward level the family can reach. If already at max level, returns the max level number |
 | `nextLevelTarget` | number or null | The `targetPoints` needed for the next level. If already at max level, returns the max level's target |
+
+**`currentRanking`:** The family's position in this week's family ranking (sorted by total contribution). If rank exceeds 99, returns `"99+"`. Otherwise returns the exact rank as a string (e.g. `"1"`, `"5"`, `"42"`).
+
+**`currentFamilySupportLevel`:** The highest reward level the family has reached this week based on `currentWeeklyContribution`. Returns `0` if no level reached yet, otherwise `1`–`10`.
 
 **`activeRooms` fields:**
 

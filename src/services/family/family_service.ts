@@ -126,6 +126,8 @@ export interface IFamilyDetails {
     nextLevel: number | null;
     nextLevelTarget: number | null;
   };
+  currentRanking: string;
+  currentFamilySupportLevel: number;
   activeRooms: IFamilyActiveRoom[];
   callerRole: FamilyMemberRole | null;
 }
@@ -883,10 +885,13 @@ export class FamilyService implements IFamilyService {
     familyId: string,
     callerId?: string,
   ): Promise<IFamilyDetails> {
-    const [family, topContributors] = await Promise.all([
-      this.familyRepository.getById(familyId),
-      this.familyMemberRepository.getTopContributors(familyId, 5),
-    ]);
+    const [family, topContributors, rewardLevels, thisWeekRanking] =
+      await Promise.all([
+        this.familyRepository.getById(familyId),
+        this.familyMemberRepository.getTopContributors(familyId, 5),
+        this.familySupportRewardRepository.getAll(),
+        this.GiftRecordRepository.getFamilyRanking(false),
+      ]);
 
     if (!family) {
       throw new AppError(StatusCodes.NOT_FOUND, "Family not found");
@@ -897,10 +902,22 @@ export class FamilyService implements IFamilyService {
     const currentWeeklyContribution =
       await this.GiftRecordRepository.getWeeklyContribution(familyId);
 
-    const { nextLevel, nextLevelTarget } =
-      await this.familySupportRewardRepository.getNextLevelInfo(
-        currentWeeklyContribution,
-      );
+    const nextLevelInfo = rewardLevels.find(
+      (l) => l.targetPoints > currentWeeklyContribution,
+    );
+    const nextLevel = nextLevelInfo?.level ?? null;
+    const nextLevelTarget = nextLevelInfo?.targetPoints ?? null;
+
+    const currentFamilySupportLevel =
+      rewardLevels
+        .filter((l) => currentWeeklyContribution >= l.targetPoints)
+        .pop()?.level ?? 0;
+
+    const familyRankIdx = thisWeekRanking.findIndex(
+      (r) => r.familyId.toString() === familyId,
+    );
+    const rank = familyRankIdx >= 0 ? familyRankIdx + 1 : thisWeekRanking.length + 1;
+    const currentRanking = rank > 99 ? "99+" : String(rank);
 
     const activeRooms = await this.getActiveRoomsForFamily(familyId);
 
@@ -925,6 +942,8 @@ export class FamilyService implements IFamilyService {
         nextLevel,
         nextLevelTarget,
       },
+      currentRanking,
+      currentFamilySupportLevel,
       activeRooms,
       callerRole,
     };
