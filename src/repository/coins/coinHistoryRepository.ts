@@ -6,6 +6,7 @@ import {
   ICoinHistoryDocument,
   ICoinHistoryModel,
 } from "../../models/coins/coinHistoryModel";
+import User from "../../models/user/user_model";
 
 export interface ICoinHistoryRepository {
   createHistory(
@@ -151,15 +152,22 @@ export default class CoinHistoryRepository implements ICoinHistoryRepository {
     query: Record<string, any>
   ): Promise<{ pagination: IPagination; data: ICoinHistoryDocument[] }> {
     const sender = new Types.ObjectId(senderId);
-    const { name, userId, minCoins, maxCoins, from, to } = query;
+    const { name, userID, minCoins, maxCoins, from, to } = query;
 
     const baseMatch: Record<string, any> = {
       senderId: sender,
       senderRole: UserRoles.Reseller,
     };
 
-    if (userId) {
-      baseMatch.receiverId = new Types.ObjectId(userId as string);
+    if (userID) {
+      const user = await User.findOne({ userId: Number(userID) }).select("_id").lean();
+      if (!user) {
+        return {
+          pagination: { total: 0, limit: Number(query?.limit || 10), page: Number(query?.page || 1), totalPage: 0 },
+          data: [],
+        };
+      }
+      baseMatch.receiverId = user._id;
     }
 
     if (minCoins || maxCoins) {

@@ -458,7 +458,7 @@ Returns all coin transfers **sent** by the authenticated reseller, with receiver
 | `page` | `number` | No | `1` | Page number for pagination |
 | `limit` | `number` | No | `10` | Number of results per page |
 | `name` | `string` | No | — | Partial, case-insensitive search on receiver's name |
-| `userId` | `string` | No | — | Exact match on receiver's MongoDB `_id` |
+| `userID` | `number` | No | — | Exact match on receiver's numeric `userId` (e.g. `100024`) |
 | `minCoins` | `number` | No | — | Minimum coin amount (`amount >= value`) |
 | `maxCoins` | `number` | No | — | Maximum coin amount (`amount <= value`) |
 | `from` | `string` (ISO) | No | — | Start date filter (`createdAt >= date`) |
@@ -572,7 +572,7 @@ Returns all coin transfers **sent** by the authenticated reseller, with receiver
 1. **Sent Only**: Returns only records where the authenticated user is the **sender** (`senderId`), not the receiver.
 2. **Reseller Verification**: The service layer verifies `userRole === "re-seller"` before returning results.
 3. **Receiver Info**: Each record includes `receiverInfo` with the receiver's name, email, uid, avatar, and level (looked up from the `users` collection).
-4. **Pagination & Filtering**: Standard pagination via `page` and `limit`. Supports optional filters: `name` (partial match on receiver name), `userId` (exact match on receiver), `minCoins`/`maxCoins` (coin range), `from`/`to` (date range). All filters are combinable.
+4. **Pagination & Filtering**: Standard pagination via `page` and `limit`. Supports optional filters: `name` (partial match on receiver name), `userID` (exact match on receiver's numeric userId), `minCoins`/`maxCoins` (coin range), `from`/`to` (date range). All filters are combinable.
 5. **TTL Expiry**: Coin history records auto-delete after 30 days due to a TTL index on `expireAt`.
 
 ---
