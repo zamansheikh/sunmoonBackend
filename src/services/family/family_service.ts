@@ -185,10 +185,18 @@ export interface IFamilySupportInfo {
     minContributionRequired: number;
   }[];
   currentWeekContribution: number;
+  currentWeekStart: Date;
+  currentWeekEnd: Date;
   lastWeekResult: {
     familyId: string;
     level: number;
     totalBonus: number;
+    top1Cut: number;
+    top2Cut: number;
+    top3Cut: number;
+    top4To10Cut: number;
+    top11To15Cut: number;
+    top16To20Cut: number;
     weekStart: Date;
     weekEnd: Date;
     distributedMembers: { userId: string; role: string; amount: number }[];
@@ -963,11 +971,19 @@ export class FamilyService implements IFamilyService {
         minContributionRequired: r.minContributionRequired,
       })),
       currentWeekContribution,
+      currentWeekStart: DateHelper.getStartOfWeek(new Date()),
+      currentWeekEnd: DateHelper.getEndOfWeek(new Date()),
       lastWeekResult: lastWeekResult
         ? {
             familyId: lastWeekResult.familyId.toString(),
             level: lastWeekResult.level,
             totalBonus: lastWeekResult.totalBonus,
+            top1Cut: lastWeekResult.top1Cut,
+            top2Cut: lastWeekResult.top2Cut,
+            top3Cut: lastWeekResult.top3Cut,
+            top4To10Cut: lastWeekResult.top4To10Cut,
+            top11To15Cut: lastWeekResult.top11To15Cut,
+            top16To20Cut: lastWeekResult.top16To20Cut,
             weekStart: lastWeekResult.weekStart,
             weekEnd: lastWeekResult.weekEnd,
             distributedMembers: lastWeekResult.distributedMembers.map((m) => ({

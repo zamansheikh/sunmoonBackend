@@ -688,10 +688,18 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
       }
     ],
     "currentWeekContribution": 5400000,
+    "currentWeekStart": "2026-07-27T00:00:00.000Z",
+    "currentWeekEnd": "2026-08-02T23:59:59.999Z",
     "lastWeekResult": {
       "familyId": "64f1a2b3c4d5e6f7a8b9c0d1",
       "level": 1,
       "totalBonus": 6720000,
+      "top1Cut": 1920000,
+      "top2Cut": 1440000,
+      "top3Cut": 960000,
+      "top4To10Cut": 137000,
+      "top11To15Cut": 115200,
+      "top16To20Cut": 76800,
       "weekStart": "2026-07-20T00:00:00.000Z",
       "weekEnd": "2026-07-26T23:59:59.999Z",
       "distributedMembers": [
@@ -713,6 +721,7 @@ GET /api/family/64f1a2b3c4d5e6f7a8b9c0d1/members?role=member&minGifts=50000&limi
 **Notes:**
 - `rewardLevels` always returns all10 configured levels
 - `currentWeekContribution` is the sum of `totalCoinCost` from gift records for the user's family this week (Sunday–Saturday)
+- `currentWeekStart` / `currentWeekEnd` define the current week's time window (Sunday 00:00 to Saturday 23:59:59)
 - `lastWeekResult` is `null` if the family was not rewarded last week (e.g. no gifts or didn't meet level threshold)
 - `distributedMembers` contains userId (string), role, and amount for each member who received a payout
 
