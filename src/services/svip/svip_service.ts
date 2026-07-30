@@ -118,13 +118,13 @@ export class SvipService {
         );
         (svipRecord as any).currentTier = highestQualifiedTier;
 
-        // ── 5. Auto-grant the corresponding SVIP store item to bucket ──
-        await SvipService.syncBucketWithTier(
-          userId,
-          highestQualifiedTier,
-          session,
-        );
       }
+      // ── 5. Auto-grant the corresponding SVIP store item to bucket ──
+      await SvipService.syncBucketWithTier(
+        userId,
+        highestQualifiedTier,
+        session,
+      );
     }
     // If no config, milestones can't be checked — the counter was still
     // incremented above, so no progress is lost when config comes back.
