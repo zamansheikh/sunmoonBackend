@@ -305,14 +305,25 @@ export class SvipService {
       );
     }
 
-    // ── Remove old category bucket if level switched categories ───────
-    // e.g. user went from VIP → SVIP, remove VIP bucket item
-    const oldCategoryName = level <= (config.vipTiers.length)
-      ? config.svipCategoryName  // was in SVIP before? (shouldn't happen normally)
-      : config.vipCategoryName;  // was in VIP before — remove it
+    // ── Remove stale bucket from the OTHER category (if one exists) ──
+    // Only do this when the level is in SVIP range (meaning VIP bucket
+    // might be stale) or in VIP range (meaning SVIP bucket might be stale).
+    // This handles VIP→SVIP upgrades and SVIP→VIP downgrades.
+    const otherCategoryName = resolved.categoryName === config.vipCategoryName
+      ? config.svipCategoryName
+      : config.vipCategoryName;
 
-    if (oldCategoryName !== resolved.categoryName) {
-      await SvipService.removeBucketItemForCategory(userId, oldCategoryName, session);
+    // Check if a bucket item exists in the other category — only remove if it does
+    const otherCategory = await SvipService.categoryRepo.getCategoryByTitle(otherCategoryName);
+    if (otherCategory) {
+      const otherBucket = await SvipService.bucketRepo.findBucketByOwnerAndCategory(
+        userId,
+        (otherCategory as any)._id.toString(),
+        session,
+      );
+      if (otherBucket) {
+        await SvipService.bucketRepo.deleteBucket((otherBucket as any)._id.toString());
+      }
     }
   }
 

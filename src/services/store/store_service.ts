@@ -710,10 +710,6 @@ export default class StoreService implements IStoreService {
       profileToBeUpdated,
     );
 
-    // ── Auto-sync SVIP config if the updated item is an SVIP tier item ───
-    const effectiveName = item.name || existingItem.name;
-    const effectivePrices = item.prices || existingItem.prices;
-
     return updated;
   }
 
@@ -872,11 +868,17 @@ export default class StoreService implements IStoreService {
     const itemCategory = await this.CategoryRepository.getCategoryById(
       item.categoryId.toString(),
     );
-    if (itemCategory && (itemCategory.title === "VIP" || itemCategory.title === "SVIP")) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "VIP/SVIP items can only be earned through monthly recharge milestones, not purchased directly.",
-      );
+    if (itemCategory) {
+      const title = itemCategory.title;
+      const config = await SvipConfigService.getConfig();
+      const isVipCategory = title === "VIP" || (config && title === config.vipCategoryName);
+      const isSvipCategory = title === "SVIP" || (config && title === config.svipCategoryName);
+      if (isVipCategory || isSvipCategory) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "VIP/SVIP items can only be earned through monthly recharge milestones, not purchased directly.",
+        );
+      }
     }
     // ────────────────────────────────────────────────────────────────────
 
