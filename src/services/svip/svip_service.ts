@@ -95,6 +95,7 @@ export class SvipService {
 
     // ── 3. Check milestones — did we cross any? ───────────────────────
     const config = await SvipConfigService.getConfig();
+    // console.log("SVIP config ============>>>>>>>>>>>>>>>> ", config)
     if (config && config.tiers.length > 0) {
       const sortedTiers = [...config.tiers].sort(
         (a, b) => a.milestoneCoins - b.milestoneCoins,
@@ -119,6 +120,8 @@ export class SvipService {
         (svipRecord as any).currentTier = highestQualifiedTier;
 
       }
+
+      // console.log("Sync is running  ============>>>>>>>>>>>>>>>> ")
       // ── 5. Auto-grant the corresponding SVIP store item to bucket ──
       await SvipService.syncBucketWithTier(
         userId,
@@ -174,7 +177,7 @@ export class SvipService {
     if (!tierConfig || !tierConfig.storeItemId) {
       console.warn(
         `[SVIP] No storeItemId linked for tier ${tier} — cannot grant bucket item. ` +
-          `Admin must create an SVIP-${tier} store item.`,
+        `Admin must create an SVIP-${tier} store item.`,
       );
       return;
     }
