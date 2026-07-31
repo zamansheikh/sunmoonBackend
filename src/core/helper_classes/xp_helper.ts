@@ -143,8 +143,8 @@ export class XpHelper {
     // ── 2. Also check milestone-based SVIP tier (new system) ────────────
     try {
       const svipRecord = await UserSvipModel.findOne({ userId }).lean();
-      if (svipRecord && svipRecord.currentTier > highestSvip) {
-        highestSvip = svipRecord.currentTier;
+      if (svipRecord && svipRecord.currentLevel > highestSvip) {
+        highestSvip = svipRecord.currentLevel;
       }
     } catch (error) {
       // Non-critical — fall back to store-bucket result

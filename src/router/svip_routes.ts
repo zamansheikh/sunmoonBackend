@@ -6,23 +6,23 @@ import { UserRoles } from "../core/Utils/enums";
 const router = express.Router();
 const controller = new SvipController();
 
-// ── Admin: SVIP config management ────────────────────────────────────────
+// ── Admin: SVIP/VIP config management ─────────────────────────────────────
 router
   .route("/config")
   .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getConfig)
   .put(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.updateConfig);
 
-// ── Admin: list users by SVIP tier ───────────────────────────────────────
+// ── Admin: list users by level ─────────────────────────────────────────────
 router
   .route("/users")
-  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getUsersByTier);
+  .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getUsersByLevel);
 
-// ── User: own SVIP status ────────────────────────────────────────────────
+// ── User: own premium status ──────────────────────────────────────────────
 router
   .route("/status")
   .get(authenticate(), controller.getMySvipStatus);
 
-// ── Admin: view any user's SVIP status ───────────────────────────────────
+// ── Admin: view any user's premium status ─────────────────────────────────
 router
   .route("/status/:userId")
   .get(authenticate([UserRoles.Admin, UserRoles.SubAdmin]), controller.getUserSvipStatus);

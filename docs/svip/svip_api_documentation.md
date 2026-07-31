@@ -1,15 +1,15 @@
-# SVIP Milestone System API Documentation
+# Premium Tier System (VIP + SVIP) API Documentation
 
-The **SVIP Milestone System** replaces the old direct-purchase model for SVIP store items. Users now earn SVIP tiers **automatically** by recharging coins within a calendar month. Each SVIP tier is linked to a store item, which is auto-granted to the user's inventory on milestone reach.
+The **Premium Tier System** provides a unified VIP→SVIP progression where users earn tiers **automatically** by recharging coins within a calendar month. Users climb VIP tiers first, then SVIP tiers. Store items are matched dynamically by category + tier number — no config-stored item IDs.
 
 This system consists of:
 
-1. **SVIP Config (Admin)** — Manage tier milestones and retention thresholds
-2. **SVIP Status (User)** — View personal SVIP dashboard with tier, progress, and current item
-3. **SVIP Status (Admin)** — View any user's SVIP dashboard
-4. **SVIP Users (Admin)** — List users by SVIP tier with pagination
-5. **Auto-Grant System** — Internal logic that grants store items on milestone upgrades
-6. **Purchase Block** — SVIP items cannot be bought directly from the store
+1. **Premium Config (Admin)** — Manage VIP/SVIP tier milestones, retention thresholds, and category names
+2. **Premium Status (User)** — View personal dashboard with level, progress, and current item
+3. **Premium Status (Admin)** — View any user's dashboard
+4. **Premium Users (Admin)** — List users by level with pagination
+5. **Auto-Grant System** — Internal logic that grants store items on level upgrades (dynamic store search)
+6. **Purchase Block** — VIP/SVIP items cannot be bought directly from the store
 
 ---
 
@@ -23,15 +23,15 @@ This system consists of:
   ```
 - **Access Control**:
   - **Admin / SubAdmin** — Config management and viewing any user's status
-  - **Any authenticated user** — View own SVIP dashboard
+  - **Any authenticated user** — View own premium dashboard
 
 ---
 
-## Part 1: SVIP Configuration Management (Admin)
+## Part 1: Premium Configuration Management (Admin)
 
-### 1.1 Get SVIP Configuration
+### 1.1 Get Premium Configuration
 
-Fetches the current SVIP tier configuration including milestone thresholds, retention requirements, and linked store items.
+Fetches the current VIP/SVIP tier configuration including milestone thresholds, retention requirements, and category names.
 
 - **Path**: `GET /api/svip/config`
 - **Access Control**: `Admin` or `SubAdmin`
@@ -42,127 +42,151 @@ Fetches the current SVIP tier configuration including milestone thresholds, rete
 {
   "status": "success",
   "data": {
-    "tiers": [
-      { "tier": 1, "milestoneCoins": 1000000, "storeItemId": "64f1a2b3c4d5e6f7a8b9c0d1" },
-      { "tier": 2, "milestoneCoins": 3000000, "storeItemId": null },
-      { "tier": 3, "milestoneCoins": 8000000, "storeItemId": "64f1a2b3c4d5e6f7a8b9c0d3" },
-      { "tier": 4, "milestoneCoins": 15000000, "storeItemId": null },
-      { "tier": 5, "milestoneCoins": 30000000, "storeItemId": null },
-      { "tier": 6, "milestoneCoins": 50000000, "storeItemId": null },
-      { "tier": 7, "milestoneCoins": 70000000, "storeItemId": null },
-      { "tier": 8, "milestoneCoins": 90000000, "storeItemId": null },
-      { "tier": 9, "milestoneCoins": 110000000, "storeItemId": null }
+    "vipTiers": [
+      { "tier": 1, "milestoneCoins": 500000 },
+      { "tier": 2, "milestoneCoins": 1200000 },
+      { "tier": 3, "milestoneCoins": 2500000 }
     ],
-    "retentionThreshold": 2000000
+    "svipTiers": [
+      { "tier": 1, "milestoneCoins": 5000000 },
+      { "tier": 2, "milestoneCoins": 12000000 },
+      { "tier": 3, "milestoneCoins": 25000000 }
+    ],
+    "retentionThreshold": 0.5,
+    "vipCategoryName": "VIP",
+    "svipCategoryName": "SVIP"
   }
 }
 ```
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `tiers[].tier` | `number` | Tier level (1–9) |
-| `tiers[].milestoneCoins` | `number` | Coins that must be recharged in a calendar month to reach this tier |
-| `tiers[].storeItemId` | `string \| null` | MongoDB ObjectId of the linked store item (null until an admin creates the item with name matching `SVIP-N`) |
-| `retentionThreshold` | `number` | Minimum coins to recharge each month to retain the current tier |
+| `vipTiers` | `object[]` | Ordered VIP tier definitions. User climbs these first. |
+| `vipTiers[].tier` | `number` | VIP tier number (1-based) |
+| `vipTiers[].milestoneCoins` | `number` | Coins recharged in a calendar month to reach this tier |
+| `svipTiers` | `object[]` | Ordered SVIP tier definitions. User climbs these after maxing VIP. |
+| `svipTiers[].tier` | `number` | SVIP tier number (1-based, independent of VIP) |
+| `svipTiers[].milestoneCoins` | `number` | Coins recharged in a calendar month to reach this tier |
+| `retentionThreshold` | `number` | Fraction of milestone required to retain tier (0.5 = 50%) |
+| `vipCategoryName` | `string` | Store category title for VIP items (default: "VIP") |
+| `svipCategoryName` | `string` | Store category title for SVIP items (default: "SVIP") |
+
+> **Note**: Config is NOT auto-seeded. If no config exists, milestones won't be checked until an admin creates one.
 
 ---
 
-### 1.2 Update SVIP Configuration
+### 1.2 Update Premium Configuration
 
-Updates the SVIP tier configuration. You can update individual tier's milestone coins and the retention threshold. The entire `tiers` array is replaced, so send the full array.
+Updates the VIP/SVIP tier configuration. All fields are optional — only send what you want to change. Partial updates are safe and won't wipe other fields.
 
 - **Path**: `PUT /api/svip/config`
 - **Access Control**: `Admin` or `SubAdmin`
 
-#### Request Body
+#### Request Body (all fields optional)
 
 ```json
 {
-  "tiers": [
-    { "tier": 1, "milestoneCoins": 1000000 },
-    { "tier": 2, "milestoneCoins": 3000000 },
-    { "tier": 3, "milestoneCoins": 8000000 },
-    { "tier": 4, "milestoneCoins": 15000000 },
-    { "tier": 5, "milestoneCoins": 30000000 },
-    { "tier": 6, "milestoneCoins": 50000000 },
-    { "tier": 7, "milestoneCoins": 70000000 },
-    { "tier": 8, "milestoneCoins": 90000000 },
-    { "tier": 9, "milestoneCoins": 110000000 }
+  "vipTiers": [
+    { "tier": 1, "milestoneCoins": 500000 },
+    { "tier": 2, "milestoneCoins": 1200000 },
+    { "tier": 3, "milestoneCoins": 2500000 }
   ],
-  "retentionThreshold": 2000000
+  "svipTiers": [
+    { "tier": 1, "milestoneCoins": 5000000 },
+    { "tier": 2, "milestoneCoins": 12000000 },
+    { "tier": 3, "milestoneCoins": 25000000 }
+  ],
+  "retentionThreshold": 0.5,
+  "vipCategoryName": "VIP",
+  "svipCategoryName": "SVIP"
 }
 ```
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `tiers` | `object[]` | Yes | Full array of tier configurations. Each tier must have `tier` and `milestoneCoins`. The `storeItemId` is managed automatically (see auto-sync) |
-| `retentionThreshold` | `number` | Yes | Minimum monthly recharge coins to retain current tier |
+| `vipTiers` | `object[]` | No | VIP tier array. Each tier must have `tier` (positive int) and `milestoneCoins` (positive number). Milestones must be strictly ascending. |
+| `svipTiers` | `object[]` | No | SVIP tier array. Same validation as VIP tiers. |
+| `retentionThreshold` | `number` | No | Fraction (0–1) of milestone required to retain tier |
+| `vipCategoryName` | `string` | No | Store category title for VIP items |
+| `svipCategoryName` | `string` | No | Store category title for SVIP items |
+
+#### Validation Rules
+
+- `vipTiers` milestones must be strictly ascending: `tier1.milestoneCoins < tier2.milestoneCoins < ...`
+- `svipTiers` milestones must be strictly ascending
+- Cross-validation: last VIP tier milestone must be **less than** first SVIP tier milestone
+- `retentionThreshold` must be between 0 (exclusive) and 1 (inclusive)
 
 #### Response (200 OK)
 
 ```json
 {
   "status": "success",
-  "message": "SVIP Config updated successfully",
   "data": {
-    "tiers": [ "...full tiers array..." ],
-    "retentionThreshold": 2000000
+    "vipTiers": [ "..." ],
+    "svipTiers": [ "..." ],
+    "retentionThreshold": 0.5,
+    "vipCategoryName": "VIP",
+    "svipCategoryName": "SVIP"
   }
 }
 ```
 
 ---
 
-## Part 2: SVIP Status — User Dashboard
+## Part 2: Premium Status — User Dashboard
 
-### 2.1 Get My SVIP Status
+### 2.1 Get My Premium Status
 
-Returns the authenticated user's SVIP dashboard with current tier, milestone progress, retention status, and the linked store item's visual assets.
+Returns the authenticated user's premium dashboard with current level, milestone progress, retention status, and the current bucket item's visual assets.
 
 - **Path**: `GET /api/svip/status`
 - **Access Control**: Any authenticated user
 
-#### Response (200 OK) — User with active SVIP
+#### Response (200 OK) — User at SVIP level
 
 ```json
 {
   "status": "success",
   "data": {
-    "currentTier": 3,
+    "currentLevel": 5,
+    "maxLevel": 6,
     "monthlyRechargeCoins": 8500000,
-    "tierStartOfMonth": 2,
+    "levelStartOfMonth": 3,
     "nextMilestone": {
-      "tier": 4,
-      "milestoneCoins": 15000000
+      "level": 6,
+      "milestoneCoins": 25000000
     },
-    "progressPercent": 56,
+    "progressPercent": 34,
     "retentionStatus": {
-      "requiredCoins": 2000000,
+      "requiredCoins": 4000000,
       "currentProgress": 8500000,
       "meetsRequirement": true
     },
     "currentItem": {
-      "name": "SVIP-3",
-      "logo": "https://res.cloudinary.com/.../logo.png",
-      "svgaFile": "https://res.cloudinary.com/.../animation.svga",
-      "previewFile": "https://res.cloudinary.com/.../preview.png"
-    }
+      "name": "SVIP-2",
+      "logo": "https://nimbus.com/.../logo.png",
+      "svgaFile": "https://nimbus.com/.../animation.svga",
+      "previewFile": "https://nimbus.com/.../preview.png"
+    },
+    "isVipLevel": false
   }
 }
 ```
 
-#### Response (200 OK) — User with no SVIP (tier 0)
+#### Response (200 OK) — User with no level (tier 0)
 
 ```json
 {
   "status": "success",
   "data": {
-    "currentTier": 0,
+    "currentLevel": 0,
+    "maxLevel": 6,
     "monthlyRechargeCoins": 0,
-    "tierStartOfMonth": 0,
+    "levelStartOfMonth": 0,
     "nextMilestone": {
-      "tier": 1,
-      "milestoneCoins": 1000000
+      "level": 1,
+      "milestoneCoins": 500000
     },
     "progressPercent": 0,
     "retentionStatus": null,
@@ -171,7 +195,8 @@ Returns the authenticated user's SVIP dashboard with current tier, milestone pro
       "logo": null,
       "svgaFile": null,
       "previewFile": null
-    }
+    },
+    "isVipLevel": false
   }
 }
 ```
@@ -180,28 +205,28 @@ Returns the authenticated user's SVIP dashboard with current tier, milestone pro
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `currentTier` | `number` | Current SVIP tier (0 = none) |
+| `currentLevel` | `number` | Current premium level (0 = none, 1–N = active) |
+| `maxLevel` | `number` | Total number of VIP + SVIP tiers configured |
 | `monthlyRechargeCoins` | `number` | Total coins recharged this calendar month |
-| `tierStartOfMonth` | `number` | Tier the user started the month with (for retention comparison) |
-| `nextMilestone` | `object \| null` | Next tier milestone (null if at max tier) |
-| `nextMilestone.tier` | `number` | Next tier number |
-| `nextMilestone.milestoneCoins` | `number` | Coins needed to reach next tier |
+| `levelStartOfMonth` | `number` | Level the user started the month with (for retention) |
+| `nextMilestone` | `object \| null` | Next level milestone (null if at max level) |
+| `nextMilestone.level` | `number` | Next level number |
+| `nextMilestone.milestoneCoins` | `number` | Coins needed to reach next level |
 | `progressPercent` | `number` | % progress toward next milestone (0–100) |
-| `retentionStatus` | `object \| null` | Retention info (null if tier 0) |
-| `retentionStatus.requiredCoins` | `number` | Coins needed by month-end to retain current tier |
+| `retentionStatus` | `object \| null` | Retention info (null if level 0) |
+| `retentionStatus.requiredCoins` | `number` | Coins needed by month-end to retain current level |
 | `retentionStatus.currentProgress` | `number` | Current recharge coins this month |
 | `retentionStatus.meetsRequirement` | `boolean` | Whether they currently meet retention |
-| `currentItem` | `object` | SVIP store item linked to current tier |
-| `currentItem.name` | `string \| null` | Store item name (e.g., "SVIP-3") |
+| `currentItem` | `object` | Store item for current level (found dynamically by category + tierNumber) |
+| `currentItem.name` | `string \| null` | Store item name (e.g., "SVIP-2") |
 | `currentItem.logo` | `string \| null` | Logo image URL |
 | `currentItem.svgaFile` | `string \| null` | SVGA animation URL |
 | `currentItem.previewFile` | `string \| null` | Preview image URL |
-
-> **Note**: The `currentItem` above contains only visual assets for the current tier. For a full list of **all** SVIP items with progress tracking fields (`monthEnd`, `rechargeRequired`, `currentRechargeAmount`) and `isBought` status, use `GET /api/store/items/svip` (see Store API docs section 3.3).
+| `isVipLevel` | `boolean` | True if current level is in the VIP range (levels 1–vipTiers.length) |
 
 ---
 
-### 2.2 Get Any User's SVIP Status (Admin)
+### 2.2 Get Any User's Premium Status (Admin)
 
 Same as above, but for any specified user.
 
@@ -220,9 +245,9 @@ Same response shape as section 2.1.
 
 ---
 
-### 2.3 List Users by SVIP Tier (Admin)
+### 2.3 List Users by Level (Admin)
 
-Returns a paginated list of users who have reached a specific SVIP tier through recharge.
+Returns a paginated list of users who have reached a specific level through recharge.
 
 - **Path**: `GET /api/svip/users`
 - **Access Control**: `Admin` or `SubAdmin`
@@ -231,14 +256,14 @@ Returns a paginated list of users who have reached a specific SVIP tier through 
 
 | Param | Type | Required | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `tier` | `number` | Yes | — | SVIP tier to filter by (1–9) |
+| `level` | `number` | Yes | — | Level to filter by (1–N) |
 | `page` | `number` | No | `1` | Page number |
 | `limit` | `number` | No | `10` | Results per page |
 
 #### Example
 
 ```
-GET /api/svip/users?tier=3&page=1&limit=10
+GET /api/svip/users?level=3&page=1&limit=10
 ```
 
 #### Response (200 OK)
@@ -259,11 +284,11 @@ GET /api/svip/users?tier=3&page=1&limit=10
         "userId": {
           "_id": "550e8400-e29b-41d4-a716-446655440000",
           "name": "John",
-          "avatar": "https://res.cloudinary.com/.../avatar.png"
+          "avatar": "https://nimbus.com/.../avatar.png"
         },
-        "currentTier": 3,
+        "currentLevel": 3,
         "monthlyRechargeCoins": 8500000,
-        "tierStartOfMonth": 2,
+        "levelStartOfMonth": 2,
         "month": 7,
         "year": 2026
       }
@@ -276,76 +301,90 @@ GET /api/svip/users?tier=3&page=1&limit=10
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `_id` | `string` | SVIP document ObjectId |
+| `_id` | `string` | Premium document ObjectId |
 | `userId` | `object` | Populated user info (`_id`, `name`, `avatar`) |
-| `currentTier` | `number` | Current SVIP tier |
+| `currentLevel` | `number` | Current premium level |
 | `monthlyRechargeCoins` | `number` | Total coins recharged this month |
-| `tierStartOfMonth` | `number` | Tier at the start of the month |
+| `levelStartOfMonth` | `number` | Level at the start of the month |
 | `month` | `number` | Tracking month (1–12) |
 | `year` | `number` | Tracking year |
 
 ---
 
-## Part 3: SVIP Store Item Auto-Grant
+## Part 3: Store Item Auto-Grant
 
-When a user reaches an SVIP milestone via recharge, the corresponding SVIP store item is **automatically added to their inventory (bucket)** with `useStatus: true` (equipped).
+When a user reaches a premium level via recharge, the corresponding store item is **automatically added to their inventory (bucket)** with `useStatus: true` (equipped).
 
 ### How It Works
 
 1. User recharges coins — `creditRegularUserCoins()` is called
-2. `trackRecharge()` increments `monthlyRechargeCoins` and checks milestone thresholds against the SVIP config
-3. If a milestone is crossed (tier upgrade), the system:
-   - Updates the user's SVIP tier in the database
-   - Places the linked SVIP store item into their bucket with `useStatus: true`
-4. On next `GET /api/svip/status`, the user sees their new tier and the `currentItem` with the store item's visual assets
+2. `trackRecharge()` increments `monthlyRechargeCoins` and checks milestones **in order**: VIP tiers first, then SVIP tiers
+3. If a level is crossed, the system:
+   - Updates the user's `currentLevel` in the database
+   - **Searches the store** by `categoryId + tierNumber` to find the matching item
+   - If found → places it into the user's bucket with `useStatus: true`
+   - If not found → logs a warning (admin must create the store item)
+4. On next `GET /api/svip/status`, the user sees their new level and the `currentItem` with visual assets
 
 ### Upgrade Handling
 
 | Scenario | Behavior |
 | :--- | :--- |
-| **New SVIP user** (tier 0 → tier 1) | Creates a fresh bucket entry for the SVIP-1 item |
-| **Existing user upgrading** (tier 2 → tier 5) | Replaces the old bucket item with the new higher-tier item |
-| **Retention — tier maintained** | Bucket item stays unchanged |
-| **Retention — downgrade** | Bucket item is updated to the lower-tier item |
-| **Retention — drop to tier 0** | SVIP bucket item is removed entirely |
+| **New user** (level 0 → level 1) | Creates a fresh bucket entry for the level 1 item |
+| **VIP → SVIP transition** (level 3 → level 4) | Removes VIP bucket item, creates SVIP bucket item |
+| **Same category upgrade** (SVIP-1 → SVIP-2) | Replaces the old bucket item with the new higher-tier item |
+| **Retention — level maintained** | Bucket item stays unchanged |
+| **Retention — downgrade** | Bucket item is updated to the lower-level item |
+| **Retention — drop to level 0** | Bucket items removed from both VIP and SVIP categories |
+
+### Store Item Matching
+
+Store items are matched **dynamically** at runtime:
+- Find the category by title (e.g., "VIP" or "SVIP")
+- Find the store item with matching `tierNumber` in that category
+- **No `storeItemId` is stored in the config** — items are found by `categoryId + tierNumber`
+
+This means:
+- Admin can create/update/delete store items independently
+- Config reset doesn't affect item matching
+- Items are found as long as they exist in the store with the correct `tierNumber`
 
 ### Frontend Implications
 
-- The `svipItem` field in user details (`GET /api/auth/my-details`, `GET /api/auth/user/:id`) is populated automatically from the bucket — no frontend changes needed
-- The `svipItem` in socket room messages is also populated automatically
-- The user's equipped store items (from `GET /api/store/bucket`) will include the SVIP item with `useStatus: true`
+- The `svipItem` field in user details is populated automatically from the bucket
+- The user's equipped store items (from `GET /api/store/bucket`) will include the premium item with `useStatus: true`
+- For VIP/SVIP store listings, items are enriched with `monthEnd`, `rechargeRequired`, `currentRechargeAmount` fields
 
 ---
 
-## Part 4: SVIP Items No Longer Purchasable
+## Part 4: VIP/SVIP Items Not Purchasable
 
-SVIP store items can **no longer be purchased** directly from the store. They are earned exclusively through monthly recharge milestones.
+VIP and SVIP store items can **no longer be purchased** directly from the store. They are earned exclusively through monthly recharge milestones.
 
 ### Affected Endpoint
 
 | Endpoint | Method | Change |
 | :--- | :--- | :--- |
-| `/api/store/bucket` | POST | Now rejects purchases of items in the "SVIP" category |
+| `/api/store/bucket` | POST | Now rejects purchases of items in the "VIP" or "SVIP" category |
 
 ### Error Response
 
-Attempting to buy an SVIP item returns:
+Attempting to buy a VIP/SVIP item returns:
 
 ```json
 {
   "status": "error",
-  "message": "SVIP items can only be earned through monthly recharge milestones, not purchased directly."
+  "message": "VIP/SVIP items can only be earned through monthly recharge milestones, not purchased directly."
 }
 ```
 
 ### Frontend Implications
 
-- SVIP items remain **visible** in the store UI (they appear in `GET /api/store/items/svip`)
+- VIP/SVIP items remain **visible** in the store UI
 - Items earned via recharge milestones show `isBought: true` — all tiers ≤ the user's current tier are marked as bought
 - Items the user hasn't reached yet show `isBought: false`
-- The **Buy button** should **not** be shown for SVIP items. Instead, show the user's current milestone progress and which tier they need to reach to unlock the item
-- SVIP items are set to `canUserBuyThis: false` automatically
-- Each SVIP item is enriched with three additional fields (`monthEnd`, `rechargeRequired`, `currentRechargeAmount`) — use these to render a **progress bar** and **countdown timer** per tier in the store UI (see Store API docs section 3.3 for full details)
+- The **Buy button** should **not** be shown for VIP/SVIP items
+- Each item is enriched with `monthEnd`, `rechargeRequired`, `currentRechargeAmount` — use these to render progress bars and countdown timers
 
 ---
 
@@ -356,13 +395,43 @@ Attempting to buy an SVIP item returns:
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `_id` | `ObjectId` | MongoDB unique identifier |
-| `tiers` | `object[]` | Array of tier configurations |
-| `tiers[].tier` | `number` | Tier level (1-indexed) |
-| `tiers[].milestoneCoins` | `number` | Monthly recharge threshold to reach this tier |
-| `tiers[].storeItemId` | `ObjectId \| null` | Reference to the linked store item (`store_items` collection) |
-| `retentionThreshold` | `number` | Minimum monthly recharge to retain current tier |
+| `vipTiers` | `object[]` | Array of VIP tier configurations |
+| `vipTiers[].tier` | `number` | VIP tier level (1-indexed) |
+| `vipTiers[].milestoneCoins` | `number` | Monthly recharge threshold to reach this tier |
+| `svipTiers` | `object[]` | Array of SVIP tier configurations |
+| `svipTiers[].tier` | `number` | SVIP tier level (1-indexed) |
+| `svipTiers[].milestoneCoins` | `number` | Monthly recharge threshold to reach this tier |
+| `retentionThreshold` | `number` | Fraction of milestone required to retain tier (e.g. 0.5) |
+| `vipCategoryName` | `string` | Store category title for VIP items |
+| `svipCategoryName` | `string` | Store category title for SVIP items |
 | `createdAt` | `Date` | Auto-managed timestamp |
 | `updatedAt` | `Date` | Auto-managed timestamp |
+
+### MongoDB Collection: `user_svip`
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `_id` | `ObjectId` | MongoDB unique identifier |
+| `userId` | `ObjectId` | Reference to users collection (unique, indexed) |
+| `currentLevel` | `number` | Current premium level (0 = none) |
+| `monthlyRechargeCoins` | `number` | Coins recharged this calendar month |
+| `levelStartOfMonth` | `number` | Level at the start of the month |
+| `month` | `number` | Tracking month (1–12) |
+| `year` | `number` | Tracking year |
+| `createdAt` | `Date` | Auto-managed timestamp |
+| `updatedAt` | `Date` | Auto-managed timestamp |
+
+### Store Item `tierNumber` Field
+
+Store items in VIP/SVIP categories must have a `tierNumber` field set:
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `tierNumber` | `number \| null` | Tier number for VIP/SVIP items. Matched against config tiers at runtime. |
+
+- VIP items: `categoryId` = VIP category, `tierNumber` = 1, 2, 3, ...
+- SVIP items: `categoryId` = SVIP category, `tierNumber` = 1, 2, 3, ...
+- Regular items: `tierNumber` = null
 
 ---
 
@@ -370,17 +439,20 @@ Attempting to buy an SVIP item returns:
 
 | Method | Path | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/svip/config` | Admin / SubAdmin | Get SVIP tier configuration |
-| `PUT` | `/api/svip/config` | Admin / SubAdmin | Update SVIP tier configuration |
-| `GET` | `/api/svip/users` | Admin / SubAdmin | List users by SVIP tier |
-| `GET` | `/api/svip/status` | Any authenticated | View own SVIP dashboard |
-| `GET` | `/api/svip/status/:userId` | Admin / SubAdmin | View any user's SVIP dashboard |
+| `GET` | `/api/svip/config` | Admin / SubAdmin | Get VIP/SVIP configuration |
+| `PUT` | `/api/svip/config` | Admin / SubAdmin | Update VIP/SVIP configuration |
+| `GET` | `/api/svip/users` | Admin / SubAdmin | List users by level |
+| `GET` | `/api/svip/status` | Any authenticated | View own premium dashboard |
+| `GET` | `/api/svip/status/:userId` | Admin / SubAdmin | View any user's premium dashboard |
 
 ---
 
 ## Part 7: Implementation Notes
 
-- **Tier config caching**: `SvipConfigService` caches the config in-memory for fast reads. Admin updates immediately refresh the cache
-- **Retention cron**: A scheduled job runs at month-end to evaluate retention. Users who meet the threshold keep their tier; those who don't are downgraded or reset
-- **Auto-sync on store item operations**: When an admin creates, updates, or deletes a batch store item whose name starts with `"SVIP-"`, the SVIP config's `storeItemId` and `milestoneCoins` are automatically synchronized (see Admin documentation for details)
-- **Default thresholds**: 9 tiers (1M to 110M coins), retention at 2M coins. Customizable via the config API
+- **No auto-seeding**: Config is NOT created automatically on server startup. Admin must create it via API. If missing, a console warning is logged and milestones won't be checked.
+- **Config caching**: `SvipConfigService` caches the config in-memory for fast reads. Admin updates immediately refresh the cache.
+- **Retention cron**: A scheduled job runs on the 1st of each month at midnight. It evaluates retention for all users with `currentLevel > 0`, downgrades those who don't meet the threshold, and syncs bucket items.
+- **Dynamic store matching**: Store items are found at runtime by `categoryId + tierNumber` — no config-stored `storeItemId`. This eliminates the null-storeItemId edge case entirely.
+- **Sequential progression**: VIP tiers are checked first (levels 1 → vipTiers.length), then SVIP tiers (levels vipTiers.length+1 → total). Users must complete all VIP tiers before entering SVIP.
+- **Shared monthly counter**: One `monthlyRechargeCoins` counter is shared across VIP and SVIP. The same recharge amount counts toward both VIP and SVIP milestones.
+- **Validation on update**: Tier milestones must be strictly ascending. Last VIP milestone must be less than first SVIP milestone.

@@ -1,25 +1,26 @@
 import { SvipService } from "../../../services/svip/svip_service";
 
 /**
- * Runs on the 1st of each month at 00:00 to process SVIP retention/downgrade
- * for all users with SVIP tier > 0.
+ * Runs on the 1st of each month at 00:00 to process premium tier retention/downgrade
+ * for all users with currentLevel > 0.
  *
  * Logic per user:
- *   1. Effective tier = max(tierStartOfMonth, highest milestone reached during month)
- *   2. Check if monthlyRechargeCoins >= 50% × milestoneCoins of effective tier
- *   3. If yes → retain tier
+ *   1. Effective level = max(levelStartOfMonth, highest level reached during month)
+ *   2. Check if monthlyRechargeCoins >= retentionThreshold × milestoneCoins of effective level
+ *   3. If yes → retain level
  *   4. If no  → downgrade by 1 (never below 0)
  *   5. Reset monthlyRechargeCoins to 0 for the new month
+ *   6. Sync bucket item to match new level (VIP or SVIP category)
  */
 export const svipMonthlyRetentionJob = async () => {
-  console.log("[SVIP Cron] Starting monthly retention check...");
+  console.log("[Premium Cron] Starting monthly retention check...");
 
   try {
     const result = await SvipService.runMonthlyRetention();
     console.log(
-      `[SVIP Cron] Done. Processed=${result.processed}, Retained=${result.retained}, Downgraded=${result.downgraded}`,
+      `[Premium Cron] Done. Processed=${result.processed}, Retained=${result.retained}, Downgraded=${result.downgraded}`,
     );
   } catch (error) {
-    console.error("[SVIP Cron] Monthly retention job failed:", error);
+    console.error("[Premium Cron] Monthly retention job failed:", error);
   }
 };

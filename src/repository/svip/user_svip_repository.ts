@@ -18,62 +18,63 @@ export interface IUserSvipRepository {
 
   /**
    * Atomically increments monthlyRechargeCoins.
-   * Also sets month/year/tierStartOfMonth on first creation or month boundary.
+   * Also sets month/year/levelStartOfMonth on first creation or month boundary.
    * Uses $inc so concurrent recharges don't overwrite each other.
    */
   incMonthlyRecharge(
     userId: string | Types.ObjectId,
     coins: number,
-    currentTier: number,
-    tierStartOfMonth: number,
+    currentLevel: number,
+    levelStartOfMonth: number,
     month: number,
     year: number,
     session?: ClientSession,
   ): Promise<IUserSvipDocument>;
 
   /**
-   * Atomically sets the currentTier (called after milestone check).
+   * Atomically sets the currentLevel (called after milestone check).
+   * Only updates if new level > current (prevents concurrent downgrade).
    */
-  setTier(
+  setLevel(
     userId: string | Types.ObjectId,
-    tier: number,
+    level: number,
     session?: ClientSession,
   ): Promise<void>;
 
   /**
-   * Returns all users whose current SVIP tier is greater than 0.
+   * Returns all users whose current level is greater than 0.
    * Used by the month-end retention cron job.
    */
-  findAllActiveSvipUsers(
+  findAllActiveUsers(
     session?: ClientSession,
   ): Promise<IUserSvipDocument[]>;
 
   /**
    * Bulk-updates monthly tracking fields for the new month.
-   * Sets monthlyRechargeCoins to 0 and adjusts tierStartOfMonth.
+   * Sets monthlyRechargeCoins to 0 and adjusts levelStartOfMonth.
    */
   bulkResetForNewMonth(
     updates: {
       userId: string | Types.ObjectId;
-      currentTier: number;
-      tierStartOfMonth: number;
+      currentLevel: number;
+      levelStartOfMonth: number;
     }[],
     session?: ClientSession,
   ): Promise<void>;
 
   /**
-   * Returns paginated users at a specific SVIP tier, with populated user details.
+   * Returns paginated users at a specific level, with populated user details.
    */
-  getUsersByTier(
-    tier: number,
+  getUsersByLevel(
+    level: number,
     skip: number,
     limit: number,
   ): Promise<IUserSvipDocument[]>;
 
   /**
-   * Counts users at a specific SVIP tier.
+   * Counts users at a specific level.
    */
-  countByTier(tier: number): Promise<number>;
+  countByLevel(level: number): Promise<number>;
 }
 
 export class UserSvipRepository implements IUserSvipRepository {
@@ -101,8 +102,8 @@ export class UserSvipRepository implements IUserSvipRepository {
   async incMonthlyRecharge(
     userId: string | Types.ObjectId,
     coins: number,
-    currentTier: number,
-    tierStartOfMonth: number,
+    currentLevel: number,
+    levelStartOfMonth: number,
     month: number,
     year: number,
     session?: ClientSession,
@@ -114,8 +115,8 @@ export class UserSvipRepository implements IUserSvipRepository {
           $inc: { monthlyRechargeCoins: coins },
           $setOnInsert: {
             userId,
-            currentTier,
-            tierStartOfMonth,
+            currentLevel,
+            levelStartOfMonth,
             month,
             year,
           },
@@ -125,31 +126,31 @@ export class UserSvipRepository implements IUserSvipRepository {
       .session(session || null)) as IUserSvipDocument;
   }
 
-  async setTier(
+  async setLevel(
     userId: string | Types.ObjectId,
-    tier: number,
+    level: number,
     session?: ClientSession,
   ): Promise<void> {
-    // Only update if the new tier is higher — prevents a concurrent
-    // slower request from downgrading a tier that was just upgraded.
+    // Only update if the new level is higher — prevents a concurrent
+    // slower request from downgrading a level that was just upgraded.
     await this.model
-      .updateOne({ userId, currentTier: { $lt: tier } }, { $set: { currentTier: tier } })
+      .updateOne({ userId, currentLevel: { $lt: level } }, { $set: { currentLevel: level } })
       .session(session || null);
   }
 
-  async findAllActiveSvipUsers(
+  async findAllActiveUsers(
     session?: ClientSession,
   ): Promise<IUserSvipDocument[]> {
     return await this.model
-      .find({ currentTier: { $gt: 0 } })
+      .find({ currentLevel: { $gt: 0 } })
       .session(session || null);
   }
 
   async bulkResetForNewMonth(
     updates: {
       userId: string | Types.ObjectId;
-      currentTier: number;
-      tierStartOfMonth: number;
+      currentLevel: number;
+      levelStartOfMonth: number;
     }[],
     session?: ClientSession,
   ): Promise<void> {
@@ -162,8 +163,8 @@ export class UserSvipRepository implements IUserSvipRepository {
         filter: { userId: u.userId },
         update: {
           $set: {
-            currentTier: u.currentTier,
-            tierStartOfMonth: u.tierStartOfMonth,
+            currentLevel: u.currentLevel,
+            levelStartOfMonth: u.levelStartOfMonth,
             monthlyRechargeCoins: 0,
             month,
             year,
@@ -177,20 +178,20 @@ export class UserSvipRepository implements IUserSvipRepository {
     }
   }
 
-  async getUsersByTier(
-    tier: number,
+  async getUsersByLevel(
+    level: number,
     skip: number,
     limit: number,
   ): Promise<IUserSvipDocument[]> {
     return await this.model
-      .find({ currentTier: tier })
+      .find({ currentLevel: level })
       .populate("userId", "name _id avatar")
       .skip(skip)
       .limit(limit)
       .sort({ monthlyRechargeCoins: -1 });
   }
 
-  async countByTier(tier: number): Promise<number> {
-    return await this.model.countDocuments({ currentTier: tier });
+  async countByLevel(level: number): Promise<number> {
+    return await this.model.countDocuments({ currentLevel: level });
   }
 }

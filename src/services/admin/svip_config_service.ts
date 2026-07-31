@@ -3,29 +3,13 @@ import { ISvipConfigRepository } from "../../repository/admin/svip_config_reposi
 import { RepositoryProviders } from "../../core/providers/repository_providers";
 
 /**
- * Default SVIP tier milestones used to seed the database on first deploy.
- * These are managed by the admin via the config endpoint at runtime.
- */
-const DEFAULT_SVIP_CONFIG: ISvipConfig = {
-  tiers: [
-    { tier: 1, milestoneCoins: 1_000_000, storeItemId: null },
-    { tier: 2, milestoneCoins: 4_000_000, storeItemId: null },
-    { tier: 3, milestoneCoins: 8_000_000, storeItemId: null },
-    { tier: 4, milestoneCoins: 15_000_000, storeItemId: null },
-    { tier: 5, milestoneCoins: 25_000_000, storeItemId: null },
-    { tier: 6, milestoneCoins: 40_000_000, storeItemId: null },
-    { tier: 7, milestoneCoins: 60_000_000, storeItemId: null },
-    { tier: 8, milestoneCoins: 85_000_000, storeItemId: null },
-    { tier: 9, milestoneCoins: 110_000_000, storeItemId: null },
-  ],
-  retentionThreshold: 0.5,
-};
-
-/**
- * Service for managing SVIP Configuration.
+ * Service for managing SVIP/VIP Configuration.
  *
  * Follows the same caching pattern as XpConfigService:
  * static in-memory cache + lazy-load from DB + eager bootstrap on startup.
+ *
+ * IMPORTANT: No auto-seeding. Admin must create the config via API.
+ * If config is missing, milestones won't be checked until it's created.
  */
 export class SvipConfigService {
   private static configCache: ISvipConfig | null = null;
@@ -36,12 +20,14 @@ export class SvipConfigService {
     return RepositoryProviders.svipConfigRepositoryProvider;
   }
 
-  /** Seeds defaults on first deploy and warms the cache on startup. */
+  /** Warms the cache on startup. Warns if config is missing. */
   static async bootstrap(): Promise<void> {
     const dbConfig = await SvipConfigService.repository.getConfig();
     if (!dbConfig) {
-      await SvipConfigService.updateConfig(DEFAULT_SVIP_CONFIG);
-      console.log("🌱 SVIP Configuration seeded in database from defaults.");
+      console.warn(
+        "⚠️  SVIP/VIP Configuration not found in database. " +
+        "Admin must create it via API before premium milestones will work.",
+      );
     }
     await SvipConfigService.getConfig();
     console.log("✅ SVIP Configuration cache warmed.");
@@ -61,8 +47,11 @@ export class SvipConfigService {
           SvipConfigService.configLoaded = true;
           if (dbConfig) {
             SvipConfigService.configCache = {
-              tiers: dbConfig.tiers,
+              vipTiers: dbConfig.vipTiers,
+              svipTiers: dbConfig.svipTiers,
               retentionThreshold: dbConfig.retentionThreshold,
+              vipCategoryName: dbConfig.vipCategoryName,
+              svipCategoryName: dbConfig.svipCategoryName,
             };
           }
 
@@ -80,8 +69,11 @@ export class SvipConfigService {
   static async updateConfig(data: Partial<ISvipConfig>): Promise<ISvipConfig> {
     const updated = await SvipConfigService.repository.updateConfig(data);
     const result: ISvipConfig = {
-      tiers: updated.tiers,
+      vipTiers: updated.vipTiers,
+      svipTiers: updated.svipTiers,
       retentionThreshold: updated.retentionThreshold,
+      vipCategoryName: updated.vipCategoryName,
+      svipCategoryName: updated.svipCategoryName,
     };
     SvipConfigService.configCache = result;
     SvipConfigService.configLoaded = true;

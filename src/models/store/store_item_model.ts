@@ -34,6 +34,8 @@ export interface IStoreItem {
   expireAt?: Date;
   canUserBuyThis?: boolean;
   isBought?: boolean;
+  /** Tier number for VIP/SVIP items. Used for dynamic matching with premium config. */
+  tierNumber?: number;
 }
 
 export interface IStoreItemDocument extends Document, IStoreItem {
@@ -143,6 +145,10 @@ const storeItemSchema = new mongoose.Schema<IStoreItemDocument>(
     canUserBuyThis: {
       type: Boolean,
       default: true,
+    },
+    tierNumber: {
+      type: Number,
+      default: null,
     },
     expireAt: {
       type: Date,

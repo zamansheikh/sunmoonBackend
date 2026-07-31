@@ -83,7 +83,7 @@ export interface IStoreService {
     logoFile?: Express.Multer.File,
   ): Promise<IStoreItemDocument>;
   getStoreItemById(id: string): Promise<IStoreItemDocument>;
-  getVIPStoreItems(id: string): Promise<IStoreItemDocument[]>;
+  getVIPStoreItems(id: string): Promise<ISvipStoreItemResponse[]>;
   getSVIPStoreItems(id: string): Promise<ISvipStoreItemResponse[]>;
   getAllStoreItems(id: string): Promise<Record<string, IStoreItemDocument[]>>;
   getExlusiveStoreItems(): Promise<Record<string, IStoreItemDocument[]>>;
@@ -423,14 +423,6 @@ export default class StoreService implements IStoreService {
     };
     const createdItem = await this.ItemRepository.createStoreItem(itemToCreate);
 
-    // ── Auto-sync SVIP config if this item is an SVIP tier item ──────────
-    await this.syncSvipConfigWithStoreItem(
-      createdItem.name,
-      createdItem._id as string,
-      createdItem.prices,
-      'set',
-    );
-
     return createdItem;
   }
 
@@ -460,14 +452,31 @@ export default class StoreService implements IStoreService {
     return await this.ItemRepository.getFilteredStoreItemsGrouped(canUserBuyThis);
   }
 
-  async getVIPStoreItems(id: string): Promise<IStoreItemDocument[]> {
+  async getVIPStoreItems(id: string): Promise<ISvipStoreItemResponse[]> {
     const category = await this.CategoryRepository.getCategoryByTitle("VIP");
     if (!category) return [];
     const items = await this.ItemRepository.getAllStoreItemByCategory(
       (category as any)._id.toString(),
       id,
     );
-    return this.applyPremiumTierIsBought(items);
+    const boughtApplied = this.applyPremiumTierIsBought(items);
+
+    const config = await SvipConfigService.getConfig();
+    const userSvipRecord = await RepositoryProviders.userSvipRepositoryProvider.findByUserId(id);
+    const currentRechargeAmount = userSvipRecord?.monthlyRechargeCoins ?? 0;
+    const monthEnd = DateHelper.getEndOfMonth(new Date());
+
+    return boughtApplied.map((item) => {
+      const tierNumber = (item as any).tierNumber ?? 0;
+      const tierConfig = config?.vipTiers.find((t: any) => t.tier === tierNumber);
+
+      return {
+        ...item,
+        monthEnd,
+        rechargeRequired: tierConfig?.milestoneCoins ?? 0,
+        currentRechargeAmount,
+      };
+    });
   }
 
   async getSVIPStoreItems(id: string): Promise<ISvipStoreItemResponse[]> {
@@ -485,8 +494,8 @@ export default class StoreService implements IStoreService {
     const monthEnd = DateHelper.getEndOfMonth(new Date());
 
     return boughtApplied.map((item) => {
-      const tierNumber = this.extractPremiumTier(item.name);
-      const tierConfig = config?.tiers.find((t) => t.tier === tierNumber);
+      const tierNumber = (item as any).tierNumber ?? 0;
+      const tierConfig = config?.svipTiers.find((t: any) => t.tier === tierNumber);
 
       return {
         ...item,
@@ -529,7 +538,7 @@ export default class StoreService implements IStoreService {
     let highestOwnedTier = 0;
     for (const item of items) {
       if ((item as any).isBought) {
-        const tier = this.extractPremiumTier(item.name);
+        const tier = (item as any).tierNumber ?? 0;
         if (tier > highestOwnedTier) {
           highestOwnedTier = tier;
         }
@@ -541,7 +550,7 @@ export default class StoreService implements IStoreService {
 
     // Mark all items with tier ≤ highestOwnedTier as isBought
     for (const item of items) {
-      const tier = this.extractPremiumTier(item.name);
+      const tier = (item as any).tierNumber ?? 0;
       if (tier <= highestOwnedTier) {
         (item as any).isBought = true;
       }
@@ -705,27 +714,6 @@ export default class StoreService implements IStoreService {
     const effectiveName = item.name || existingItem.name;
     const effectivePrices = item.prices || existingItem.prices;
 
-    // If renamed away from SVIP- format, clear the old reference
-    if (
-      existingItem.name.startsWith("SVIP-") &&
-      item.name &&
-      !item.name.startsWith("SVIP-")
-    ) {
-      await this.syncSvipConfigWithStoreItem(
-        existingItem.name,
-        existingItem._id as string,
-        existingItem.prices,
-        'clear',
-      );
-    }
-
-    await this.syncSvipConfigWithStoreItem(
-      effectiveName,
-      updated._id as string,
-      effectivePrices,
-      'set',
-    );
-
     return updated;
   }
 
@@ -783,14 +771,6 @@ export default class StoreService implements IStoreService {
       );
     }
 
-    // ── Clear SVIP config reference if this is an SVIP item ─────────────
-    await this.syncSvipConfigWithStoreItem(
-      existingItem.name,
-      id,
-      existingItem.prices,
-      'clear',
-    );
-
     // if this items has been used by some users, we need to deselect them
     await this.BucketRepository.updateBucketUseStatus(
       { itemId: id, useStatus: true },
@@ -810,81 +790,6 @@ export default class StoreService implements IStoreService {
     return await this.ItemRepository.updateStoreItem(itemId, {
       categoryId: newCategory,
     });
-  }
-
-  // ── SVIP auto-sync helper ──────────────────────────────────────────────
-
-  /**
-   * Extracts the numeric tier from a premium item name.
-   * e.g. "SVIP-3" → 3, "VIP-10" → 10
-   */
-  private extractPremiumTier(name: string): number {
-    const parts = name.split("-");
-    const tier = parseInt(parts[parts.length - 1], 10);
-    return isNaN(tier) ? 0 : tier;
-  }
-
-  /**
-   * Checks if an item name starts with "SVIP-" and, if so, syncs the SVIP
-   * config tier with the item's storeItemId and milestoneCoins.
-   *
-   * - `action: 'set'`  → stores the item's _id + first price in the config
-   * - `action: 'clear'` → sets the storeItemId to null (item was deleted /
-   *   renamed away from SVIP)
-   */
-  private async syncSvipConfigWithStoreItem(
-    itemName: string,
-    itemId: string | Types.ObjectId,
-    prices?: { price: number }[],
-    action: 'set' | 'clear' = 'set',
-  ): Promise<void> {
-    if (!itemName.startsWith("SVIP-")) return;
-
-    const tierNumber = this.extractPremiumTier(itemName);
-    if (tierNumber < 1) return; // "SVIP-abc" or "SVIP-0" — skip
-
-    const config = await SvipConfigService.getConfig();
-    if (!config) {
-      console.warn(
-        `[StoreService] SVIP config not loaded — cannot sync item "${itemName}"`,
-      );
-      return;
-    }
-
-    const tierIndex = config.tiers.findIndex((t) => t.tier === tierNumber);
-    if (tierIndex === -1) {
-      console.warn(
-        `[StoreService] No SVIP config tier ${tierNumber} found for item "${itemName}". ` +
-          `Add the tier to the SVIP config first.`,
-      );
-      return;
-    }
-
-    const updatedTiers = config.tiers.map((t, i) => {
-      if (i === tierIndex) {
-        if (action === 'clear') {
-          return { tier: t.tier, milestoneCoins: t.milestoneCoins, storeItemId: null };
-        }
-        const newMilestoneCoins =
-          prices && prices.length > 0 ? prices[0].price : t.milestoneCoins;
-        const milestoneChanged = newMilestoneCoins !== t.milestoneCoins;
-        return {
-          tier: t.tier,
-          milestoneCoins: milestoneChanged ? newMilestoneCoins : t.milestoneCoins,
-          storeItemId:
-            typeof itemId === 'string'
-              ? new Types.ObjectId(itemId)
-              : (itemId as Types.ObjectId),
-        };
-      }
-      return { tier: t.tier, milestoneCoins: t.milestoneCoins, storeItemId: t.storeItemId ?? null };
-    });
-
-    await SvipConfigService.updateConfig({ tiers: updatedTiers });
-
-    console.log(
-      `[StoreService] SVIP config synced: tier ${tierNumber} → ${action === 'clear' ? 'cleared' : 'set to item ' + itemId}`,
-    );
   }
 
   async grantItemToUser(
@@ -963,14 +868,14 @@ export default class StoreService implements IStoreService {
       throw new AppError(StatusCodes.NOT_FOUND, "User stats not found");
     if (!item) throw new AppError(StatusCodes.NOT_FOUND, "Item not found");
 
-    // ── Block SVIP item purchases — earned only via recharge milestones ─
+    // ── Block VIP/SVIP item purchases — earned only via recharge milestones ─
     const itemCategory = await this.CategoryRepository.getCategoryById(
       item.categoryId.toString(),
     );
-    if (itemCategory && itemCategory.title === "SVIP") {
+    if (itemCategory && (itemCategory.title === "VIP" || itemCategory.title === "SVIP")) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "SVIP items can only be earned through monthly recharge milestones, not purchased directly.",
+        "VIP/SVIP items can only be earned through monthly recharge milestones, not purchased directly.",
       );
     }
     // ────────────────────────────────────────────────────────────────────
@@ -1031,8 +936,8 @@ export default class StoreService implements IStoreService {
             // Orphaned bucket — safe to replace
             existingPremiumBucketId = existingPremiumBucket._id as string;
           } else {
-            const existingTier = this.extractPremiumTier(existingItem.name);
-            const newTier = this.extractPremiumTier(item.name);
+            const existingTier = (existingItem as any).tierNumber ?? 0;
+            const newTier = (item as any).tierNumber ?? 0;
 
             if (newTier <= existingTier) {
               throw new AppError(

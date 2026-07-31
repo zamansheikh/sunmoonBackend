@@ -3,16 +3,16 @@ import { DatabaseNames } from "../../core/Utils/enums";
 
 export interface IUserSvip {
   userId: Types.ObjectId | string;
-  /** Current SVIP tier (0 = no SVIP). */
-  currentTier: number;
+  /** Current premium level (0 = no level, 1-N = unified level across VIP and SVIP). */
+  currentLevel: number;
   /** Total coins recharged so far this calendar month. */
   monthlyRechargeCoins: number;
   /** Month (1-12) that `monthlyRechargeCoins` is tracking. */
   month: number;
   /** Year of the current tracking period. */
   year: number;
-  /** The tier the user started this month with (used for retention). */
-  tierStartOfMonth: number;
+  /** The level the user started this month with (used for retention). */
+  levelStartOfMonth: number;
 }
 
 export interface IUserSvipDocument extends IUserSvip, Document {
@@ -31,11 +31,11 @@ const UserSvipSchema = new Schema<IUserSvipDocument, IUserSvipModel>(
       unique: true,
       index: true,
     },
-    currentTier: { type: Number, required: true, default: 0 },
+    currentLevel: { type: Number, required: true, default: 0 },
     monthlyRechargeCoins: { type: Number, required: true, default: 0 },
     month: { type: Number, required: true },
     year: { type: Number, required: true },
-    tierStartOfMonth: { type: Number, required: true, default: 0 },
+    levelStartOfMonth: { type: Number, required: true, default: 0 },
   },
   {
     timestamps: true,

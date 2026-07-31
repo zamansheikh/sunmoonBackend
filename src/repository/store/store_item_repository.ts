@@ -49,6 +49,10 @@ export interface IStoreItemRepository {
   getFilteredStoreItemsGrouped(
     canUserBuyThis: boolean,
   ): Promise<Record<string, IStoreItemDocument[]>>;
+  findByCategoryAndTierNumber(
+    categoryId: string,
+    tierNumber: number,
+  ): Promise<IStoreItemDocument | null>;
 }
 
 export default class StoreItemRepository implements IStoreItemRepository {
@@ -479,5 +483,16 @@ export default class StoreItemRepository implements IStoreItemRepository {
       .toArray();
 
     return results[0] || {};
+  }
+
+  async findByCategoryAndTierNumber(
+    categoryId: string,
+    tierNumber: number,
+  ): Promise<IStoreItemDocument | null> {
+    return await this.Model.findOne({
+      categoryId: new Types.ObjectId(categoryId),
+      tierNumber,
+      deleteStatus: false,
+    });
   }
 }
