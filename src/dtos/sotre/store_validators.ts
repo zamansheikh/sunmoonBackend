@@ -16,17 +16,20 @@ export function validateCreateStoreItem(body: any) {
   }
 }
 export function validateUpdateStoreItem(body: any) {
-  const { name, categoryId, prices, privilege } = body;
-  if (!name && !categoryId && !prices && !privilege && body.canUserBuyThis === undefined)
+  const { name, categoryId, prices, privilege, tierNumber } = body;
+  if (!name && !categoryId && !prices && !privilege && body.canUserBuyThis === undefined && tierNumber === undefined)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, categoryId, prices, privilege or canUserBuyThis at least one is required",
+      "name, categoryId, prices, privilege, canUserBuyThis, or tierNumber — at least one is required",
     );
   if (prices) {
     validatePrices(prices);
   }
   if (privilege) {
     validatePrivileges(privilege);
+  }
+  if (tierNumber !== undefined && tierNumber !== null) {
+    validateNumber(tierNumber, "tierNumber");
   }
 }
 
@@ -139,17 +142,20 @@ export function ValidateStoreItemUpdateBatch(
     logo?: Express.Multer.File[];
   },
 ) {
-  const { name, categoryId, prices, categoryNames, privilege } = body;
-  if (!name && !categoryId && !prices)
+  const { name, categoryId, prices, categoryNames, privilege, tierNumber } = body;
+  if (!name && !categoryId && !prices && tierNumber === undefined)
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "name, categoryId, prices at least one is required",
+      "name, categoryId, prices, or tierNumber — at least one is required",
     );
   if (privilege) {
     validatePrivileges(privilege);
   }
   if (prices) {
     validatePrices(prices);
+  }
+  if (tierNumber !== undefined && tierNumber !== null) {
+    validateNumber(tierNumber, "tierNumber");
   }
 
   const { svgaFile, previewFile } = files;

@@ -383,7 +383,7 @@ export default class StoreController {
     if (typeof req.body.privilege === "string") {
       req.body.privilege = JSON.parse(req.body.privilege);
     }
-    const { name, categoryId, prices, categoryNames, privilege } = req.body;
+    const { name, categoryId, prices, categoryNames, privilege, tierNumber } = req.body;
     ValidateStoreItemUpdateBatch(req.body, files);
 
     let premiumFiles: IPremiumFiles[] = [];
@@ -443,7 +443,7 @@ export default class StoreController {
 
     const item = await this.Service.updateStoreItemBatch(
       id,
-      { name, categoryId, prices, privilege },
+      { name, categoryId, prices, privilege, tierNumber },
       premiumFiles,
       logoFile,
     );

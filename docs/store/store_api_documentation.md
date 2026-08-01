@@ -200,21 +200,218 @@ Same shape as single item, with `isPremium: true`.
 
 ---
 
-### 2.3 Update Single Item
+### 2.3 Update Single Item (Non-Premium)
+
+Updates an existing **non-premium** store item. This endpoint rejects premium items — use `2.4 Update Batch Item` for VIP/SVIP items.
 
 - **Path**: `PUT /api/store/items/single/:id`
 - **Access Control**: `Admin` or `SubAdmin`
 - **Content-Type**: `multipart/form-data`
 
-All fields optional (partial update).
+#### Guard
+
+| Condition | Error |
+| :--- | :--- |
+| Item not found | `404: "Store item with id {id} not found"` |
+| Item is premium (`isPremium: true`) | `400: "This api is not for premium items"` |
+
+#### Form Fields
+
+All fields are optional. At least one field must be provided.
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | Item display name (must be unique) |
+| `categoryId` | `string` | No | MongoDB ObjectId of the new category |
+| `prices` | `string` (JSON) | No | JSON stringified array of `{ validity, price }` objects (replaces entire array) |
+| `privilege` | `string` (JSON) | No | JSON stringified array of privilege strings (replaces entire array) |
+| `canUserBuyThis` | `boolean` | No | Whether the item can be purchased |
+| `tierNumber` | `number` | No | Tier number for premium matching. Set `null` to clear. |
+| `svgaFile` | `file` | No | New SVGA animation file. Old file deleted from Nimbus. |
+| `previewFile` | `file` | No | New preview image. Old file deleted from Nimbus. |
+| `logo` | `file` | No | New logo image. Old file deleted from Nimbus. |
+
+> **Note**: When a file is uploaded, the old file is deleted from Nimbus storage before the new one is uploaded. If you want to replace only the logo, send only the `logo` field — `svgaFile` and `previewFile` can be omitted.
+
+#### Request Body Example
+
+```
+multipart/form-data
+
+name: "Cool Hat"
+prices: "[{\"validity\": 30, \"price\": 100}, {\"validity\": 90, \"price\": 250}]"
+privilege: "[\"custom_badge\"]"
+canUserBuyThis: true
+tierNumber: 2
+```
+
+#### Response (200 OK)
+
+```json
+{
+  "success": true,
+  "result": {
+    "_id": "64f1a2b3c4d5e6f7a8b9c0d2",
+    "name": "Cool Hat",
+    "categoryId": "64f1a2b3c4d5e6f7a8b9c0d1",
+    "prices": [
+      { "validity": 30, "price": 100 },
+      { "validity": 90, "price": 250 }
+    ],
+    "privilege": ["custom_badge"],
+    "isPremium": false,
+    "canUserBuyThis": true,
+    "tierNumber": 2,
+    "logo": "https://nimbus/.../new-logo.png",
+    "svgaFile": "https://nimbus/.../old-anim.svga",
+    "previewFile": "https://nimbus/.../old-preview.png",
+    "createdAt": "2026-05-20T10:00:00.000Z",
+    "updatedAt": "2026-08-01T12:00:00.000Z"
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Message |
+| :--- | :--- |
+| `400` | `"name, categoryId, prices, privilege, canUserBuyThis, or tierNumber — at least one is required"` |
+| `400` | `"This api is not for premium items"` |
+| `400` | `"svgaFile must be a .svga file"` |
+| `400` | `"previewFile must be an image"` |
+| `400` | `"logo must be an image"` |
+| `404` | `"Store item with id {id} not found"` |
 
 ---
 
-### 2.4 Update Batch Item
+### 2.4 Update Batch Item (Premium — VIP, SVIP)
+
+Updates an existing **premium** (batch) store item. This is the endpoint for VIP and SVIP items. It rejects non-premium items — use `2.3 Update Single Item` for regular items.
 
 - **Path**: `PUT /api/store/items/batch/:id`
 - **Access Control**: `Admin` or `SubAdmin`
 - **Content-Type**: `multipart/form-data`
+
+#### Guard
+
+| Condition | Error |
+| :--- | :--- |
+| Item not found | `404: "Store item with id {id} not found"` |
+| Item is not premium (`isPremium: false`) | `400: "This api is not for single items"` |
+
+#### Form Fields
+
+All fields are optional. At least one of `name`, `categoryId`, `prices`, or `tierNumber` must be provided.
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | Item display name (must be unique). VIP/SVIP names must follow `PREFIX-NUMBER` format (e.g. `"VIP-1"`, `"SVIP-3"`). |
+| `categoryId` | `string` | No | MongoDB ObjectId of the new category |
+| `prices` | `string` (JSON) | No | JSON stringified array of `{ validity, price }` objects (replaces entire array) |
+| `privilege` | `string` (JSON) | No | JSON stringified array of privilege strings |
+| `tierNumber` | `number` | No | Tier number for VIP/SVIP matching. Used by the premium config to match milestone rewards. |
+| `categoryNames` | `string` | No | Comma-separated bundle category names to replace files for (e.g. `"VIP-1, VIP-2, VIP-3"`) |
+| `svgaFlags` | `string` | No | Comma-separated `"1"/"0"` per category — `"1"` = file attached, `"0"` = no file. Count must match `categoryNames`. |
+| `previewFlags` | `string` | No | Same as `svgaFlags` but for preview files |
+| `svgaFile` | `file[]` | No | Up to 10 SVGA files, mapped to categories via `categoryNames` + `svgaFlags` |
+| `previewFile` | `file[]` | No | Up to 10 preview files, mapped to categories via `categoryNames` + `previewFlags` |
+| `logo` | `file` | No | New logo image. Old file deleted from Nimbus. |
+
+#### Bundle File Replacement
+
+When you upload files for a `categoryName` that already has bundle files on the item:
+
+1. Old `svgaFileId` and `previewFileId` for that category are collected
+2. Old files are deleted from Nimbus
+3. New bundle entry is appended to `bundleFiles`
+4. Existing bundles for **other** categories are preserved unchanged
+
+If you don't provide `categoryNames`, no bundle files are touched — only metadata (name, prices, etc.) is updated.
+
+#### `svgaFlags` / `previewFlags` Format
+
+These flags tell the server which categories have files attached, since multer flattens all files into a single array.
+
+```
+categoryNames: "VIP-1, VIP-2, VIP-3"
+svgaFlags:     "1,0,1"     → file for VIP-1, skip VIP-2, file for VIP-3
+previewFlags:  "0,1,1"     → skip VIP-1, file for VIP-2, file for VIP-3
+```
+
+Rules:
+- Flag count must equal `categoryNames` count
+- Number of `"1"` flags must equal the number of uploaded files for that field
+- When flags are omitted, legacy behavior applies: file count must equal category count
+
+#### Request Body Example — Update Metadata Only
+
+```
+multipart/form-data
+
+name: "SVIP-5"
+prices: "[{\"validity\": 30, \"price\": 5000000}]"
+tierNumber: 5
+```
+
+#### Request Body Example — Replace Bundle Files
+
+```
+multipart/form-data
+
+name: "VIP-2"
+prices: "[{\"validity\": 30, \"price\": 1200000}]"
+categoryNames: "VIP-2"
+svgaFlags: "1"
+previewFlags: "1"
+svgaFile: (binary)
+previewFile: (binary)
+```
+
+#### Response (200 OK)
+
+```json
+{
+  "success": true,
+  "result": {
+    "_id": "64f1a2b3c4d5e6f7a8b9c0d3",
+    "name": "SVIP-5",
+    "categoryId": "64f1a2b3c4d5e6f7a8b9c0d1",
+    "prices": [
+      { "validity": 30, "price": 5000000 }
+    ],
+    "privilege": ["create_room", "custom_badge"],
+    "isPremium": true,
+    "canUserBuyThis": false,
+    "tierNumber": 5,
+    "logo": "https://nimbus/.../logo.png",
+    "bundleFiles": [
+      {
+        "categoryName": "VIP-2",
+        "svgaFile": "https://nimbus/.../anim.svga",
+        "svgaFileId": "abc123",
+        "previewFile": "https://nimbus/.../preview.png",
+        "previewFileId": "def456",
+        "fileType": "svga"
+      }
+    ],
+    "createdAt": "2026-05-20T10:00:00.000Z",
+    "updatedAt": "2026-08-01T12:00:00.000Z"
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Message |
+| :--- | :--- |
+| `400` | `"name, categoryId, prices, or tierNumber — at least one is required"` |
+| `400` | `"This api is not for single items"` |
+| `400` | `"VIP or SVIP names must include a valid numeric level suffix, e.g., VIP-1 or SVIP-3"` |
+| `400` | `"categoryNames are required"` (when svgaFile sent without categoryNames) |
+| `400` | `"categoryNames and svgaFiles must be the same length"` |
+| `400` | `"categoryNames and previewFiles must be the same length"` |
+| `400` | `"categoryNames and svgaFiles must be the same length"` |
+| `404` | `"Store item with id {id} not found"` |
 
 ---
 
@@ -635,7 +832,7 @@ Same shape as a bucket item:
 | `isPremium` | `boolean` | Whether this is a premium (batch) item |
 | `canUserBuyThis` | `boolean` | Whether this item can be purchased. `false` = grant-only or VIP/SVIP-only |
 | `isBought` | `boolean` | Whether the requesting user already owns this item |
-| `tierNumber` | `number \| null` | Tier number for VIP/SVIP items. Used for dynamic matching with premium config at runtime. `null` for regular items. |
+| `tierNumber` | `number \| null` | Tier number for VIP/SVIP items. Used for dynamic matching with premium config at runtime. `null` for regular items. Settable via update endpoints. |
 | `logo` | `string \| null` | Logo image URL |
 | `svgaFile` | `string \| null` | SVGA animation URL |
 | `previewFile` | `string \| null` | Preview image URL |
@@ -676,8 +873,8 @@ Same shape as a bucket item:
 | `GET` | `/api/store/categories/effected-items/:id` | Admin / SubAdmin | Preview items affected by category delete |
 | `POST` | `/api/store/items/single` | Admin / SubAdmin | Create single item |
 | `POST` | `/api/store/items/batch` | Admin / SubAdmin | Create batch (premium) item |
-| `PUT` | `/api/store/items/single/:id` | Admin / SubAdmin | Update single item |
-| `PUT` | `/api/store/items/batch/:id` | Admin / SubAdmin | Update batch item |
+| `PUT` | `/api/store/items/single/:id` | Admin / SubAdmin | Update non-premium item (name, prices, tier, files) |
+| `PUT` | `/api/store/items/batch/:id` | Admin / SubAdmin | Update premium item (VIP/SVIP — metadata + bundle files) |
 | `GET` | `/api/store/items/:id` | Any authenticated | Get item by ID |
 | `DELETE` | `/api/store/items/:id` | Admin / SubAdmin | Delete item |
 | `GET` | `/api/store/items/effected-buckets/:itemId` | Admin / SubAdmin | Preview users who own an item |
