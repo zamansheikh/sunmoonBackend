@@ -169,6 +169,7 @@ privilege: "[\"create_room\", \"custom_badge\"]"
     "privilege": ["create_room", "custom_badge"],
     "isPremium": true,
     "canUserBuyThis": true,
+    "tierNumber": 1,
     "logo": "https://res.cloudinary.com/.../logo.png",
     "svgaFile": "https://res.cloudinary.com/.../anim.svga",
     "previewFile": "https://res.cloudinary.com/.../preview.png",
@@ -193,8 +194,6 @@ Creates a **batch** of store items (multiple files per upload). Batch items are 
 
 Same as single item, but `svgaFile` and `previewFile` accept multiple files (e.g., one per batch variant).
 
-**SVIP Name Auto-Sync**: If the item name starts with `"SVIP-"` (e.g., `"SVIP-3"`), the SVIP configuration is automatically updated to link this item's `_id` and price to the corresponding tier.
-
 #### Response (201 Created)
 
 Same shape as single item, with `isPremium: true`.
@@ -216,10 +215,6 @@ All fields optional (partial update).
 - **Path**: `PUT /api/store/items/batch/:id`
 - **Access Control**: `Admin` or `SubAdmin`
 - **Content-Type**: `multipart/form-data`
-
-**SVIP Auto-Sync Behavior**:
-- If the item name starts with `"SVIP-"`, the SVIP config tier's `storeItemId` and `milestoneCoins` are automatically updated
-- If the item is renamed from an SVIP name to a non-SVIP name, the config reference is cleared
 
 ---
 
@@ -244,6 +239,7 @@ All fields optional (partial update).
     "privilege": ["create_room"],
     "isPremium": true,
     "canUserBuyThis": true,
+    "tierNumber": 1,
     "logo": "https://...",
     "svgaFile": "https://...",
     "previewFile": "https://...",
@@ -259,8 +255,6 @@ All fields optional (partial update).
 
 - **Path**: `DELETE /api/store/items/:id`
 - **Access Control**: `Admin` or `SubAdmin`
-
-**SVIP Auto-Sync**: If the deleted item is an SVIP item, the config tier's `storeItemId` is set to `null`.
 
 ---
 
@@ -328,7 +322,41 @@ Each key is a category name, and the value is an array of items in that category
 - **Path**: `GET /api/store/items/vip`
 - **Access Control**: Any authenticated user
 
-Returns items in the "VIP" category.
+Returns items in the VIP category (as configured by `vipCategoryName` in the premium config). Each item is enriched with **current progress** fields so the frontend can display a progress bar and expiry info directly.
+
+#### Response (200 OK)
+
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "_id": "665a...",
+      "name": "VIP-2",
+      "logo": "https://...",
+      "svgaFile": "https://...",
+      "isPremium": true,
+      "tierNumber": 2,
+      "prices": [{ "validity": 30, "price": 1200000 }],
+      "canUserBuyThis": true,
+      "isBought": true,
+      "monthEnd": "2026-07-31T23:59:59.999Z",
+      "rechargeRequired": 1200000,
+      "currentRechargeAmount": 8500000
+    }
+  ]
+}
+```
+
+#### Enrichment Fields
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `monthEnd` | `Date` | End of the current calendar month — useful for showing expiry/countdown |
+| `rechargeRequired` | `number` | Coins the user must recharge in the current month to unlock this item (from premium config's `vipTiers[].milestoneCoins`) |
+| `currentRechargeAmount` | `number` | How many coins the authenticated user has already recharged this month (from their `user_svip` document) |
+
+> **Frontend tip**: Use `currentRechargeAmount / rechargeRequired` to render a progress bar per item. Combine with `monthEnd` to show a countdown timer. For tiers already earned (`isBought: true`), the progress bar can be shown as 100% complete.
 
 ---
 
@@ -337,7 +365,7 @@ Returns items in the "VIP" category.
 - **Path**: `GET /api/store/items/svip`
 - **Access Control**: Any authenticated user
 
-Returns items in the "SVIP" category. Each item has `canUserBuyThis: false` and `isBought` reflects whether the user has earned that tier via monthly recharge. Items are enriched with **current progress** fields so the frontend can display a progress bar and expiry info directly.
+Returns items in the SVIP category (as configured by `svipCategoryName` in the premium config). Items have `canUserBuyThis: false` and `isBought` reflects whether the user has earned that tier via monthly recharge. Items are enriched with **current progress** fields so the frontend can display a progress bar and expiry info directly.
 
 #### Response (200 OK)
 
@@ -351,6 +379,7 @@ Returns items in the "SVIP" category. Each item has `canUserBuyThis: false` and 
       "logo": "https://...",
       "svgaFile": "https://...",
       "isPremium": true,
+      "tierNumber": 3,
       "prices": [{ "validity": 30, "price": 8000000 }],
       "canUserBuyThis": false,
       "isBought": false,
@@ -362,12 +391,12 @@ Returns items in the "SVIP" category. Each item has `canUserBuyThis: false` and 
 }
 ```
 
-#### New Enrichment Fields
+#### Enrichment Fields
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `monthEnd` | `Date` | End of the current calendar month — useful for showing expiry/countdown |
-| `rechargeRequired` | `number` | Coins the user must recharge in the current month to unlock this item (from `svip_configs` tier's `milestoneCoins`) |
+| `rechargeRequired` | `number` | Coins the user must recharge in the current month to unlock this item (from premium config's `svipTiers[].milestoneCoins`) |
 | `currentRechargeAmount` | `number` | How many coins the authenticated user has already recharged this month (from their `user_svip` document) |
 
 > **Frontend tip**: Use `currentRechargeAmount / rechargeRequired` to render a progress bar per item. Combine with `monthEnd` to show a countdown timer. For tiers already earned (`isBought: true`), the progress bar can be shown as 100% complete.
@@ -459,16 +488,18 @@ Purchases a store item and adds it to the user's inventory.
 | `itemId` | `string` | Yes | MongoDB ObjectId of the store item to purchase |
 | `priceIndex` | `number` | No | Index into the item's `prices` array. Defaults to `0` |
 
-#### SVIP Purchase Block
+#### VIP/SVIP Purchase Block
 
-Items in the "SVIP" category **cannot be purchased**. Attempting to buy one returns:
+Items in the VIP or SVIP category **cannot be purchased**. Attempting to buy one returns:
 
 ```json
 {
   "status": "error",
-  "message": "SVIP items can only be earned through monthly recharge milestones, not purchased directly."
+  "message": "VIP/SVIP items can only be earned through monthly recharge milestones, not purchased directly."
 }
 ```
+
+This applies to both hardcoded category names ("VIP", "SVIP") and custom names configured via `vipCategoryName` / `svipCategoryName` in the premium config.
 
 #### Response (200 OK)
 
@@ -602,8 +633,9 @@ Same shape as a bucket item:
 | `prices[].price` | `number` | Price in coins |
 | `privilege` | `string[]` | Privileges the item grants |
 | `isPremium` | `boolean` | Whether this is a premium (batch) item |
-| `canUserBuyThis` | `boolean` | Whether this item can be purchased. `false` = grant-only or SVIP-only |
+| `canUserBuyThis` | `boolean` | Whether this item can be purchased. `false` = grant-only or VIP/SVIP-only |
 | `isBought` | `boolean` | Whether the requesting user already owns this item |
+| `tierNumber` | `number \| null` | Tier number for VIP/SVIP items. Used for dynamic matching with premium config at runtime. `null` for regular items. |
 | `logo` | `string \| null` | Logo image URL |
 | `svgaFile` | `string \| null` | SVGA animation URL |
 | `previewFile` | `string \| null` | Preview image URL |
@@ -612,12 +644,12 @@ Same shape as a bucket item:
 
 ## Part 7: Key Error Responses
 
-### 400 Bad Request — SVIP Purchase Block
+### 400 Bad Request — VIP/SVIP Purchase Block
 
 ```json
 {
   "status": "error",
-  "message": "SVIP items can only be earned through monthly recharge milestones, not purchased directly."
+  "message": "VIP/SVIP items can only be earned through monthly recharge milestones, not purchased directly."
 }
 ```
 
@@ -651,8 +683,8 @@ Same shape as a bucket item:
 | `GET` | `/api/store/items/effected-buckets/:itemId` | Admin / SubAdmin | Preview users who own an item |
 | `PUT` | `/api/store/items/category/:category` | Admin / SubAdmin | Change item category |
 | `GET` | `/api/store/items` | Any authenticated | All items grouped by category |
-| `GET` | `/api/store/items/vip` | Any authenticated | VIP items |
-| `GET` | `/api/store/items/svip` | Any authenticated | SVIP items |
+| `GET` | `/api/store/items/vip` | Any authenticated | VIP items (enriched with progress) |
+| `GET` | `/api/store/items/svip` | Any authenticated | SVIP items (enriched with progress) |
 | `GET` | `/api/store/items/exclusive` | Any authenticated | Exclusive (grant-only) items |
 | `GET` | `/api/store/items/browse` | Any authenticated | Browse items filtered by `canUserBuyThis` |
 | `GET` | `/api/store/items/category/:category` | Any authenticated | Items by category name |
@@ -667,7 +699,8 @@ Same shape as a bucket item:
 
 ## Part 9: Implementation Notes
 
-- **SVIP Auto-Sync**: When creating/updating/deleting batch items with names starting with `"SVIP-"`, the SVIP config is automatically synchronized — `storeItemId` and `milestoneCoins` are updated accordingly
-- **Pricing validation**: Names starting with `VIP` or `SVIP` must have a valid numeric suffix (e.g., `VIP-1`, `SVIP-2`). Valid levels are `1` and `2` only for VIP; SVIP supports tiers 1–9
-- **`canUserBuyThis`**: Items with `canUserBuyThis: false` are grant-only (delivered via the grant endpoint or SVIP auto-grant system)
+- **Premium tier matching**: VIP and SVIP store items are matched to premium config tiers via the `tierNumber` field on the store item and the category name. No `storeItemId` is stored in the config — items are found dynamically at runtime by `categoryId + tierNumber`.
+- **VIP/SVIP purchase block**: Items in VIP or SVIP categories (including custom names configured via `vipCategoryName`/`svipCategoryName`) cannot be purchased directly. They are earned exclusively through the monthly recharge milestone system.
+- **`canUserBuyThis`**: Items with `canUserBuyThis: false` are grant-only (delivered via the grant endpoint or VIP/SVIP auto-grant system)
 - **Purchase flow**: When buying, the selected `priceIndex` determines the price and validity period. The user's coins are deducted atomically inside a MongoDB transaction
+- **Enriched store listings**: Both VIP and SVIP item listings include `monthEnd`, `rechargeRequired`, and `currentRechargeAmount` fields for rendering progress bars and countdown timers in the frontend

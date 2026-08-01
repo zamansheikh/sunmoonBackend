@@ -170,7 +170,25 @@ export class FamilyMemberRepository implements IFamilyMemberRepository {
     const page = Number(query.page || 1);
     const skip = (page - 1) * limit;
 
-    const countPipeline: any[] = [{ $match: matchStage }, { $count: "total" }];
+    const countPipeline: any[] = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: DatabaseNames.User,
+          localField: "userId",
+          foreignField: "_id",
+          as: "userId",
+          pipeline: [{ $project: { name: 1 } }],
+        },
+      },
+      { $unwind: "$userId" },
+    ];
+    if (query.name) {
+      countPipeline.push({
+        $match: { "userId.name": { $regex: query.name, $options: "i" } },
+      });
+    }
+    countPipeline.push({ $count: "total" });
     const countResult = await this.model.aggregate(countPipeline);
     const total = countResult[0]?.total || 0;
 
@@ -189,6 +207,12 @@ export class FamilyMemberRepository implements IFamilyMemberRepository {
       },
       { $unwind: "$userId" },
     ];
+
+    if (query.name) {
+      dataPipeline.push({
+        $match: { "userId.name": { $regex: query.name, $options: "i" } },
+      });
+    }
 
     const sortBy = query.sortBy || "role";
     const sortOrder = query.sortOrder === "desc" ? -1 : 1;
