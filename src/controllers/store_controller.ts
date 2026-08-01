@@ -392,7 +392,6 @@ export default class StoreController {
     if (logoFile && !isImageFile(logoFile.originalname)) {
       throw new AppError(StatusCodes.BAD_REQUEST, "logo must be an image");
     }
-
     if (categoryNames) {
       let names = categoryNames.split(",");
       names = names.map((cat: string) => cat.trim());

@@ -703,6 +703,7 @@ export default class StoreService implements IStoreService {
       prices: item.prices || existingItem.prices,
       bundleFiles: [...existingItem.bundleFiles!, ...newFilesToBeAdded],
       privilege: item.privilege || existingItem.privilege,
+      tierNumber: item.tierNumber || existingItem.tierNumber,
     };
 
     const updated = await this.ItemRepository.updateStoreItem(
