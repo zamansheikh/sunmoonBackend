@@ -5,6 +5,9 @@ const path = require("path");
 //  CONFIGURATION — edit these values before running the script
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Set to "SVIP" or "VIP" — everything else derives from this
+const TYPE = "VIP";
+
 const ADMIN_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NmQyM2Q2ZjlhYzQ1ZWRiNzY1MDM0NyIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc1MTk4MzM2NH0.TUGVYYwrqElNFpXZHM1trOc91rBDKW3vZA1N5BlIM8M";
 
 const TIER_CONFIGS = [
@@ -19,16 +22,29 @@ const TIER_CONFIGS = [
   { tier: 9, price: 1_60_00_000, validity: 30 },
 ];
 
-const API_BASE_URL = "https://api.sunmoonpro.com";
+const API_BASE_URL = "http://localhost:8000";
 const START_TIER = 1;
 const END_TIER = 9;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TYPE-DERIVED CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const BUNDLE_CATEGORIES_BY_TYPE = {
+  SVIP: ["entry", "frame", "label", "medal", "mic-effect", "name-field", "room-card", "text-bubble"],
+  VIP:  ["entry", "frame", "label", "medal", "mic-effect", "name-field", "room-card", "shawl", "text-bubble"],
+};
+
+const FOLDER_NAME_BY_TYPE = { SVIP: "svip-files", VIP: "vip-files" };
+const FOLDER_REGEX_BY_TYPE = { SVIP: /^svip\s+(\d+)$/i, VIP: /^vip(\d+)$/i };
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
 const SCRIPT_DIR = __dirname;
-const ASSETS_DIR = path.join(SCRIPT_DIR, "svip-files");
+const ASSETS_DIR = path.join(SCRIPT_DIR, FOLDER_NAME_BY_TYPE[TYPE]);
+const BUNDLE_CATEGORIES = BUNDLE_CATEGORIES_BY_TYPE[TYPE];
 
 const API_ENDPOINTS = {
   categories: `${API_BASE_URL}/api/store/categories`,
@@ -39,17 +55,6 @@ const AUTH_HEADERS = {
   Authorization: `Bearer ${ADMIN_TOKEN}`,
   "Content-Type": "application/json",
 };
-
-const BUNDLE_CATEGORIES = [
-  "entry",
-  "frame",
-  "label",
-  "medal",
-  "mic-effect",
-  "name-field",
-  "room-card",
-  "text-bubble",
-];
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  UTILITY FUNCTIONS
@@ -132,7 +137,7 @@ async function fetchExistingCategories() {
 //  STEP 2 — Create missing categories
 // ═══════════════════════════════════════════════════════════════════════════
 
-const REQUIRED_CATEGORIES = ["SVIP", ...BUNDLE_CATEGORIES];
+const REQUIRED_CATEGORIES = [TYPE, ...BUNDLE_CATEGORIES];
 
 async function ensureCategories(categoryMap) {
   log("INFO", "Ensuring all required categories exist...");
@@ -154,15 +159,15 @@ async function ensureCategories(categoryMap) {
       log("WARN", `Category "${title}" may already exist: ${JSON.stringify(result.body)}`);
     } else {
       const message = `Failed to create category "${title}": ${result.status} ${JSON.stringify(result.body)}`;
-      if (title === "SVIP") {
+      if (title === TYPE) {
         throw new Error(message);
       }
       log("WARN", message);
     }
   }
 
-  if (!categoryMap["SVIP"]) {
-    throw new Error('"SVIP" category is required but could not be created. Aborting.');
+  if (!categoryMap[TYPE]) {
+    throw new Error(`"${TYPE}" category is required but could not be created. Aborting.`);
   }
 
   log("OK", "All categories are ready.");
@@ -170,17 +175,18 @@ async function ensureCategories(categoryMap) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  STEP 3 — Create SVIP items
+//  STEP 3 — Create items
 // ═══════════════════════════════════════════════════════════════════════════
 
 function getTierFolders() {
   const entries = fs.readdirSync(ASSETS_DIR, { withFileTypes: true });
   const tierFolders = [];
+  const regex = FOLDER_REGEX_BY_TYPE[TYPE];
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
 
-    const match = entry.name.match(/^svip\s+(\d+)$/i);
+    const match = entry.name.match(regex);
     if (match) {
       tierFolders.push({
         tier: parseInt(match[1], 10),
@@ -203,7 +209,9 @@ function buildFilePayloads(tierDir) {
 
   for (const category of BUNDLE_CATEGORIES) {
     const hasSvga = files.includes(`${category}.svga`);
-    const hasPreview = files.includes(`${category}.png`);
+    const hasPng = files.includes(`${category}.png`);
+    const hasWebp = files.includes(`${category}.webp`);
+    const hasPreview = hasPng || hasWebp;
 
     svgaFlags.push(hasSvga ? "1" : "0");
     previewFlags.push(hasPreview ? "1" : "0");
@@ -217,10 +225,11 @@ function buildFilePayloads(tierDir) {
     }
 
     if (hasPreview) {
-      const filePath = path.join(tierDir, `${category}.png`);
+      const ext = hasPng ? ".png" : ".webp";
+      const filePath = path.join(tierDir, `${category}${ext}`);
       previewBuffers.push({
         buffer: fs.readFileSync(filePath),
-        name: `${category}.png`,
+        name: `${category}${ext}`,
       });
     }
   }
@@ -228,9 +237,9 @@ function buildFilePayloads(tierDir) {
   return { svgaBuffers, previewBuffers, svgaFlags, previewFlags };
 }
 
-async function uploadSvipTier(
+async function uploadTier(
   tier,
-  svipCategoryId,
+  categoryId,
   svgaBuffers,
   previewBuffers,
   svgaFlags,
@@ -240,8 +249,8 @@ async function uploadSvipTier(
   const config = getTierConfig(tier);
   const formData = new FormData();
 
-  formData.append("name", `SVIP-${tier}`);
-  formData.append("categoryId", svipCategoryId);
+  formData.append("name", `${TYPE}-${tier}`);
+  formData.append("categoryId", categoryId);
   formData.append("prices", JSON.stringify([{ validity: config.validity, price: config.price }]));
   formData.append("categoryNames", BUNDLE_CATEGORIES.join(","));
   formData.append("svgaFlags", svgaFlags.join(","));
@@ -268,7 +277,7 @@ async function uploadSvipTier(
 
     if (attempt <= retries) {
       const wait = attempt * 2000;
-      log("WARN", `SVIP-${tier} attempt ${attempt} failed (${result.status}). Retrying in ${wait}ms...`);
+      log("WARN", `${TYPE}-${tier} attempt ${attempt} failed (${result.status}). Retrying in ${wait}ms...`);
       await sleep(wait);
     } else {
       return {
@@ -280,7 +289,7 @@ async function uploadSvipTier(
   }
 }
 
-async function processAllTiers(svipCategoryId) {
+async function processAllTiers(categoryId) {
   const tierFolders = getTierFolders();
   const results = { created: 0, skipped: 0, failed: 0 };
 
@@ -288,18 +297,18 @@ async function processAllTiers(svipCategoryId) {
 
   for (const { tier, folderName } of tierFolders) {
     if (tier < START_TIER || tier > END_TIER) {
-      log("SKIP", `Tier SVIP-${tier} is outside range [${START_TIER}-${END_TIER}]. Skipping.`);
+      log("SKIP", `Tier ${TYPE}-${tier} is outside range [${START_TIER}-${END_TIER}]. Skipping.`);
       continue;
     }
 
     const tierDir = path.join(ASSETS_DIR, folderName);
     if (!fs.existsSync(tierDir)) {
-      log("WARN", `Folder "${folderName}" not found at ${tierDir}. Skipping SVIP-${tier}.`);
+      log("WARN", `Folder "${folderName}" not found at ${tierDir}. Skipping ${TYPE}-${tier}.`);
       results.skipped++;
       continue;
     }
 
-    log("ACTION", `Processing SVIP-${tier} from folder "${folderName}"...`);
+    log("ACTION", `Processing ${TYPE}-${tier} from folder "${folderName}"...`);
 
     const { svgaBuffers, previewBuffers, svgaFlags, previewFlags } =
       buildFilePayloads(tierDir);
@@ -309,9 +318,9 @@ async function processAllTiers(svipCategoryId) {
     log("INFO", `  svga files: ${svgaBuffers.length}, preview files: ${previewBuffers.length}`);
     log("INFO", `  price: ${getTierConfig(tier).price}, validity: ${getTierConfig(tier).validity}`);
 
-    const result = await uploadSvipTier(
+    const result = await uploadTier(
       tier,
-      svipCategoryId,
+      categoryId,
       svgaBuffers,
       previewBuffers,
       svgaFlags,
@@ -319,13 +328,13 @@ async function processAllTiers(svipCategoryId) {
     );
 
     if (result.skipped) {
-      log("SKIP", `SVIP-${tier} already exists. Skipping.`);
+      log("SKIP", `${TYPE}-${tier} already exists. Skipping.`);
       results.skipped++;
     } else if (result.success) {
-      log("OK", `SVIP-${tier} created successfully.`);
+      log("OK", `${TYPE}-${tier} created successfully.`);
       results.created++;
     } else {
-      log("FAIL", `SVIP-${tier} failed: ${result.status} ${JSON.stringify(result.body)}`);
+      log("FAIL", `${TYPE}-${tier} failed: ${result.status} ${JSON.stringify(result.body)}`);
       results.failed++;
     }
   }
@@ -340,7 +349,7 @@ async function processAllTiers(svipCategoryId) {
 async function main() {
   console.log("");
   console.log("╔══════════════════════════════════════════════════════╗");
-  console.log("║      SVIP Asset Upload Script                       ║");
+  console.log(`║      ${TYPE} Asset Upload Script`.padEnd(54) + "║");
   console.log("╚══════════════════════════════════════════════════════╝");
   console.log("");
 
@@ -351,10 +360,15 @@ async function main() {
     process.exit(1);
   }
 
+  if (!["SVIP", "VIP"].includes(TYPE)) {
+    console.error(`[ERROR] TYPE must be "SVIP" or "VIP", got "${TYPE}".`);
+    process.exit(1);
+  }
+
   if (!fs.existsSync(ASSETS_DIR)) {
     console.error(`[ERROR] Assets directory not found: ${ASSETS_DIR}`);
-    console.error("        Please create a 'svip-files' folder next to this script");
-    console.error("        and place the SVIP tier folders (Svip 1, SVIP 2, ...) inside it.");
+    console.error(`        Please create a '${FOLDER_NAME_BY_TYPE[TYPE]}' folder next to this script`);
+    console.error(`        and place the ${TYPE} tier folders inside it.`);
     process.exit(1);
   }
 
@@ -369,16 +383,16 @@ async function main() {
     process.exit(1);
   }
 
-  const svipCategoryId = categoryMap["SVIP"];
-  log("INFO", `Using SVIP category ID: ${svipCategoryId}`);
+  const categoryId = categoryMap[TYPE];
+  log("INFO", `Using ${TYPE} category ID: ${categoryId}`);
 
   // ── Step 3: Upload tiers ────────────────────────────────────────────
 
   console.log("");
-  log("INFO", "Starting SVIP item upload...");
+  log("INFO", `Starting ${TYPE} item upload...`);
   console.log("");
 
-  const results = await processAllTiers(svipCategoryId);
+  const results = await processAllTiers(categoryId);
 
   // ── Summary ─────────────────────────────────────────────────────────
 
