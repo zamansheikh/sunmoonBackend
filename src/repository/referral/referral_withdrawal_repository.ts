@@ -4,6 +4,7 @@ import { IReferralWithdrawalDocument } from "../../models/referral/referralWithd
 export interface IReferralWithdrawalRepository {
   createWithdrawal(data: Partial<IReferralWithdrawalDocument>, session?: ClientSession): Promise<IReferralWithdrawalDocument>;
   getWithdrawalsByUser(userId: string | Types.ObjectId): Promise<IReferralWithdrawalDocument[]>;
+  deleteWithdrawalsByUser(userId: string | Types.ObjectId): Promise<void>;
 }
 
 export class ReferralWithdrawalRepository implements IReferralWithdrawalRepository {
@@ -16,5 +17,9 @@ export class ReferralWithdrawalRepository implements IReferralWithdrawalReposito
 
   async getWithdrawalsByUser(userId: string | Types.ObjectId): Promise<IReferralWithdrawalDocument[]> {
     return await this.withdrawalModel.find({ user: userId }).sort({ createdAt: -1 });
+  }
+
+  async deleteWithdrawalsByUser(userId: string | Types.ObjectId): Promise<void> {
+    await this.withdrawalModel.deleteMany({ user: userId });
   }
 }

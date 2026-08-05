@@ -37,6 +37,7 @@ export interface IReferralService {
   handleGiftCommission(refereeId: string, giftCoinValue: number): Promise<void>;
   requestWithdrawal(userId: string): Promise<IReferralWithdrawalDocument>;
   getReferralDashboard(userId: string): Promise<any>;
+  deleteReferralData(userId: string): Promise<void>;
 }
 
 export class ReferralService implements IReferralService {
@@ -100,9 +101,19 @@ export class ReferralService implements IReferralService {
     inviteCode: string,
   ): Promise<void> {
     const config = await this.getConfig();
-    if (!config) return;
+    if (!config) {
+      console.warn("[ReferralService] No config found — referral engine disabled.");
+      return;
+    }
 
-    // 1. Find the referrer
+    // 1. Check if referral already exists for this referee
+    const existingReferral = await this.referralRepository.getReferralByReferee(refereeId);
+    if (existingReferral) {
+      console.warn(`[ReferralService] Referral already exists for referee ${refereeId}, skipping.`);
+      return;
+    }
+
+    // 2. Find the referrer
     const referrer = await this.userRepository.findUserByShortId(
       Number(inviteCode),
     );
@@ -114,10 +125,10 @@ export class ReferralService implements IReferralService {
 
     const referrerId = (referrer as any)._id.toString();
 
-    // 2. Prevent self-referral
+    // 3. Prevent self-referral
     if (referrerId === refereeId) return;
 
-    // 3. Create the referral link in DB
+    // 4. Create the referral link in DB
     await this.referralRepository.createReferral({
       referrer: referrerId as any,
       referee: refereeId as any,
@@ -125,10 +136,10 @@ export class ReferralService implements IReferralService {
       isRegistrationRewardGiven: true,
     });
 
-    // 4. Cache the mapping for future high-speed lookups
+    // 5. Cache the mapping for future high-speed lookups
     await this.cache.setReferrerId(refereeId, referrerId);
 
-    // 5. Grant reward
+    // 6. Grant reward
     await this.walletRepository.updateWalletBalance(
       referrerId,
       config.inviteReward,
@@ -144,30 +155,28 @@ export class ReferralService implements IReferralService {
     rechargeAmount: number,
   ): Promise<void> {
     const config = await this.getConfig();
-    if (!config) return;
+    if (!config) {
+      console.warn("[ReferralService] No config found — referral engine disabled.");
+      return;
+    }
 
-    const referral =
-      await this.referralRepository.getReferralByReferee(refereeId);
-    if (!referral || referral.isRechargeRewardGiven) return;
+    const referral = await this.referralRepository.updateRechargeAtomic(
+      refereeId,
+      rechargeAmount,
+      config.rechargeThreshold,
+    );
+    if (!referral) return;
 
-    const newTotal = referral.totalRechargedAmount + rechargeAmount;
-    const update: any = { totalRechargedAmount: newTotal };
+    const totalRecharged = referral.totalRechargedAmount;
+    const crossedThreshold = totalRecharged >= config.rechargeThreshold;
 
-    if (
-      !referral.isRechargeMilestoneReached &&
-      newTotal >= config.rechargeThreshold
-    ) {
-      update.isRechargeMilestoneReached = true;
-      update.isRechargeRewardGiven = true;
-
+    if (crossedThreshold && !referral.isRechargeRewardGiven) {
       await this.walletRepository.updateWalletBalance(
-        referral.referrer,
+        referral.referrer.toString(),
         config.rechargeReward,
         true,
       );
     }
-
-    await this.referralRepository.updateReferral(refereeId, update);
   }
 
   /**
@@ -178,7 +187,10 @@ export class ReferralService implements IReferralService {
     giftCoinValue: number,
   ): Promise<void> {
     const config = await this.getConfig();
-    if (!config || config.giftCommissionPercentage <= 0) return;
+    if (!config || config.giftCommissionPercentage <= 0) {
+      console.warn("[ReferralService] No config found — referral engine disabled.");
+      return;
+    }
 
     // 1. Check cache for referrerId
     let referrerId = await this.cache.getReferrerId(refereeId);
@@ -197,16 +209,29 @@ export class ReferralService implements IReferralService {
     );
     if (commission <= 0) return;
 
-    // 3. Update DB (Asynchronous updates are fine here as per our design)
-    await Promise.all([
-      this.referralRepository.updateReferral(refereeId, {
-        $inc: {
-          totalCommissionEarned: commission,
-          totalGiftValueSent: giftCoinValue,
-        },
-      }),
-      this.walletRepository.updateWalletBalance(referrerId, commission, true),
-    ]);
+    // 3. Use transaction to ensure atomicity of wallet update and referral stats
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      await Promise.all([
+        this.referralRepository.updateReferral(refereeId, {
+          $inc: {
+            totalCommissionEarned: commission,
+            totalGiftValueSent: giftCoinValue,
+          },
+        }),
+        this.walletRepository.updateWalletBalance(referrerId, commission, true, session),
+      ]);
+
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      console.error("[ReferralService] Gift commission transaction failed:", error);
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 
   /**
@@ -221,7 +246,7 @@ export class ReferralService implements IReferralService {
     session.startTransaction();
 
     try {
-      // 1. Get current balance
+      // 1. Get current balance INSIDE transaction to prevent race condition
       const wallet = await this.walletRepository.getWallet(userId, session);
 
       if (!wallet || wallet.currentBalance <= 0) {
@@ -275,13 +300,14 @@ export class ReferralService implements IReferralService {
     }
   }
 
-  async getReferralDashboard(userId: string): Promise<any> {
+  async getReferralDashboard(userId: string, limit = 20, offset = 0): Promise<any> {
     // 1. Fetch all required data in parallel
-    const [config, wallet, referrals, user] = await Promise.all([
+    const [config, wallet, referrals, user, totalCount] = await Promise.all([
       this.getConfig(),
       this.walletRepository.getWallet(userId),
-      this.referralRepository.getReferralsByReferrer(userId),
+      this.referralRepository.getReferralsByReferrerPaginated(userId, limit, offset),
       this.userRepository.findUserById(userId),
+      this.referralRepository.getReferralsCountByReferrer(userId),
     ]);
 
     if (!user) {
@@ -311,9 +337,27 @@ export class ReferralService implements IReferralService {
         inviteCode: user.userId.toString(),
         currentBalance: wallet?.currentBalance || 0,
         totalEarned: wallet?.totalEarned || 0,
-        totalInvitations: referrals.length,
+        totalInvitations: totalCount,
       },
       referralList,
+      pagination: {
+        limit,
+        offset,
+        total: totalCount,
+      },
     };
+  }
+
+  async deleteReferralData(userId: string): Promise<void> {
+    // Delete referral links where user is referee
+    await this.referralRepository.deleteByUser(userId);
+    // Delete referral links where user is referrer
+    await this.referralRepository.deleteByReferrer(userId);
+    // Delete wallet
+    await this.walletRepository.deleteWallet(userId);
+    // Delete withdrawal history
+    await this.withdrawalRepository.deleteWithdrawalsByUser(userId);
+    // Invalidate cache
+    await this.cache.invalidateMapping(userId);
   }
 }

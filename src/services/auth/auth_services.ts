@@ -385,6 +385,14 @@ export default class AuthService implements IAuthService {
     const deletedStoriesReaction =
       await this.StoriesReactionRepository.deleteUserReactions(id);
 
+    // --- Referral Cleanup ---
+    try {
+      await this.ReferralService.deleteReferralData(id);
+    } catch (error) {
+      console.error("[AuthService] Referral cleanup failed during account deletion:", error);
+      // Don't block account deletion if referral cleanup fails
+    }
+
     if (
       !deletedUserStats ||
       !deletedReels ||

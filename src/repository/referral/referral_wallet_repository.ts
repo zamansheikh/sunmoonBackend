@@ -5,6 +5,7 @@ export interface IReferralWalletRepository {
   getWallet(userId: string | Types.ObjectId, session?: ClientSession): Promise<IReferralWalletDocument | null>;
   createWallet(userId: string | Types.ObjectId): Promise<IReferralWalletDocument>;
   updateWalletBalance(userId: string | Types.ObjectId, amount: number, isEarning: boolean, session?: ClientSession): Promise<IReferralWalletDocument | null>;
+  deleteWallet(userId: string | Types.ObjectId): Promise<void>;
 }
 
 export class ReferralWalletRepository implements IReferralWalletRepository {
@@ -31,5 +32,9 @@ export class ReferralWalletRepository implements IReferralWalletRepository {
       update,
       { new: true, upsert: true, session }
     );
+  }
+
+  async deleteWallet(userId: string | Types.ObjectId): Promise<void> {
+    await this.walletModel.deleteOne({ user: userId });
   }
 }

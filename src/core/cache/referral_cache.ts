@@ -75,4 +75,12 @@ export class ReferralCache {
       return null;
     }
   }
+
+  async invalidateMapping(refereeId: string): Promise<void> {
+    try {
+      await this.redis.del(this.KEYS.REFERRER_MAPPING(refereeId));
+    } catch (err) {
+      console.error("[ReferralCache] Failed to invalidate referrer mapping:", err);
+    }
+  }
 }

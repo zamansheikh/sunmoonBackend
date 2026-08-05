@@ -62,7 +62,9 @@ class ReferralController {
 
   getReferralDashboard = catchAsync(async (req: Request, res: Response) => {
     const userId = (req.user as any).id;
-    const dashboardData = await this.referralService.getReferralDashboard(userId);
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const dashboardData = await this.referralService.getReferralDashboard(userId, limit, offset);
     sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
