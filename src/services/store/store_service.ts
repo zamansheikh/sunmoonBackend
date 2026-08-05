@@ -128,6 +128,12 @@ export interface IStoreService {
     itemId: string,
     priceIndex?: number,
   ): Promise<IStoreItemDocument>;
+  sendStoreItem(
+    senderId: string,
+    recipientUserId: number,
+    itemId: string,
+    priceIndex?: number,
+  ): Promise<IStoreItemDocument>;
   getMyBucketByCategory(
     ownerId: string,
     category: string,
@@ -1009,6 +1015,132 @@ export default class StoreService implements IStoreService {
             session,
           );
         }
+      }
+
+      await session.commitTransaction();
+      return item;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+  async sendStoreItem(
+    senderId: string,
+    recipientUserId: number,
+    itemId: string,
+    priceIndex: number = 0,
+  ): Promise<IStoreItemDocument> {
+    // ── Parallel lookups ──────────────────────────────────────────────
+    const [sender, recipient, stats, item] = await Promise.all([
+      this.UserRepository.findUserById(senderId),
+      this.UserRepository.findUserByShortId(recipientUserId),
+      this.userStatsRepository.getUserStats(senderId),
+      this.ItemRepository.getStoreItemById(itemId),
+    ]);
+
+    if (!sender) throw new AppError(StatusCodes.NOT_FOUND, "Sender not found");
+    if (!recipient)
+      throw new AppError(StatusCodes.NOT_FOUND, "Recipient not found");
+    if (!stats)
+      throw new AppError(StatusCodes.NOT_FOUND, "Sender stats not found");
+    if (!item) throw new AppError(StatusCodes.NOT_FOUND, "Item not found");
+
+    // ── Security checks ───────────────────────────────────────────────
+    if (senderId === (recipient._id as string))
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Cannot send item to yourself",
+      );
+
+    // Block VIP/SVIP items
+    const itemCategory = await this.CategoryRepository.getCategoryById(
+      item.categoryId.toString(),
+    );
+    if (itemCategory) {
+      const title = itemCategory.title;
+      const config = await SvipConfigService.getConfig();
+      const isVipCategory =
+        title === "VIP" || (config && title === config.vipCategoryName);
+      const isSvipCategory =
+        title === "SVIP" || (config && title === config.svipCategoryName);
+      if (isVipCategory || isSvipCategory) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "VIP/SVIP items cannot be sent to other users",
+        );
+      }
+    }
+
+    // Non-premium items must be purchasable
+    if (!item.isPremium && item.canUserBuyThis === false) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "This item is not available for purchase",
+      );
+    }
+
+    if (!item.prices || item.prices.length === 0)
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Item has no pricing options",
+      );
+    if (priceIndex < 0 || priceIndex >= item.prices.length)
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Invalid price option selected",
+      );
+
+    const selectedPrice = item.prices[priceIndex];
+
+    if (selectedPrice.price > stats.coins!)
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `Insufficient coins. Required: ${selectedPrice.price}, available: ${stats.coins}`,
+      );
+
+    // Check if recipient already owns this item (will renew expiry if so)
+    const recipientExistingBucket =
+      await this.BucketRepository.findBucketByOwnerAndItem(
+        recipient._id as string,
+        itemId,
+      );
+
+    // ── Transaction: deduct sender coins + create recipient bucket ─────
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      await this.userStatsRepository.updateCoins(
+        senderId,
+        -selectedPrice.price,
+        session,
+      );
+
+      await this.ItemRepository.updateSoldCount(itemId, session);
+
+      const newExpiry = new Date(
+        Date.now() + selectedPrice.validity * 24 * 60 * 60 * 1000,
+      );
+
+      if (recipientExistingBucket) {
+        await this.BucketRepository.updateBucket(
+          recipientExistingBucket._id as string,
+          { expireAt: newExpiry },
+          session,
+        );
+      } else {
+        await this.BucketRepository.createNewBucket(
+          {
+            itemId: item._id as string,
+            ownerId: recipient._id as string,
+            categoryId: item.categoryId,
+            expireAt: newExpiry,
+            useStatus: false,
+          },
+          session,
+        );
       }
 
       await session.commitTransaction();

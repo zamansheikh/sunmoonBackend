@@ -2,6 +2,7 @@ import express from "express";
 import { authenticate } from "../core/middlewares/auth_middleware";
 import { validateRequest } from "../core/middlewares/validate_request";
 import { GrantItemDto } from "../dtos/store/grant_item_dto";
+import { SendStoreItemDto } from "../dtos/store/send_store_item_dto";
 import { UserRoles } from "../core/Utils/enums";
 import StoreCategoryRepository from "../repository/store/store_category_repository";
 import StoreCategoryModel from "../models/store/store_category_model";
@@ -121,6 +122,13 @@ router
   .post(authenticate(), controller.buyStoreItem)
   .put(authenticate(), controller.selectBucket)
   .get(authenticate(), controller.getMyBuckets);
+router
+  .route("/bucket/send")
+  .post(
+    authenticate(),
+    validateRequest(SendStoreItemDto),
+    controller.sendStoreItem,
+  );
 router
   .route("/bucket/category/:category")
   .get(authenticate(), controller.getMyBucketByCategory);

@@ -520,6 +520,22 @@ export default class StoreController {
     });
   });
 
+  sendStoreItem = catchAsync(async (req: Request, res: Response) => {
+    const senderId = req.user!.id;
+    const { recipientUserId, itemId, priceIndex } = req.body;
+    const item = await this.Service.sendStoreItem(
+      senderId,
+      recipientUserId,
+      itemId,
+      priceIndex ?? 0,
+    );
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      result: item,
+    });
+  });
+
   getMyBucketByCategory = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.user!;
     const { category } = req.params;
