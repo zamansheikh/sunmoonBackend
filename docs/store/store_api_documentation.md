@@ -7,7 +7,7 @@ This system consists of:
 1. **Category Management** — Admin CRUD for store categories
 2. **Item Management** — Admin CRUD for single and batch items
 3. **Item Browsing** — Public endpoints for browsing items by category, VIP, SVIP, exclusive, or filtered by `canUserBuyThis`
-4. **Bucket Management** — User purchase, equipping, and inventory listing
+4. **Bucket Management** — User purchase, sending items to others, equipping, and inventory listing
 5. **Admin Grant** — Direct granting of exclusive items to users
 
 ---
@@ -772,6 +772,73 @@ Returns items in the user's inventory filtered by category name.
 
 ---
 
+### 4.5 Send Store Item to Another User
+
+Sends a store item to another user's bucket. The sender pays the item's coin price, and the recipient receives the item in their inventory. If the recipient already owns the item, the expiry is renewed from the current date.
+
+- **Path**: `POST /api/store/bucket/send`
+- **Access Control**: Any authenticated user
+
+#### Request Body
+
+```json
+{
+  "recipientUserId": 100024,
+  "itemId": "64f1a2b3c4d5e6f7a8b9c0d2",
+  "priceIndex": 0
+}
+```
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `recipientUserId` | `number` | Yes | Recipient's numeric userId (short ID, min 100001) |
+| `itemId` | `string` | Yes | MongoDB ObjectId of the store item to send |
+| `priceIndex` | `number` | No | Index into the item's `prices` array. Defaults to `0` |
+
+#### Behavior
+
+- **Coins deducted from sender** — the sender's balance is reduced by the selected price option
+- **Item granted to recipient** — a new bucket entry is created for the recipient with the selected validity period
+- **Expiry renewal** — if the recipient already owns the item, the expiry is extended from the current date (not stacked on the existing expiry)
+- **VIP/SVIP items blocked** — items in VIP or SVIP categories cannot be sent
+- **Exclusive items blocked** — items with `canUserBuyThis: false` cannot be sent
+
+#### Error Responses
+
+| Status | Message | When |
+| :--- | :--- | :--- |
+| `400` | `Cannot send item to yourself` | Sender and recipient are the same user |
+| `400` | `VIP/SVIP items cannot be sent to other users` | Item belongs to VIP/SVIP category |
+| `400` | `This item is not available for purchase` | Item has `canUserBuyThis: false` |
+| `400` | `Item has no pricing options` | Item has empty `prices` array |
+| `400` | `Invalid price option selected` | `priceIndex` is out of bounds |
+| `400` | `Insufficient coins. Required: X, available: Y` | Sender does not have enough coins |
+| `404` | `Recipient not found` | No user found with the given `recipientUserId` |
+| `404` | `Item not found` | No item found with the given `itemId` |
+
+#### Response (200 OK)
+
+Returns the store item document:
+
+```json
+{
+  "success": true,
+  "result": {
+    "_id": "64f1a2b3c4d5e6f7a8b9c0d3",
+    "name": "Neon Frame",
+    "categoryId": "64f1a2b3c4d5e6f7a8b9c0d1",
+    "prices": [
+      { "validity": 30, "price": 5000 }
+    ],
+    "isPremium": false,
+    "canUserBuyThis": true,
+    "totalSold": 42
+  }
+}
+```
+
+---
+
 ## Part 5: Admin Grant Item
 
 Grants an exclusive store item directly to a user's inventory without requiring purchase.
@@ -887,6 +954,7 @@ Same shape as a bucket item:
 | `GET` | `/api/store/items/category/:category` | Any authenticated | Items by category name |
 | `POST` | `/api/store/items/grant` | Admin / SubAdmin | Grant item to user |
 | `POST` | `/api/store/bucket` | Any authenticated | Buy store item |
+| `POST` | `/api/store/bucket/send` | Any authenticated | Send store item to another user |
 | `PUT` | `/api/store/bucket` | Any authenticated | Equip/unequip item |
 | `GET` | `/api/store/bucket` | Any authenticated | View inventory |
 | `GET` | `/api/store/bucket/category/:category` | Any authenticated | View inventory by category |
@@ -901,3 +969,4 @@ Same shape as a bucket item:
 - **`canUserBuyThis`**: Items with `canUserBuyThis: false` are grant-only (delivered via the grant endpoint or VIP/SVIP auto-grant system)
 - **Purchase flow**: When buying, the selected `priceIndex` determines the price and validity period. The user's coins are deducted atomically inside a MongoDB transaction
 - **Enriched store listings**: Both VIP and SVIP item listings include `monthEnd`, `rechargeRequired`, and `currentRechargeAmount` fields for rendering progress bars and countdown timers in the frontend
+- **Send store item**: When sending a store item to another user, if the recipient already owns it, the expiry is renewed from the current date (not stacked). VIP/SVIP and exclusive items cannot be sent.
