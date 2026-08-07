@@ -47,6 +47,7 @@ import MedalRouter from "./router/medal_routes";
 import AppResellerRouter from "./router/app_reseller_routes";
 import SvipRouter from "./router/svip_routes";
 import FamilySupportRewardRouter from "./router/family_support_reward_router";
+import LevelTagRouter from "./router/level_tag_routes";
 
 import fs from "fs";
 import path from "path";
@@ -194,6 +195,9 @@ app.use("/api/app-reseller", AppResellerRouter);
 
 // Family Support Reward routes
 app.use("/api/admin/family-support-rewards", FamilySupportRewardRouter);
+
+// Level Tags routes
+app.use("/api/level-tags", LevelTagRouter);
 
 app.post(
   "/api/upload-file-cloud",
