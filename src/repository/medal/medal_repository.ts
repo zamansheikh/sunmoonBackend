@@ -6,6 +6,9 @@ import {
   IMedalModel,
 } from "../../models/medal/medal_model";
 import User from "../../models/user/user_model";
+import LevelTagModel from "../../models/levelTag/level_tag_model";
+import LevelRewardConfigModel from "../../models/levelReward/level_reward_config_model";
+import LevelRewardClaimModel from "../../models/levelReward/level_reward_claim_model";
 import { XpConfigService } from "../../services/admin/xp_config_service";
 
 export interface IMedalWithStatus extends IMedalDocument {
@@ -13,8 +16,22 @@ export interface IMedalWithStatus extends IMedalDocument {
   earnedAt?: Date;
 }
 
+export interface ILevelTagResponse {
+  level: number;
+  tagFile: string;
+}
+
+export interface ILevelRewardResponse {
+  level: number;
+  coinReward: number;
+  claimed: boolean;
+  claimedAt?: Date;
+}
+
 export interface IMedalStatusResponse {
   medals: IMedalWithStatus[];
+  levelTags: ILevelTagResponse[];
+  levelRewards: ILevelRewardResponse[];
   userName: string;
   avatar: string | null;
   currentLevel: number;
@@ -77,10 +94,15 @@ export default class MedalRepository implements IMedalRepository {
   }
 
   async findMedalsWithUserStatus(userId: string): Promise<IMedalStatusResponse> {
-    const [medals, user, xpConfig] = await Promise.all([
+    const MILESTONE_LEVELS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+
+    const [medals, user, xpConfig, levelTags, userClaims, allRewardConfigs] = await Promise.all([
       this.Model.find().sort({ level: 1 }),
       User.findById(userId).select("earnedMedals totalEarnedXp level name avatar"),
       XpConfigService.getConfig(),
+      LevelTagModel.find({ level: { $in: MILESTONE_LEVELS } }).sort({ level: 1 }),
+      LevelRewardClaimModel.find({ userId }).select("level claimedAt"),
+      LevelRewardConfigModel.find().sort({ level: 1 }),
     ]);
 
     const earnedMedalMap = new Map<string, Date>();
@@ -100,6 +122,26 @@ export default class MedalRepository implements IMedalRepository {
       } as IMedalWithStatus;
     });
 
+    const levelTagStatuses: ILevelTagResponse[] = levelTags.map((tag) => ({
+      level: tag.level,
+      tagFile: tag.tagFile,
+    }));
+
+    const claimMap = new Map<number, Date>();
+    for (const claim of userClaims) {
+      claimMap.set(claim.level, claim.claimedAt);
+    }
+
+    const levelRewardStatuses: ILevelRewardResponse[] = allRewardConfigs.map((config) => {
+      const claimedAt = claimMap.get(config.level);
+      return {
+        level: config.level,
+        coinReward: config.coinReward,
+        claimed: !!claimedAt,
+        ...(claimedAt && { claimedAt }),
+      };
+    });
+
     const level = user?.level ?? 0;
     const currentXp = user?.totalEarnedXp ?? 0;
     const xpLevels = xpConfig?.xpLevels ?? [];
@@ -112,6 +154,8 @@ export default class MedalRepository implements IMedalRepository {
 
     return {
       medals: medalStatuses,
+      levelTags: levelTagStatuses,
+      levelRewards: levelRewardStatuses,
       userName: user?.name ?? "",
       avatar: user?.avatar ?? null,
       currentLevel,
