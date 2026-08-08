@@ -80,6 +80,8 @@ export enum DatabaseNames {
   FamilySupportRewardHistory = "family_support_reward_histories",
   WalletTransaction = "greedy_game_wallet_transactions",
   LevelTags = "level_tags",
+  LevelRewardConfigs = "level_reward_configs",
+  LevelRewardClaims = "level_reward_claims",
 }
 
 export enum ReelStatus {

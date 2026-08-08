@@ -48,6 +48,8 @@ import AppResellerRouter from "./router/app_reseller_routes";
 import SvipRouter from "./router/svip_routes";
 import FamilySupportRewardRouter from "./router/family_support_reward_router";
 import LevelTagRouter from "./router/level_tag_routes";
+import LevelRewardConfigRouter from "./router/level_reward_config_routes";
+import LevelRewardRouter from "./router/level_reward_routes";
 
 import fs from "fs";
 import path from "path";
@@ -198,6 +200,12 @@ app.use("/api/admin/family-support-rewards", FamilySupportRewardRouter);
 
 // Level Tags routes
 app.use("/api/level-tags", LevelTagRouter);
+
+// Level Reward Config routes (admin)
+app.use("/api/admin/level-rewards", LevelRewardConfigRouter);
+
+// Level Reward claim routes (user)
+app.use("/api/level-rewards", LevelRewardRouter);
 
 app.post(
   "/api/upload-file-cloud",
