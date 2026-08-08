@@ -10,6 +10,8 @@ import { AudioRoomChannels } from "../Utils/enums";
 import { XpConfigService } from "../../services/admin/xp_config_service";
 import MedalModel from "../../models/medal/medal_model";
 import MedalRepository from "../../repository/medal/medal_repository";
+import LevelTagModel from "../../models/levelTag/level_tag_model";
+import LevelTagRepository from "../../repository/levelTag/level_tag_repository";
 import UserSvipModel from "../../models/svip/user_svip_model";
 
 export class XpHelper {
@@ -22,6 +24,7 @@ export class XpHelper {
     StoreCategoryModel,
   );
   public medalRepository = new MedalRepository(MedalModel);
+  public levelTagRepository = new LevelTagRepository(LevelTagModel);
 
   private constructor() {}
 
@@ -171,30 +174,49 @@ export class XpHelper {
 
   private async awardMedalForLevel(userId: string, level: number): Promise<void> {
     try {
-      const medal = await this.medalRepository.findByLevel(level);
-      if (!medal) return;
+      const [medal, levelTag] = await Promise.all([
+        this.medalRepository.findByLevel(level),
+        this.levelTagRepository.findByLevel(level),
+      ]);
 
-      // Atomic $ne + $push — prevents duplicates even under concurrent requests
-      const result = await User.updateOne(
-        { _id: userId, "earnedMedals.medalId": { $ne: medal._id } },
-        {
-          $push: {
-            earnedMedals: {
-              medalId: medal._id,
-              earnedAt: new Date(),
-            },
-          },
-        },
-      );
+      if (!medal && !levelTag) return;
 
-      if (result.modifiedCount > 0) {
+      // Both updates run in parallel — each is individually atomic
+      await Promise.all([
+        medal
+          ? User.updateOne(
+              { _id: userId, "earnedMedals.medalId": { $ne: medal._id } },
+              {
+                $push: {
+                  earnedMedals: {
+                    medalId: medal._id,
+                    earnedAt: new Date(),
+                  },
+                },
+              },
+            )
+          : null,
+        levelTag
+          ? User.updateOne(
+              { _id: userId },
+              { $set: { currentLevelTag: levelTag.tagFile } },
+            )
+          : null,
+      ]);
+
+      if (medal) {
         console.log(
           `[XpHelper] Awarded medal "${medal.name}" to user ${userId} for reaching level ${level}`,
         );
       }
+      if (levelTag) {
+        console.log(
+          `[XpHelper] Set currentLevelTag for user ${userId} to level ${level}`,
+        );
+      }
     } catch (error: any) {
       console.error(
-        `[XpHelper] Failed to award medal for level ${level}: ${error.message}`,
+        `[XpHelper] Failed to award medal/tag for level ${level}: ${error.message}`,
       );
     }
   }
